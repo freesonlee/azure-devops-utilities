@@ -1,0 +1,9 @@
+<div class="container">
+  <mat-form-field class="baseUrl" class="settingsEditor">
+   
+    <textarea matInput [(ngModel)]="settings" rows="100" cdkFocusInitial></textarea>
+    
+  </mat-form-field>
+  <button mat-raised-button [mat-dialog-close]="settings" >Save</button>
+  <button mat-raised-button (click)="dialogRef.close()">Cancel</button>
+</div>

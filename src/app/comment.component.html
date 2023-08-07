@@ -1,0 +1,9 @@
+<div class="container">
+    <mat-form-field class="commentsEditor">
+     
+      <textarea matInput [(ngModel)]="comment" rows="10" cdkFocusInitial></textarea>
+      
+    </mat-form-field>
+    <button mat-raised-button [mat-dialog-close]="comment" >Save</button>
+    <button mat-raised-button (click)="dialogRef.close()">Cancel</button>
+  </div>
