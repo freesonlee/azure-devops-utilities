@@ -1,27 +1,21 @@
-# AzureDevopsVariableGroupEditor
+# A tool to manage Azure DevOps Variable Groups and Pipeline
+Please visit [Online](https://go.azuredevopshelpers.dev/)
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.1.7.
+## Setup
+Add your ADS host in settings. You need your PAT pre-created in ADS. All ADS host settings is saved in browser local storage. PAT is not sent to server. BTW, there is no server for this tool. It's pure TS/JS hosted on Azure CDN.
 
-## Development server
+## Variable groups history
+The tool lists all variable groups and you can add/update/remove variables in a group. You can't create or delete any variable group now, which is not the purpose of the tool.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+The update history will be commited to the repository that you put in the settings. The tool does NOT send request to create the repository. Make sure the repository is already created and your PAT has access to commit and push changes.
 
-## Code scaffolding
+The history doesn't have secret variable value saved. 
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+## Pipeline
+You can create profile and add one or more pipeline to it. You can then define parameter values and variables for each pipeline in the profile. 
 
-## Build
+## TODO
+* Allow user to run all pipelines defined in a profile.
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
-
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+## Possible issue
+* When queue a new build, and when a `allowOverride=false` variable has newly been added to pipeline definition, and the pipeline profile has the same variable defined, the new build run request might fail by ADS Rest API.

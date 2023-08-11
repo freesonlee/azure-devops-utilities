@@ -1,1 +1,153 @@
-this s for pipeline
+<mat-drawer-container autosize>
+  <mat-drawer mode="side" opened>
+    <button mat-raised-button (click)="newProfile()">Add new profile</button>
+    <mat-action-list>
+      <mat-list-item *ngFor="let profile of profiles">
+        <button mat-list-item (click)="loadProfile(profile)">{{profile.name}}</button>
+      </mat-list-item>
+      
+    </mat-action-list>
+
+  </mat-drawer>
+  <mat-drawer-content>
+
+    <mat-drawer-container autosize>
+      <mat-drawer mode="side" opened>
+        <button mat-raised-button (click)="newProfilePipeline()">Add new build to {{profile?.name}}</button>
+        <button mat-raised-button (click)="runProfile()">Run all</button>
+        <mat-action-list>
+          <mat-list-item *ngFor="let pipeline of profile?.pipelines">
+            <button mat-list-item (click)="pipelineDefSelected(pipeline)">{{pipeline.name}}</button>
+          </mat-list-item>
+          
+        </mat-action-list>
+      </mat-drawer>   
+      <mat-drawer-content *ngIf="selectedPipeline!=null">
+
+        <div *ngIf="!selectedPipeline.isNew">{{ selectedPipeline.name }}</div>
+
+        <mat-form-field class="pipelineList" *ngIf="selectedPipeline.isNew">
+          <input type="text"
+                 matInput
+                 [formControl]="pipelineControl"
+                 [matAutocomplete]="auto">
+          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value)">
+            <mat-option *ngFor="let pipeline of filteredPipelines | async" [value]="pipeline.fullName">
+              {{pipeline.fullName}}
+            </mat-option>
+          </mat-autocomplete>
+          <button *ngIf="selectedPipeline" matSuffix mat-icon-button aria-label="Clear" (click)="pipelineControl.setValue('')">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <mat-expansion-panel #branchSelect *ngIf="selectedPipeline!.pipelineId" (afterExpand)="branchControl.setValue('')">
+          <mat-expansion-panel-header>
+          <mat-panel-title>
+          Branch
+          </mat-panel-title>
+          <mat-panel-description>
+          {{selectedPipeline!.configurations.branch}}
+          </mat-panel-description>
+          </mat-expansion-panel-header>
+         
+          <mat-form-field>
+            <input type="text"
+                   matInput
+                   [formControl]="branchControl"
+                   [matAutocomplete]="auto">
+            <mat-autocomplete #auto="matAutocomplete" (optionSelected)="branchSelected($event)">
+              <mat-option *ngFor="let option of filteredBranches | async" [value]="option">
+                {{option}}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+
+          </mat-expansion-panel>
+
+          
+          <div *ngFor="let para of parameters">
+
+            <mat-form-field *ngIf="para.type=='string'&&!para.values">
+              <mat-label>{{para.displayName || para.name}}</mat-label>
+              <input type="text" matInput [(ngModel)]="selectedPipeline!.configurations.parameterValues[para.name]">
+            </mat-form-field>
+
+            <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
+              <mat-label>{{para.displayName || para.name}}</mat-label>
+              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value" >
+           <!-- [(selected)]="selectedPipeline!.configurations.parameterSelections[para.name][option]"  -->
+                <mat-list-option *ngFor="let option of para.values" checkboxPosition="before" [value]="option" [selected]="
+                  selectedPipeline!.configurations.parameterValues[para.name] ?
+                    (option == selectedPipeline!.configurations.parameterValues[para.name]) : 
+                    (option==para.default || option==para.values[0])">
+                  {{option}}
+                </mat-list-option>                
+              </mat-selection-list>
+            </div>
+
+            <mat-form-field *ngIf="para.type=='string'&&para.values&&para.values.length>5">
+              <mat-label>{{para.displayName || para.name}}</mat-label>
+              <mat-select [value]="para.default||para.values[0]">
+                <mat-option *ngFor="let option of para.values" [value]="option">
+                  {{option}}
+                </mat-option>                
+              </mat-select>
+            </mat-form-field>
+
+            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked">{{para.displayName || para.name}}</mat-checkbox>
+
+          </div>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Variables</mat-panel-title>
+            </mat-expansion-panel-header>
+            
+            <table mat-table [dataSource]="this.selectedPipeline!.configurations.variables" #variableTable>
+
+              <ng-container matColumnDef="name">
+                <td mat-cell *matCellDef="let variable" width="30%">
+                  <mat-form-field class="variableNameInput" class="variableNameCell">
+                    <input type="text" matInput  [(ngModel)]="variable.name" spellcheck="false" (change)="variable.nameExists=this.selectedPipeline!.checkVariableName(variable)">
+                  </mat-form-field>
+                  <mat-error *ngIf="variable.nameExists">
+                    Variable '{{variable.name}}' is already defined
+                  </mat-error>
+                  
+                </td>
+              </ng-container>
+        
+              <ng-container matColumnDef="action">
+                <td mat-cell *matCellDef="let variable" width="100px">
+                  <button mat-icon-button color="warn" (click)="this.selectedPipeline!.deleteVariable(variable);variableTable.renderRows()" *ngIf="!variable.allowOverride||variable.factoryValue==undefined">
+                    <mat-icon>delete forever</mat-icon>
+                  </button>    
+                  <button mat-icon-button (click)="variable.value=variable.factoryValue" *ngIf="variable.allowOverride&&variable.factoryValue!=undefined&&variable.value!=variable.factoryValue">
+                    <mat-icon>undo</mat-icon>
+                  </button>         
+                </td>
+              </ng-container>
+        
+              <ng-container matColumnDef="value">
+                <td mat-cell *matCellDef="let variable" width="60%">
+                  <mat-form-field class="variableValueInput" class="variableValueCell">
+                    <input type="text" matInput  [(ngModel)]="variable.value" spellcheck="false">
+                  </mat-form-field>
+                </td>
+              </ng-container>
+        
+            <tr mat-row *matRowDef="let row; columns: ['name','value','action'];" ></tr>
+            </table>
+          </mat-expansion-panel>
+
+          <button mat-raised-button [disabled]="!canSave()" (click)="save()">Save</button>
+          <button mat-raised-button (click)="this.selectedPipeline!.addNewVariable();variableTable.renderRows()">Add Variable</button>
+          <button mat-raised-button [disabled]="!canSave()" (click)="runPipeline()">Run</button>
+          <button mat-raised-button (click)="deletePipeline()" color="warn">Delete</button>
+      </mat-drawer-content>
+  
+    </mat-drawer-container>
+   
+  </mat-drawer-content>
+</mat-drawer-container>

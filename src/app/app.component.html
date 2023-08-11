@@ -10,8 +10,10 @@
 <button mat-raised-button (click)="openSettings()">Settings</button>
 <button mat-raised-button (click)="reload()" [disabled]="!server">Reload</button>
 <button mat-raised-button (click)="openSaveDialog()" color="warn" #saveButton [disabled]="!hasChange">Save Changes</button>
+<button mat-raised-button (click)="mode='pipelines'" [disabled]="!server" *ngIf="mode=='variables'">Run Pipeline(s)</button>
+<button mat-raised-button (click)="mode='variables'" [disabled]="!server" *ngIf="mode=='pipelines'">Variables</button>
 <br>
-<mat-drawer-container autosize>
+<mat-drawer-container autosize *ngIf="mode=='variables'">
   <mat-drawer mode="side" opened>
     
     <mat-action-list>
@@ -68,3 +70,5 @@
     </table>
   </mat-drawer-content>
 </mat-drawer-container>
+
+<pipeline-list *ngIf="mode=='pipelines' && server" #pipelineComp [server]="server!"></pipeline-list>

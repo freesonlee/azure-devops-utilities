@@ -7,6 +7,9 @@ import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angu
 import { MatTable } from '@angular/material/table';
 import { SettingsComponent } from './settings.component';
 import { CommentComponent } from './comment.component';
+import { PipelineComponent } from './pipeline.component';
+
+type Mode = 'variables' | 'pipelines';
 
 @Component({
   selector: 'app-root',
@@ -22,6 +25,9 @@ export class AppComponent {
   hasChange = false;
   servers: Server[] = [];
   server?: Server;
+  mode: Mode = 'variables';
+  @ViewChild('pipelineComp')
+  pipelineComp!: PipelineComponent;
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
 
@@ -52,7 +58,7 @@ export class AppComponent {
         branch: 'branch to store variable history',
         filePath: 'path to store variable history files',
         host: 'Azure DevOps server including organization and project',
-        pat: 'PAT that has source code read/write and variable group management permission',
+        pat: 'PAT that has source code read/write and variable group management permission for Variable history, and Build Read & execute for pipeline profiles',
         repository: 'repository to store variable history. Must already exist.'
       }]
     }
@@ -62,6 +68,11 @@ export class AppComponent {
   async reload() {
 
     localStorage.setItem('lastServer', this.server!.host);
+
+    if (this.mode == 'pipelines') {
+      await this.pipelineComp.reload();
+      return;
+    }
 
     const response = await firstValueFrom(this.httpClient.get(`${this.server!.host}/_apis/distributedtask/variablegroups`, this.getRequestOptions())) as ListResponse<VariableGroup>;
 
@@ -130,6 +141,12 @@ export class AppComponent {
   }
 
   async openSaveDialog() {
+
+    if (this.mode == 'pipelines') {
+      this.pipelineComp.openSaveDialog();
+      return;
+    }
+
     console.log(this.generateUpdatePayload());
 
     this.dialog.open(CommentComponent, {
