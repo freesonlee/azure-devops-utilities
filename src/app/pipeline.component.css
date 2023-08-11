@@ -1,0 +1,56 @@
+
+  .baseUrl {
+    width: 500px;
+  }
+  mat-drawer-container {
+    height: 95%;
+  }
+  .variableNameInput {
+    width: 350px
+  }
+  .variableTitle {
+    font-size: x-large;
+  }
+  .variableValueCell {
+    width: calc(100%-40px);
+  }
+  .variableValueInput {
+    width: 100%
+  }
+  .mat-mdc-form-field-subscript-wrapper .mat-mdc-form-field-bottom-align::before  {
+    line-height: 0px !important;
+  }
+  .variableIsSecret {
+        width: 20px;
+  }
+  .dirtyRow {
+    background-color:cadetblue;
+  }  
+ 
+  tr.mat-mdc-row.mdc-data-table__row.cdk-row.ng-star-inserted.dirtyRow:hover {
+    background-color:cadetblue;
+  }
+
+  .deleted {
+    background-color: chocolate;
+  }
+
+  tr.mat-mdc-row.mdc-data-table__row.cdk-row.ng-star-inserted.deleted:hover {
+    background-color:chocolate;
+  }
+
+  .badRow {
+    background-color: crimson;
+  }
+
+  tr.mat-mdc-row.mdc-data-table__row.cdk-row.ng-star-inserted.badRow:hover {
+    background-color:crimson;
+  }
+
+  .mdc-data-table__cell {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+  .secretCell {
+    width: 100px
+  }
