@@ -15,6 +15,8 @@ export class Profile {
             l.configurations.branch = p.configurations.branch;
             l.configurations.parameterValues = p.configurations.parameterValues;
             l.configurations.variables = p.configurations.variables ?? [];
+            l.configurations.stagesToSkip = p.configurations.stagesToSkip ?? {};
+            l.configurations.resources = p.configurations.resources ?? {};
 
             return l;
         });
@@ -30,6 +32,11 @@ export class ProfilePipeline {
             parameterValues: {},
             //parameterSelections: {},
             variables: [],
+            stagesToSkip: {},
+            resources: {
+                pipelines: {},
+                repositories: {}
+            },
             toJSON: function () {
                 return {
                     ...this,
@@ -59,6 +66,30 @@ export class ProfilePipeline {
             nameExists?: boolean
             factoryValue?: string
         })[]
+        stagesToSkip: {
+            [stage: string]: boolean
+        }
+        resources: {
+            pipelines: {
+                [pipeline: string]: {
+                    branch: string
+                    pipeline: string
+                    source: string
+                    selectedBranch: string
+                    artifact: string
+                }
+            }
+            repositories: {
+                [repository: string]: {
+                    ref: string
+                    repository: string
+                    name: string
+                    type: string
+                    selectedRef: string
+                    artifact?: string
+                }
+            }
+        }
         toJSON: () => any
     }
     pipelineDef?: Pipeline;
@@ -90,7 +121,7 @@ export class ProfilePipeline {
             ...this,
             isNew: undefined,
             pipelineId: this.pipelineDef?.id,
-            pipelineDef: undefined
+            pipelineDef: undefined,
         };
     }
     checkVariableName(variable: PipelineVariable) {
@@ -135,16 +166,95 @@ export class ProfilePipeline {
         })
     }
 
-    getQueuePayload() {
+    getRepositoryResources() {
+        const payload: { [repo: string]: { refName: string } } =
+            Object.values(this.configurations.resources.repositories).reduce((pv, cv) => {
+                if (!cv.selectedRef) {
+                    return pv;
+                }
+                if (cv.selectedRef == '<self>') {
+                    return { ...pv, [cv.repository]: { refName: 'refs/heads/' + this.configurations.branch } };
+                }
+
+                return { ...pv, [cv.repository]: { refName: 'refs/heads/' + cv.selectedRef } };
+            }, {});
+
+        return payload;
+    }
+
+    async getPipelineResources(sendGetRequest: (url: string) => Promise<unknown>) {
+        //const payload: { [ppeline: string]: { version: string } };
+
+        const getBuilds = Object.values(this.configurations.resources.pipelines).filter(p => p.selectedBranch).map(async p => {
+
+            const branch = p.selectedBranch == '<self>' ? this.configurations.branch : p.branch;
+
+            const resp: any = await sendGetRequest(`/_apis/build/builds?definitions=${this.pipelineId}&$top=1&branchName=refs/heads/${branch}`);
+            return {
+                [p.pipeline]: {
+                    version: resp.value.buildNumber
+                }
+            }
+        });
+
+        const builds = await Promise.all(getBuilds);
+
+        const payload = Object.values(builds).reduce((pv, cv) => ({ ...pv, ...cv }), {})
+
+        return payload;
+    }
+
+    async getQueuePayload(previewRun: boolean, sendGetRequest: (url: string) => Promise<unknown>) {
+        const pipelineResource = await this.getPipelineResources(sendGetRequest);
+
         return {
+            previewRun,
             resources: {
-                self: {
-                    refName: `refs/heads/${this.configurations.branch}`
+                repositories: {
+                    self: {
+                        refName: `refs/heads/${this.configurations.branch}`
+                    },
+                    ...this.getRepositoryResources(),
+                    ...pipelineResource
                 }
             },
+            stagesToSkip: previewRun ? [] : Object.keys(this.configurations.stagesToSkip).filter(stg => this.configurations.stagesToSkip[stg]),
             templateParameters: this.configurations.parameterValues,
             variables: this.configurations.variables.reduce((pv, cv) => ({ ...pv, [cv.name]: { value: cv.value, isSecret: false } }), {})
         }
+    }
+
+    mergePipelineResources(resources: any) {
+        // 
+        //.configurations.resources.repositories = def.resources.repositories.reduce((pv: any, cv: any) => ({ ...pv, [cv.name]: cv }), {});
+
+        resources.repositories.forEach((repo: any) => {
+
+            this.configurations.resources.repositories[repo.repository] = {
+                ...repo,
+                ...this.configurations.resources.repositories[repo.repository]
+            };
+        });
+
+        Object.keys(this.configurations.resources.repositories).forEach(sr => {
+            if (!resources.repositories.find((pr: any) => pr.repository == sr)) {
+                delete this.configurations.resources.repositories[sr];
+            }
+        });
+
+        resources.pipelines.forEach((pl: any) => {
+
+            this.configurations.resources.pipelines[pl.pipeline] = {
+                ...pl,
+                ...this.configurations.resources.pipelines[pl.pipeline]
+            };
+        });
+
+        Object.keys(this.configurations.resources.pipelines).forEach(sl => {
+            if (!resources.pipelines.find((pl: any) => pl.pipeline == sl)) {
+                delete this.configurations.resources.pipelines[sl];
+            }
+        });
     }
 }
 
