@@ -10,7 +10,7 @@ import { CommentComponent } from './comment.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, NgFor, NgIf, KeyValuePipe } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
@@ -22,6 +22,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarRef, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Profile, ProfilePipeline } from './Profile';
+import { KeyValue } from '@angular/common';
 
 @Component({
   selector: 'pipeline-list',
@@ -45,6 +46,7 @@ import { Profile, ProfilePipeline } from './Profile';
     NgFor,
     NgIf,
     AsyncPipe,
+    KeyValuePipe,
     MatSnackBarModule
   ]
 })
@@ -58,13 +60,13 @@ export class PipelineComponent {
   filteredBranches?: Observable<string[]>;
   filteredPipelines?: Observable<Pipeline[]>;
   selectedPipeline?: ProfilePipeline;
+  stages: any[] = [];
 
   @Input() server!: Server;
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
   @ViewChild(MatExpansionPanel) branchSelect!: MatExpansionPanel;
   parameters?: Parameter[];
-
   constructor(private httpClient: HttpClient, private dialog: MatDialog, private _snackBar: MatSnackBar, private cd: ChangeDetectorRef) {
 
   }
@@ -99,7 +101,7 @@ export class PipelineComponent {
   branchSelected(event: MatAutocompleteSelectedEvent) {
     //this.profile!.branch = event.option.value;
     this.branchSelect.close();
-    this.loadParameters();
+    this.loadParameterAndResources();
     this.selectedPipeline!.configurations.branch = event.option.value;
   }
 
@@ -123,6 +125,7 @@ export class PipelineComponent {
 
       const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
       pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
+
     }
 
     this.filteredBranches = this.branchControl.valueChanges.pipe(
@@ -138,17 +141,18 @@ export class PipelineComponent {
     this.selectedPipeline!.setPipeline(this.pipelines!.find(p => p.fullName == pipelineName)!);
     const pipelineDef = await this.loadBranches();
     this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
-    await this.loadParameters();
+    await this.loadParameterAndResources();
     //this.selectedPipeline!.setParameterSelection(this.parameters);
   }
 
-  async loadParameters() {
+  async loadParameterAndResources() {
     const pipelineDef = this.selectedPipeline!.pipelineDef ?? (this.selectedPipeline!.pipelineDef = this.pipelines!.find(p => p.id == this.selectedPipeline!.pipelineId! || p.fullName == this.selectedPipeline!.name));
     try {
       const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${pipelineDef?.repositoryId}/Items?path=/${pipelineDef?.yamlFilename}&versionDescriptor.version=${this.selectedPipeline?.configurations.branch}&includeContent=true`,
         this.getRequestOptions()));
       const def = yamlLoad(response.content) as any;
       this.parameters = def.parameters;
+      this.selectedPipeline!.mergePipelineResources(def.resources);
     } catch (e) {
       this._snackBar.open(`Fail to load template ${pipelineDef?.yamlFilename} from branch ${this.selectedPipeline?.configurations.branch}`, undefined, {
         duration: 5000
@@ -224,20 +228,30 @@ export class PipelineComponent {
       return;
     }
 
-    const payload = this.selectedPipeline.getQueuePayload();
-    const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${this.selectedPipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()));
-    const snackbarRef = this._snackBar.open(`New build run ${response.name} queued`, 'Open', {
-      duration: 3500
-    });
-    snackbarRef.onAction().subscribe(() => {
-      window.open(`${this.server.host}/_build/results?buildId=${response.id}&view=results`);
-    });
+    const payload = await this.selectedPipeline.getQueuePayload(false, this.sendGetRequest.bind(this));
+
+
+    try {
+      const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${this.selectedPipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()));
+
+      const snackbarRef = this._snackBar.open(`New build run ${response.name} queued`, 'Open', {
+        duration: 3500
+      });
+      snackbarRef.onAction().subscribe(() => {
+        window.open(`${this.server.host}/_build/results?buildId=${response.id}&view=results`);
+      });
+    } catch (e: any) {
+      this._snackBar.open(`New build run error: ${e.error.message}`, undefined, {
+        duration: 5000
+      });
+    }
+
   }
 
   async pipelineDefSelected(pipeline: ProfilePipeline) {
     this.selectedPipeline = pipeline;
     const pipelineDef = await this.loadBranches();
-    await this.loadParameters();
+    await this.loadParameterAndResources();
 
     pipeline.loadVariables(pipelineDef.variables!);
     //this.selectedPipeline.setParameterSelection(this.parameters);
@@ -247,6 +261,35 @@ export class PipelineComponent {
     this.profile!.pipelines = this.profile!.pipelines.filter(p => p != this.selectedPipeline);
     this.selectedPipeline = undefined;
     this.save();
+  }
+
+  async loadStages() {
+    if (!this.selectedPipeline) {
+      return;
+    }
+
+    const payload = await this.selectedPipeline.getQueuePayload(true, this.sendGetRequest.bind(this));
+    payload.previewRun = true;
+    const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${this.selectedPipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()))
+      .catch((e) => {
+        this._snackBar.open(e.error.message, undefined, { duration: 5000 });
+        return null;
+      });
+    if (!response) {
+      return;
+    }
+    const plan: any = yamlLoad(response.finalYaml);
+    this.stages = plan.stages.map((g: any) => ({ stage: g.stage, displayName: g.displayName }));
+  }
+
+  private sendGetRequest(url: string): Promise<unknown> {
+    try {
+      return firstValueFrom(this.httpClient.get(this.server.host + url, this.getRequestOptions()));
+    } catch (e: any) {
+      this._snackBar.open(`Fail to get build id ${e.error.message}`, undefined, { duration: 5000 });
+      return Promise.reject();
+    }
+
   }
 
   private getRequestOptions() {

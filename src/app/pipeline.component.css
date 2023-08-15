@@ -9,5 +9,8 @@
     width: 100%
   }
   .variableValueCell {
-    width: 100%
+    width: 80%
+  }
+  .artifactNameInput {
+    width: 80%
   }

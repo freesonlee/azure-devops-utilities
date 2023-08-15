@@ -19,3 +19,6 @@ You can create profile and add one or more pipeline to it. You can then define p
 
 ## Possible issue
 * When queue a new build, and when a `allowOverride=false` variable has newly been added to pipeline definition, and the pipeline profile has the same variable defined, the new build run request might fail by ADS Rest API.
+
+## Disclaimer
+This is a tool that being made in a few days, using Angular. I don't have much experience in Angular and neither much time to improve the code and UX. Any PR is welcomed.

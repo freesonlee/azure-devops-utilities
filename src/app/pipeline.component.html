@@ -75,8 +75,7 @@
 
             <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value" >
-           <!-- [(selected)]="selectedPipeline!.configurations.parameterSelections[para.name][option]"  -->
+              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value;stagePanel.close()" >
                 <mat-list-option *ngFor="let option of para.values" checkboxPosition="before" [value]="option" [selected]="
                   selectedPipeline!.configurations.parameterValues[para.name] ?
                     (option == selectedPipeline!.configurations.parameterValues[para.name]) : 
@@ -88,14 +87,14 @@
 
             <mat-form-field *ngIf="para.type=='string'&&para.values&&para.values.length>5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-select [value]="para.default||para.values[0]">
+              <mat-select [value]="para.default||para.values[0]" (selectionChange)="stagePanel.close()">
                 <mat-option *ngFor="let option of para.values" [value]="option">
                   {{option}}
                 </mat-option>                
               </mat-select>
             </mat-form-field>
 
-            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked">{{para.displayName || para.name}}</mat-checkbox>
+            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close()">{{para.displayName || para.name}}</mat-checkbox>
 
           </div>
 
@@ -120,7 +119,7 @@
         
               <ng-container matColumnDef="action">
                 <td mat-cell *matCellDef="let variable" width="100px">
-                  <button mat-icon-button color="warn" (click)="this.selectedPipeline!.deleteVariable(variable);variableTable.renderRows()" *ngIf="!variable.allowOverride||variable.factoryValue==undefined">
+                  <button mat-icon-button color="warn" (click)="selectedPipeline!.deleteVariable(variable);variableTable.renderRows()" *ngIf="!variable.allowOverride||variable.factoryValue==undefined">
                     <mat-icon>delete forever</mat-icon>
                   </button>    
                   <button mat-icon-button (click)="variable.value=variable.factoryValue" *ngIf="variable.allowOverride&&variable.factoryValue!=undefined&&variable.value!=variable.factoryValue">
@@ -139,6 +138,52 @@
         
             <tr mat-row *matRowDef="let row; columns: ['name','value','action'];" ></tr>
             </table>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel (afterExpand)="loadStages()" #stagePanel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Stages to skip</mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <mat-selection-list>
+              <mat-list-option *ngFor="let stage of stages" checkboxPosition="before" [(selected)]="selectedPipeline!.configurations.stagesToSkip[stage.stage]">
+                {{stage.displayName || stage.stage}}
+              </mat-list-option>
+            </mat-selection-list>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel #resourcesPanel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Resources</mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div  *ngFor="let repo of selectedPipeline!.configurations.resources.repositories | keyvalue">
+              <mat-form-field class="variableValueCell">
+                <mat-label>
+                  <mat-icon>code</mat-icon>
+                  {{repo.value.repository}} [{{repo.value.name.split('/')[1]}}]</mat-label>
+                <input type="text" matInput [placeholder]="'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). Leave empty to use default (' + repo.value.ref.split('/')[2] + ').'" [(ngModel)]="repo.value.selectedRef">
+              </mat-form-field>
+            </div>          
+
+            <div  *ngFor="let pl of selectedPipeline!.configurations.resources.pipelines| keyvalue">
+              <mat-form-field class="variableValueCell">
+                <mat-label>
+                  <mat-icon>redeem</mat-icon>
+                  Latest build of {{pl.key}} [{{pl.value.source}}]
+                </mat-label>
+                <input type="text" matInput [placeholder]="'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). Leave empty to use default (' + pl.value.branch + ').'" [(ngModel)]="pl.value.selectedBranch">
+              </mat-form-field>
+               <!--
+              <mat-form-field class="artifactNameInput">
+                <mat-label>
+                  Artifact name
+                </mat-label>
+                  <input type="text" matInput placeholder="Enter artifact name to allow unsuccessful build" [(ngModel)]="pl.value.artifact">
+              </mat-form-field>
+                  -->
+            </div>
+
           </mat-expansion-panel>
 
           <button mat-raised-button [disabled]="!canSave()" (click)="save()">Save</button>
