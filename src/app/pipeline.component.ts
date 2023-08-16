@@ -219,33 +219,52 @@ export class PipelineComponent {
     });
   }
 
-  runProfile() {
+  async runProfile() {
+    const requests = this.profile!.pipelines?.map(p => this.runPipeline(p, false));
 
+    const results = await Promise.all(requests);
+    const succeeded = results.map(r => r[0]).filter(r => r);
+    const failed = results.map(r => r[1]).filter(r => r);
+    let messages = succeeded.length > 0 ? `Successfully queued build ${succeeded.join(',')}. ` : '';
+    messages += (failed.length > 0 ? `Failed for pipeline ${failed.join(',')}` : '');
+    this._snackBar.open(messages, undefined, {
+      duration: 5000
+    });
   }
 
-  async runPipeline() {
-    if (!this.selectedPipeline) {
-      return;
+  async runPipeline(pipeline: ProfilePipeline | undefined, showSnackbar?: boolean): Promise<[string, string]> {
+
+    if (!pipeline) {
+      return ['', 'no pipeline provided'];
     }
 
-    const payload = await this.selectedPipeline.getQueuePayload(false, this.sendGetRequest.bind(this));
+    const payload = await pipeline.getQueuePayload(false, this.sendGetRequest.bind(this));
 
 
     try {
-      const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${this.selectedPipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()));
+      const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${pipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()));
 
-      const snackbarRef = this._snackBar.open(`New build run ${response.name} queued`, 'Open', {
-        duration: 3500
-      });
-      snackbarRef.onAction().subscribe(() => {
-        window.open(`${this.server.host}/_build/results?buildId=${response.id}&view=results`);
-      });
+      if (showSnackbar) {
+        const snackbarRef = this._snackBar.open(`New build run ${response.name} queued`, 'Open', {
+          duration: 3500
+        });
+        snackbarRef.onAction().subscribe(() => {
+          window.open(`${this.server.host}/_build/results?buildId=${response.id}&view=results`);
+        });
+      }
+
+      return [response.name, ''];
     } catch (e: any) {
-      this._snackBar.open(`New build run error: ${e.error.message}`, undefined, {
-        duration: 5000
-      });
-    }
 
+      if (showSnackbar) {
+        this._snackBar.open(`New build run error: ${e.error.message}`, undefined, {
+          duration: 5000
+        });
+
+      }
+
+      return ['', pipeline.name!];
+    }
   }
 
   async pipelineDefSelected(pipeline: ProfilePipeline) {

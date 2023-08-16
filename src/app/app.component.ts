@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild } from '@angular/core';
-import { first, firstValueFrom } from 'rxjs';
+import { Observable, delay, first, firstValueFrom } from 'rxjs';
 import { ListResponse, Server, Variable, VariableData, VariableGroup } from './Models';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -70,6 +70,7 @@ export class AppComponent {
     localStorage.setItem('lastServer', this.server!.host);
 
     if (this.mode == 'pipelines') {
+      await new Promise(r => setTimeout(r, 10));
       await this.pipelineComp.reload();
       return;
     }

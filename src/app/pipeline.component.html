@@ -188,7 +188,7 @@
 
           <button mat-raised-button [disabled]="!canSave()" (click)="save()">Save</button>
           <button mat-raised-button (click)="this.selectedPipeline!.addNewVariable();variableTable.renderRows()">Add Variable</button>
-          <button mat-raised-button [disabled]="!canSave()" (click)="runPipeline()">Run</button>
+          <button mat-raised-button [disabled]="!canSave()" (click)="runPipeline(selectedPipeline)">Run</button>
           <button mat-raised-button (click)="deletePipeline()" color="warn">Delete</button>
       </mat-drawer-content>
   

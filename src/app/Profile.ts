@@ -17,6 +17,7 @@ export class Profile {
             l.configurations.variables = p.configurations.variables ?? [];
             l.configurations.stagesToSkip = p.configurations.stagesToSkip ?? {};
             l.configurations.resources = p.configurations.resources ?? {};
+            l.pipelineId = p.pipelineId;
 
             return l;
         });
@@ -45,10 +46,7 @@ export class ProfilePipeline {
             }
         };
     }
-
-    get pipelineId() {
-        return this.pipelineDef?.id;
-    }
+    pipelineId?: string;
 
     isNew?: boolean
     name?: string
@@ -92,8 +90,16 @@ export class ProfilePipeline {
         }
         toJSON: () => any
     }
-    pipelineDef?: Pipeline;
 
+    _pipelineDef?: Pipeline;
+
+    get pipelineDef() {
+        return this._pipelineDef;
+    }
+    set pipelineDef(pipeline: Pipeline | undefined) {
+        this._pipelineDef = pipeline;
+        this.pipelineId = pipeline?.id;
+    }
 
     setPipeline(pipeline: Pipeline) {
         this.pipelineDef = pipeline;
@@ -120,7 +126,6 @@ export class ProfilePipeline {
         return {
             ...this,
             isNew: undefined,
-            pipelineId: this.pipelineDef?.id,
             pipelineDef: undefined,
         };
     }
@@ -225,36 +230,39 @@ export class ProfilePipeline {
     }
 
     mergePipelineResources(resources: any) {
-        // 
+        if (resources?.repositories) {
+            resources.repositories.forEach((repo: any) => {
+
+                this.configurations.resources.repositories[repo.repository] = {
+                    ...repo,
+                    ...this.configurations.resources.repositories[repo.repository]
+                };
+            });
+
+            Object.keys(this.configurations.resources.repositories).forEach(sr => {
+                if (!resources.repositories.find((pr: any) => pr.repository == sr)) {
+                    delete this.configurations.resources.repositories[sr];
+                }
+            });
+        }
         //.configurations.resources.repositories = def.resources.repositories.reduce((pv: any, cv: any) => ({ ...pv, [cv.name]: cv }), {});
 
-        resources.repositories.forEach((repo: any) => {
+        if (resources?.pipelines) {
+            resources.pipelines.forEach((pl: any) => {
 
-            this.configurations.resources.repositories[repo.repository] = {
-                ...repo,
-                ...this.configurations.resources.repositories[repo.repository]
-            };
-        });
+                this.configurations.resources.pipelines[pl.pipeline] = {
+                    ...pl,
+                    ...this.configurations.resources.pipelines[pl.pipeline]
+                };
+            });
 
-        Object.keys(this.configurations.resources.repositories).forEach(sr => {
-            if (!resources.repositories.find((pr: any) => pr.repository == sr)) {
-                delete this.configurations.resources.repositories[sr];
-            }
-        });
+            Object.keys(this.configurations.resources.pipelines).forEach(sl => {
+                if (!resources.pipelines.find((pl: any) => pl.pipeline == sl)) {
+                    delete this.configurations.resources.pipelines[sl];
+                }
+            });
+        }
 
-        resources.pipelines.forEach((pl: any) => {
-
-            this.configurations.resources.pipelines[pl.pipeline] = {
-                ...pl,
-                ...this.configurations.resources.pipelines[pl.pipeline]
-            };
-        });
-
-        Object.keys(this.configurations.resources.pipelines).forEach(sl => {
-            if (!resources.pipelines.find((pl: any) => pl.pipeline == sl)) {
-                delete this.configurations.resources.pipelines[sl];
-            }
-        });
     }
 }
 
