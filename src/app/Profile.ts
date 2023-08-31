@@ -18,6 +18,7 @@ export class Profile {
             l.configurations.stagesToSkip = p.configurations.stagesToSkip ?? {};
             l.configurations.resources = p.configurations.resources ?? {};
             l.pipelineId = p.pipelineId;
+            l.configurations.enableDiag = p.configurations.enableDiag;
 
             return l;
         });
@@ -31,6 +32,7 @@ export class ProfilePipeline {
         this.configurations = {
             branch: '',
             parameterValues: {},
+            enableDiag: false,
             //parameterSelections: {},
             variables: [],
             stagesToSkip: {},
@@ -88,6 +90,7 @@ export class ProfilePipeline {
                 }
             }
         }
+        enableDiag: boolean
         toJSON: () => any
     }
 
@@ -225,7 +228,19 @@ export class ProfilePipeline {
             },
             stagesToSkip: previewRun ? [] : Object.keys(this.configurations.stagesToSkip).filter(stg => this.configurations.stagesToSkip[stg]),
             templateParameters: this.configurations.parameterValues,
-            variables: this.configurations.variables.reduce((pv, cv) => ({ ...pv, [cv.name]: { value: cv.value, isSecret: false } }), {})
+            variables: {
+                ...this.configurations.variables.reduce((pv, cv) => ({ ...pv, [cv.name]: { value: cv.value, isSecret: false } }), {}),
+                ...(this.configurations.enableDiag ? {
+                    'system.debug': {
+                        value: true,
+                        isSecret: false
+                    },
+                    'agent.diagnostic': {
+                        value: true,
+                        isSecret: false
+                    }
+                } : {})
+            }
         }
     }
 

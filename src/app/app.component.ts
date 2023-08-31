@@ -39,7 +39,8 @@ export class AppComponent {
     return {
       headers: {
         Authorization: `Basic ${btoa(`user:${this.server!.pat}`)}`
-      }
+      },
+      withCredentials: true
     };
   }
 
@@ -174,14 +175,14 @@ export class AppComponent {
     }
 
     const fileItems: any = await firstValueFrom(this.httpClient.get(
-      `${this.server!.host}/_apis/git/repositories/${this.server!.repository}/trees/${currentLastCommit.value[0].objectId}?scopePath=${path}`,
+      `${this.server!.host}/_apis/git/repositories/${this.server!.repository}/trees/${currentLastCommit.value[0].objectId}?recursive=true`,
       this.getRequestOptions()));
 
     const commitPayload = {
       commits: [{
         comment: comment ?? "No comment provided",
         changes: payloads.map(p => ({
-          changeType: fileItems.treeEntries.findIndex((f: any) => f.relativePath == p.name + '.json') >= 0 ? 2 : 1,
+          changeType: fileItems.treeEntries.findIndex((f: any) => `/${f.relativePath}` == `${path}${p.name}.json`) >= 0 ? 2 : 1,
           item: {
             path: path + p.name + '.json'
           },
