@@ -114,6 +114,7 @@ export class PipelineComponent {
       const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/build/definitions/${pipelineDef.id}`, this.getRequestOptions()));
       pipelineDef.defaultBranch = response.repository.defaultBranch.replace('refs/heads/', '');
       pipelineDef.repositoryId = response.repository.id;
+      pipelineDef.repositoryProject = new URL(response.repository.url).pathname.split('/')[2];
       pipelineDef.defaultBranch = response.repository.defaultBranch.replace('refs/heads/', '');
       pipelineDef.projectId = response.project.id;
       pipelineDef.yamlFilename = response.process.yamlFilename;
@@ -123,7 +124,7 @@ export class PipelineComponent {
         pipelineDef.variables = [];
       }
 
-      const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
+      const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/../${pipelineDef.repositoryProject}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
       pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
 
     }
@@ -148,7 +149,7 @@ export class PipelineComponent {
   async loadParameterAndResources() {
     const pipelineDef = this.selectedPipeline!.pipelineDef ?? (this.selectedPipeline!.pipelineDef = this.pipelines!.find(p => p.id == this.selectedPipeline!.pipelineId! || p.fullName == this.selectedPipeline!.name));
     try {
-      const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${pipelineDef?.repositoryId}/Items?path=/${pipelineDef?.yamlFilename}&versionDescriptor.version=${this.selectedPipeline?.configurations.branch}&includeContent=true`,
+      const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/../${pipelineDef?.repositoryProject}/_apis/git/repositories/${pipelineDef?.repositoryId}/Items?path=/${pipelineDef?.yamlFilename}&versionDescriptor.version=${this.selectedPipeline?.configurations.branch}&includeContent=true`,
         this.getRequestOptions()));
       const def = yamlLoad(response.content) as any;
       this.parameters = def.parameters;

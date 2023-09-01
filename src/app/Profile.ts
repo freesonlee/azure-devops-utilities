@@ -195,12 +195,14 @@ export class ProfilePipeline {
 
         const getBuilds = Object.values(this.configurations.resources.pipelines).filter(p => p.selectedBranch).map(async p => {
 
-            const branch = p.selectedBranch == '<self>' ? this.configurations.branch : p.branch;
+            const branch = p.selectedBranch == '<self>' ? this.configurations.branch : (p.selectedBranch ?? p.branch);
+            const buildDef: any = await sendGetRequest(`/_apis/build/definitions?name=${p.source}`);
+            const pipelineId = buildDef.value[0].id;
 
-            const resp: any = await sendGetRequest(`/_apis/build/builds?definitions=${this.pipelineId}&$top=1&branchName=refs/heads/${branch}`);
+            const resp: any = await sendGetRequest(`/_apis/build/builds?definitions=${pipelineId}&$top=1&branchName=refs/heads/${branch}`);
             return {
                 [p.pipeline]: {
-                    version: resp.value.buildNumber
+                    version: resp.value[0].buildNumber
                 }
             }
         });
@@ -222,9 +224,9 @@ export class ProfilePipeline {
                     self: {
                         refName: `refs/heads/${this.configurations.branch}`
                     },
-                    ...this.getRepositoryResources(),
-                    ...pipelineResource
-                }
+                    ...this.getRepositoryResources()
+                },
+                pipelines: pipelineResource
             },
             stagesToSkip: previewRun ? [] : Object.keys(this.configurations.stagesToSkip).filter(stg => this.configurations.stagesToSkip[stg]),
             templateParameters: this.configurations.parameterValues,

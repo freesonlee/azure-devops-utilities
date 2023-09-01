@@ -39,8 +39,7 @@ export class AppComponent {
     return {
       headers: {
         Authorization: `Basic ${btoa(`user:${this.server!.pat}`)}`
-      },
-      withCredentials: true
+      }
     };
   }
 

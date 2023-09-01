@@ -55,6 +55,7 @@ export type Pipeline = {
     folder: string
     projectId?: string
     repositoryId?: string
+    repositoryProject?: string
     id: string
     name: string
     defaultBranch?: string
