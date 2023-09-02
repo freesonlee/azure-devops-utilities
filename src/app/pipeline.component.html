@@ -17,7 +17,7 @@
         <button mat-raised-button (click)="runProfile()">Run all</button>
         <mat-action-list>
           <mat-list-item *ngFor="let pipeline of profile?.pipelines">
-            <button mat-list-item (click)="pipelineDefSelected(pipeline)">{{pipeline.name}}</button>
+            <button mat-list-item (click)="pipelineDefSelected(pipeline);">{{pipeline.name}}</button>
           </mat-list-item>
           
         </mat-action-list>
@@ -31,7 +31,7 @@
                  matInput
                  [formControl]="pipelineControl"
                  [matAutocomplete]="auto">
-          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value)">
+          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value);">
             <mat-option *ngFor="let pipeline of filteredPipelines | async" [value]="pipeline.fullName">
               {{pipeline.fullName}}
             </mat-option>
@@ -41,7 +41,7 @@
           </button>
         </mat-form-field>
 
-        <mat-expansion-panel #branchSelect *ngIf="selectedPipeline!.pipelineId" (afterExpand)="branchControl.setValue('')">
+        <mat-expansion-panel #branchSelect *ngIf="selectedPipeline!.pipelineId" (afterExpand)="branchControl.setValue('');">
           <mat-expansion-panel-header>
           <mat-panel-title>
           Branch
@@ -98,7 +98,7 @@
 
           </div>
 
-          <mat-expansion-panel>
+          <mat-expansion-panel [(expanded)]="isVariablePanelOpen">
             <mat-expansion-panel-header>
               <mat-panel-title>Variables</mat-panel-title>
             </mat-expansion-panel-header>
@@ -140,7 +140,7 @@
             </table>
           </mat-expansion-panel>
 
-          <mat-expansion-panel (afterExpand)="loadStages()" #stagePanel [hidden]="stages.length >= 2">
+          <mat-expansion-panel (afterExpand)="loadStages()" #stagePanel [hidden]="stages.length >= 2" [(expanded)]="isStagePanelOpen">
             <mat-expansion-panel-header>
               <mat-panel-title>Stages to run</mat-panel-title>
             </mat-expansion-panel-header>

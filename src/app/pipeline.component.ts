@@ -61,11 +61,16 @@ export class PipelineComponent {
   filteredPipelines?: Observable<Pipeline[]>;
   selectedPipeline?: ProfilePipeline;
   stages: { stage: string, displayName: string }[] = [];
+  isStagePanelOpen = false;
+  isVariablePanelOpen = false;
 
   @Input() server!: Server;
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
   @ViewChild(MatExpansionPanel) branchSelect!: MatExpansionPanel;
+  @ViewChild(MatExpansionPanel) stagePanel?: MatExpansionPanel;
+  @ViewChild(MatExpansionPanel) variablesPanel?: MatExpansionPanel;
+
   parameters?: Parameter[];
   constructor(private httpClient: HttpClient, private dialog: MatDialog, private _snackBar: MatSnackBar, private cd: ChangeDetectorRef) {
 
@@ -96,6 +101,7 @@ export class PipelineComponent {
     if (this.profile) {
       this.profile = undefined;
     }
+    this.stages = [];
   }
 
   branchSelected(event: MatAutocompleteSelectedEvent) {
@@ -175,6 +181,7 @@ export class PipelineComponent {
 
   async loadProfile(profile: Profile) {
     this.profile = profile;
+    this.selectedPipeline = undefined;
   }
 
   newProfile() {
@@ -270,6 +277,8 @@ export class PipelineComponent {
 
   async pipelineDefSelected(pipeline: ProfilePipeline) {
     this.selectedPipeline = pipeline;
+    this.stages = [];
+    this.isStagePanelOpen = this.isVariablePanelOpen = false;
     const pipelineDef = await this.loadBranches();
     await this.loadParameterAndResources();
 
@@ -278,13 +287,21 @@ export class PipelineComponent {
   }
 
   deletePipeline() {
-    this.profile!.pipelines = this.profile!.pipelines.filter(p => p != this.selectedPipeline);
-    this.selectedPipeline = undefined;
-    this.save();
+
+    this._snackBar.open(`Are you sure to delete build ${this.selectedPipeline?.name} from profile ${this.profile?.name}?`, 'DELETE', {
+      duration: 5000,
+    }).onAction().subscribe(() => {
+      this.profile!.pipelines = this.profile!.pipelines.filter(p => p != this.selectedPipeline);
+      this.selectedPipeline = undefined;
+      this.save();
+    })
   }
 
   async loadStages() {
     if (!this.selectedPipeline) {
+      return;
+    }
+    if (this.stages.length != 0) {
       return;
     }
 
