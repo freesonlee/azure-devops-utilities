@@ -140,13 +140,15 @@
             </table>
           </mat-expansion-panel>
 
-          <mat-expansion-panel (afterExpand)="loadStages()" #stagePanel>
+          <mat-expansion-panel (afterExpand)="loadStages()" #stagePanel [hidden]="stages.length >= 2">
             <mat-expansion-panel-header>
-              <mat-panel-title>Stages to skip</mat-panel-title>
+              <mat-panel-title>Stages to run</mat-panel-title>
             </mat-expansion-panel-header>
+            <mat-checkbox [checked]="hasNoSkippedStage()" (change)="toggleAllStages($event)">Run all stages</mat-checkbox>
 
             <mat-selection-list>
-              <mat-list-option *ngFor="let stage of stages" checkboxPosition="before" [(selected)]="selectedPipeline!.configurations.stagesToSkip[stage.stage]">
+              <mat-list-option *ngFor="let stage of stages" checkboxPosition="before" [selected]="!selectedPipeline!.configurations.stagesToSkip[stage.stage]" 
+                (selectedChange)="selectedPipeline!.configurations.stagesToSkip[stage.stage]=!$event">
                 {{stage.displayName || stage.stage}}
               </mat-list-option>
             </mat-selection-list>

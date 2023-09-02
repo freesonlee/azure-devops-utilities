@@ -18,7 +18,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { load as yamlLoad } from 'js-yaml';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCheckboxChange, MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarRef, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Profile, ProfilePipeline } from './Profile';
@@ -60,7 +60,7 @@ export class PipelineComponent {
   filteredBranches?: Observable<string[]>;
   filteredPipelines?: Observable<Pipeline[]>;
   selectedPipeline?: ProfilePipeline;
-  stages: any[] = [];
+  stages: { stage: string, displayName: string }[] = [];
 
   @Input() server!: Server;
 
@@ -318,5 +318,22 @@ export class PipelineComponent {
         Authorization: `Basic ${btoa(`user:${this.server.pat}`)}`
       }
     };
+  }
+
+  hasNoSkippedStage() {
+    return this.stages.every(stg =>
+      !this.selectedPipeline!.configurations.stagesToSkip[stg.stage]
+    );
+  }
+
+  toggleAllStages($event: MatCheckboxChange) {
+    if ($event.checked) {
+      this.selectedPipeline!.configurations.stagesToSkip = {};
+    } else {
+      this.stages.forEach(stg => {
+        this.selectedPipeline!.configurations.stagesToSkip[stg.stage] = true;
+      }
+      );
+    }
   }
 }
