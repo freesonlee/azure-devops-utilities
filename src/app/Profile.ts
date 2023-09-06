@@ -281,6 +281,14 @@ export class ProfilePipeline {
         }
 
     }
+
+    sanitizeStages(stages: string[]) {
+        Object.keys(this.configurations.stagesToSkip).forEach(k => {
+            if (!stages.find(s => s == k)) {
+                delete this.configurations.stagesToSkip[k];
+            }
+        })
+    }
 }
 
 

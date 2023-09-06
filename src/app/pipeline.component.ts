@@ -317,6 +317,7 @@ export class PipelineComponent {
     }
     const plan: any = yamlLoad(response.finalYaml);
     this.stages = plan.stages.map((g: any) => ({ stage: g.stage, displayName: g.displayName }));
+    this.selectedPipeline.sanitizeStages(this.stages.map(s => s.stage));
   }
 
   private sendGetRequest(url: string): Promise<unknown> {
