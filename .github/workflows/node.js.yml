@@ -40,7 +40,11 @@ jobs:
     - name: Azure service principal login
       uses: azure/login@v1
       with:
-        creds: ${{ vars.TEST }}
+        creds: ${{ vars.SECC }}
+        client-id: f21433a2-ab6e-46cc-ad0a-49380cb793bc
+        tenant-id: 0b87cf55-9acf-46bc-bc21-c86bdad6175c
+        subscription-id: 68a7f4e7-d274-4771-9bb8-4627ccc069c2
+        
         
     - name: Purge Azure CDN
       uses: SvanBoxel/azure-purge-cdn@1.0.0
