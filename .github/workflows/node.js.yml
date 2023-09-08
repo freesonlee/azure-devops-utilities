@@ -36,22 +36,3 @@ jobs:
         container_name: '$web'
         source_dir: dist/azure-devops-variable-group-editor/
         sync: true
-
-    - name: Azure service principal login
-      uses: azure/login@v1.4.6
-      with:
-        creds: ${{ vars.TEST }}       
-        
-    - name: Purge Azure CDN
-      uses: SvanBoxel/azure-purge-cdn@1.0.0
-      with:
-        # CDN endpoint
-        cdn_endpoint: https://azuredevopshelpers.azureedge.net
-        # Profile name of CDN
-        cdn_profile_name: azuredevopshelpers
-        # Resource Group Name
-        resource_group: DevPlay
-
-    - name: Azure service principal logout
-      run: |
-        az logout
