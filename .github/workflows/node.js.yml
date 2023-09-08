@@ -38,7 +38,7 @@ jobs:
         sync: true
 
     - name: Azure service principal login
-      uses: azure/login@v1
+      uses: azure/login@v1.4.6
       with:
         creds: ${{ vars.SECC }}
         client-id: f21433a2-ab6e-46cc-ad0a-49380cb793bc
