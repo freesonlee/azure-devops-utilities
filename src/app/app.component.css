@@ -21,7 +21,7 @@
     line-height: 0px !important;
   }
   .variableIsSecret {
-        width: 20px;
+        width: 15px;
   }
   .dirtyRow {
     background-color:cadetblue;
@@ -52,6 +52,6 @@
     padding-right: 3px;
   }
   .secretCell {
-    width: 100px
+    width: 80px
   }
 

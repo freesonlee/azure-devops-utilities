@@ -103,6 +103,10 @@
               <mat-panel-title>Variables</mat-panel-title>
             </mat-expansion-panel-header>
             
+            <mat-label *ngIf="(selectedPipeline!.configurations.variables).length == 0 ">
+              No variable defined for this pipeline
+            </mat-label>
+
             <table mat-table [dataSource]="this.selectedPipeline!.configurations.variables" #variableTable>
 
               <ng-container matColumnDef="name">
@@ -152,6 +156,8 @@
                 {{stage.displayName || stage.stage}}
               </mat-list-option>
             </mat-selection-list>
+
+            <mat-progress-bar mode="indeterminate" *ngIf="loadingStages"></mat-progress-bar>
           </mat-expansion-panel>
 
           <mat-expansion-panel #resourcesPanel>
@@ -159,11 +165,17 @@
               <mat-panel-title>Resources</mat-panel-title>
             </mat-expansion-panel-header>
 
+            <mat-label *ngIf="(selectedPipeline!.configurations.resources.repositories | keyvalue).length == 0 &&
+               (selectedPipeline!.configurations.resources.pipelines | keyvalue ).length == 0 ">
+              No resources available for this pipeline
+            </mat-label>
+
             <div  *ngFor="let repo of selectedPipeline!.configurations.resources.repositories | keyvalue">
+
               <mat-form-field class="variableValueCell">
                 <mat-label>
                   <mat-icon>code</mat-icon>
-                  {{repo.value.repository}} [{{repo.value.name.split('/')[1]}}]</mat-label>
+                  Source of {{repo.value.repository}} [{{repo.value.name.split('/')[1]}}]</mat-label>
                 <input type="text" matInput [placeholder]="'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). Leave empty to use default (' + repo.value.ref.split('/')[2] + ').'" [(ngModel)]="repo.value.selectedRef">
               </mat-form-field>
             </div>          

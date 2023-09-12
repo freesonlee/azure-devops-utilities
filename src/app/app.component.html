@@ -33,7 +33,9 @@
 
       <ng-container matColumnDef="isSecret">
         <td mat-cell *matCellDef="let variable" class="secretCell">
-          <mat-checkbox class="variableIsSecret" [(ngModel)]="variable.isSecret" (change)="checkChange(variable)">Secret</mat-checkbox>
+          <mat-checkbox class="variableIsSecret" [(ngModel)]="variable.isSecret" (change)="checkChange(variable)">
+            <mat-icon>lock</mat-icon>
+          </mat-checkbox>
         </td>
       </ng-container>
 

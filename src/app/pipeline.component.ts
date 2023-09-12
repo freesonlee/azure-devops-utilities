@@ -23,6 +23,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarRef, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Profile, ProfilePipeline } from './Profile';
 import { KeyValue } from '@angular/common';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'pipeline-list',
@@ -47,7 +48,8 @@ import { KeyValue } from '@angular/common';
     NgIf,
     AsyncPipe,
     KeyValuePipe,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressBarModule
   ]
 })
 export class PipelineComponent {
@@ -63,6 +65,7 @@ export class PipelineComponent {
   stages: { stage: string, displayName: string }[] = [];
   isStagePanelOpen = false;
   isVariablePanelOpen = false;
+  loadingStages = false;
 
   @Input() server!: Server;
 
@@ -305,16 +308,24 @@ export class PipelineComponent {
       return;
     }
 
+    this.loadingStages = true;
     const payload = await this.selectedPipeline.getQueuePayload(true, this.sendGetRequest.bind(this));
     payload.previewRun = true;
     const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${this.selectedPipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()))
       .catch((e) => {
-        this._snackBar.open(e.error.message, undefined, { duration: 5000 });
+        const barRef = this._snackBar.open(e.error.message, 'Close');
+        barRef.onAction().subscribe(() => {
+          barRef.dismiss();
+          this.isStagePanelOpen = false;
+        });
+        this.loadingStages = false;
         return null;
       });
     if (!response) {
+      this.loadingStages = false;
       return;
     }
+    this.loadingStages = false;
     const plan: any = yamlLoad(response.finalYaml);
     this.stages = plan.stages.map((g: any) => ({ stage: g.stage, displayName: g.displayName }));
     this.selectedPipeline.sanitizeStages(this.stages.map(s => s.stage));
