@@ -77,7 +77,7 @@ export class AppComponent {
 
     const response = await firstValueFrom(this.httpClient.get(`${this.server!.host}/_apis/distributedtask/variablegroups`, this.getRequestOptions())) as ListResponse<VariableGroup>;
 
-    this.variableGroups = response.value;
+    this.variableGroups = response.value.sort((g1, g2) => g1.name.toUpperCase() > g2.name.toUpperCase() ? 1 : -1);
     this.hasChange = false;
     if (this.variableGroup?.id) {
       const selectedGroup = this.variableGroups.find(g => g.id == this.variableGroup?.id);
