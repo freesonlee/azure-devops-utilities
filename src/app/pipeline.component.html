@@ -75,7 +75,7 @@
 
             <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value;stagePanel.close()" >
+              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value;stagePanel.close();stages=[]" >
                 <mat-list-option *ngFor="let option of para.values" checkboxPosition="before" [value]="option" [selected]="
                   selectedPipeline!.configurations.parameterValues[para.name] ?
                     (option == selectedPipeline!.configurations.parameterValues[para.name]) : 
@@ -87,14 +87,14 @@
 
             <mat-form-field *ngIf="para.type=='string'&&para.values&&para.values.length>5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-select [value]="para.default||para.values[0]" (selectionChange)="stagePanel.close()">
+              <mat-select [value]="para.default||para.values[0]" (selectionChange)="stagePanel.close();stages=[]">
                 <mat-option *ngFor="let option of para.values" [value]="option">
                   {{option}}
                 </mat-option>                
               </mat-select>
             </mat-form-field>
 
-            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close()">{{para.displayName || para.name}}</mat-checkbox>
+            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close();stages=[]">{{para.displayName || para.name}}</mat-checkbox>
 
           </div>
 
