@@ -1,0 +1,18 @@
+{{name}}
+
+<div *ngFor="let prop of value | keyvalue">
+
+
+    <mat-checkbox *ngIf="isType(prop.value.default, 'string')" [(ngModel)]="prop.value.current">{{prop.key}}</mat-checkbox>
+
+    <object-parameter *ngIf="prop.value instanceof Object" [value]="prop.value.current" [name]="prop.key" [values]="values[prop.key]"></object-parameter>
+
+    <mat-form-field *ngIf="isType(prop.value.default, 'boolean') && !values[prop.key]">
+        <mat-label>
+          {{prop.key}}
+        </mat-label>
+        <input type="text" matInput placeholder="Default: {{ prop.value.default}}" [(ngModel)]="prop.value.current">
+      </mat-form-field>
+</div>
+
+

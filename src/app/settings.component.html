@@ -1,9 +1,32 @@
 <div class="container">
+  <mat-label>Group to have the permission to update Variable Group History Repository settings: </mat-label>
+  <mat-form-field>
+
+    <input type="text" matInput [formControl]="groupControl" [matAutocomplete]="auto">
+    <mat-autocomplete>
+      <mat-option *ngFor="let group of filteredGroups | async" [value]="group">
+        {{group}}
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+
   <mat-form-field class="baseUrl" class="settingsEditor">
    
-    <textarea matInput [(ngModel)]="settings" rows="100" cdkFocusInitial></textarea>
+    <textarea matInput rows="100" cdkFocusInitial></textarea>
     
+    <mat-form-field class="repoList">
+      <input type="text"
+             matInput
+             [formControl]="repoControl"
+             [matAutocomplete]="auto">
+      <mat-autocomplete #auto="matAutocomplete" (optionSelected)="repoSelected($event.option.value);">
+        <mat-option *ngFor="let repo of filteredRepo | async" [value]="repo">
+          {{repo}}
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+
   </mat-form-field>
-  <button mat-raised-button [mat-dialog-close]="settings" >Save</button>
-  <button mat-raised-button (click)="dialogRef.close()">Cancel</button>
+  <button mat-raised-button>Save</button>
 </div>

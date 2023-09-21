@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgFor } from '@angular/common';
 
 import { AppComponent } from './app.component';
@@ -18,9 +18,16 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { HttpClientModule } from '@angular/common/http';
 import { PipelineComponent } from './pipeline.component';
+
+import * as SDK from 'azure-devops-extension-sdk';
+import { VariableGroupHistoryComponent } from './variable-group-history/variable-group-history.component';
+import { SettingsComponent } from './settings.component';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    VariableGroupHistoryComponent,
+    SettingsComponent
   ],
   imports: [
     BrowserModule,
@@ -38,9 +45,18 @@ import { PipelineComponent } from './pipeline.component';
     MatDialogModule,
     MatSelectModule,
     MatIconModule,
-    PipelineComponent
+    PipelineComponent,
+    ReactiveFormsModule,
+    MatAutocompleteModule
+
   ],
   providers: [],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule {
+  constructor() {
+    SDK.init({
+      loaded: false
+    });
+  }
+}

@@ -1,0 +1,38 @@
+{
+    "manifestVersion": 1,
+    "id": "ads-var-history",
+    "publisher": "FreesonLi",
+    "version": "0.8.7",
+    "name": "Variable Group History",
+    "description": "History support for variable groups",
+    "public": false,
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "contributions": [
+        {
+            "id": "fl.var-history.hub",
+            "type": "ms.vss-web.hub",
+            "targets": [
+                "ms.vss-build-web.build-release-hub-group"
+            ],
+            "properties": {
+                "name": "Variable Groups",
+                "iconName": "Variable",
+                "uri": "index.html"
+            }
+        }
+    ],
+    "files": [
+        {
+            "path": "dist/azure-devops-variable-group-editor/",
+            "addressable": true,
+            "packagePath": "/"
+        }
+    ]
+}

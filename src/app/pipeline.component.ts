@@ -1,12 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
-import { Observable, first, firstValueFrom, map, pipe, startWith } from 'rxjs';
-import { ListResponse, Parameter, Pipeline, Server, Variable, VariableData, VariableGroup } from './Models';
-import { TestBed } from '@angular/core/testing';
-import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { Observable, firstValueFrom, map, startWith } from 'rxjs';
+import { ListResponse, Parameter, Pipeline, Server, Variable } from './Models';
+import { MatDialog } from '@angular/material/dialog';
 import { MatTable, MatTableModule } from '@angular/material/table';
-import { SettingsComponent } from './settings.component';
-import { CommentComponent } from './comment.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -20,9 +17,8 @@ import { load as yamlLoad } from 'js-yaml';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxChange, MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarRef, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Profile, ProfilePipeline } from './Profile';
-import { KeyValue } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({

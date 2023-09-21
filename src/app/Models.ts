@@ -2,18 +2,18 @@ export type VariableGroup = VariableGroupData & {
     hasChange: boolean
     variablesForView: Variable[]
     hasBad: boolean
-    variables: {
-        [name: string]: Variable
-    }
+    //variables: {
+    //    [name: string]: Variable
+    //}
 }
 
 export type VariableGroupData = {
     id: number
     name: string
     description: string
-    variables: {
-        [name: string]: VariableData
-    }
+    //variables: {
+    //    [name: string]: VariableData
+    //}
 }
 
 export class VariableData {
@@ -70,11 +70,16 @@ export type PipelineVariable = {
     allowOverride: boolean
 }
 
-
 export type Parameter = {
     name: string
     displayName: string
     type: 'string' | 'boolean' | 'object'
     values?: string[]
     default: boolean | string
+}
+
+export type HistoryLocationSettings = {
+    repository: string,
+    branch: string,
+    path: string
 }
