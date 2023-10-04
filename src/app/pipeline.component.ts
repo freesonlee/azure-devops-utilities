@@ -156,18 +156,28 @@ export class PipelineComponent {
   }
 
   async loadParameterAndResources() {
-    const pipelineDef = this.selectedPipeline!.pipelineDef ?? (this.selectedPipeline!.pipelineDef = this.pipelines!.find(p => p.id == this.selectedPipeline!.pipelineId! || p.fullName == this.selectedPipeline!.name));
-    try {
-      const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/../${pipelineDef?.repositoryProject}/_apis/git/repositories/${pipelineDef?.repositoryId}/Items?path=/${pipelineDef?.yamlFilename}&versionDescriptor.version=${this.selectedPipeline?.configurations.branch}&includeContent=true`,
-        this.getRequestOptions()));
-      const def = yamlLoad(response.content) as any;
-      this.parameters = def.parameters;
-      this.selectedPipeline!.mergePipelineResources(def.resources);
-    } catch (e) {
-      this._snackBar.open(`Fail to load template ${pipelineDef?.yamlFilename} from branch ${this.selectedPipeline?.configurations.branch}`, undefined, {
-        duration: 5000
-      });
+
+    const plan = await this.loadStages();
+    if (!plan) {
+      return;
     }
+
+    this.parameters = plan.parameters;
+    this.selectedPipeline!.mergePipelineResources(plan.resources);
+
+
+    //const pipelineDef = this.selectedPipeline!.pipelineDef ?? (this.selectedPipeline!.pipelineDef = this.pipelines!.find(p => p.id == this.selectedPipeline!.pipelineId! || p.fullName == this.selectedPipeline!.name));
+    //try {
+    //  const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/../${pipelineDef?.repositoryProject}/_apis/git/repositories/${pipelineDef?.repositoryId}/Items?path=/${pipelineDef?.yamlFilename}&versionDescriptor.version=${this.selectedPipeline?.configurations.branch}&includeContent=true`,
+    //    this.getRequestOptions()));
+    //  const def = yamlLoad(response.content) as any;
+    //  this.parameters = def.parameters;
+    //  this.selectedPipeline!.mergePipelineResources(def.resources);
+    //} catch (e) {
+    //  this._snackBar.open(`Fail to load template ${pipelineDef?.yamlFilename} from branch ${this.selectedPipeline?.configurations.branch}`, undefined, {
+    //    duration: 5000
+    //  });
+    //}
 
     this.parameters?.forEach(p => {
       if (this.selectedPipeline!.configurations.parameterValues[p.name] == undefined) {
@@ -241,6 +251,17 @@ export class PipelineComponent {
     this._snackBar.open(messages, undefined, {
       duration: 5000
     });
+  }
+
+  async deleteProfile() {
+    this._snackBar.open(`Are you sure to delete profile ${this.profile?.name} and all builds?`, 'DELETE', {
+      duration: 5000,
+    }).onAction().subscribe(() => {
+      this.profiles = this.profiles.filter(p => p != this.profile);
+      this.selectedPipeline = undefined;
+      this.profile = undefined;
+      this.save();
+    })
   }
 
   async runPipeline(pipeline: ProfilePipeline | undefined, showSnackbar?: boolean): Promise<[string, string]> {
@@ -329,6 +350,8 @@ export class PipelineComponent {
     const plan: any = yamlLoad(response.finalYaml);
     this.stages = plan.stages.map((g: any) => ({ stage: g.stage, displayName: g.displayName }));
     this.selectedPipeline.sanitizeStages(this.stages.map(s => s.stage));
+
+    return plan;
   }
 
   private sendGetRequest(url: string): Promise<unknown> {

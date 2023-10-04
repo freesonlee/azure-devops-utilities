@@ -4,6 +4,7 @@
     <mat-action-list>
       <mat-list-item *ngFor="let profile of profiles">
         <button mat-list-item (click)="loadProfile(profile)">{{profile.name}}</button>
+        
       </mat-list-item>
       
     </mat-action-list>
@@ -14,7 +15,8 @@
     <mat-drawer-container autosize>
       <mat-drawer mode="side" opened>
         <button mat-raised-button (click)="newProfilePipeline()">Add new build to {{profile?.name}}</button>
-        <button mat-raised-button (click)="runProfile()">Run all</button>
+        <!-- <button mat-raised-button (click)="runProfile()">Run all</button> -->
+        <button mat-raised-button (click)="deleteProfile()" color="warn">Delete profile</button>
         <mat-action-list>
           <mat-list-item *ngFor="let pipeline of profile?.pipelines">
             <button mat-list-item (click)="pipelineDefSelected(pipeline);">{{pipeline.name}}</button>
