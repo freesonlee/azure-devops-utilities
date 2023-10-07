@@ -24,6 +24,7 @@ import { MatSnackBar, MatSnackBarRef, MatSnackBarModule } from '@angular/materia
 import { Profile, ProfilePipeline } from './Profile';
 import { KeyValue } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'pipeline-list',
@@ -49,10 +50,12 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     AsyncPipe,
     KeyValuePipe,
     MatSnackBarModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatTooltipModule
   ]
 })
 export class PipelineComponent {
+
   title = 'azure-devops-variable-group-editor';
   pipelines?: Pipeline[];
   profiles: Profile[] = [];
@@ -66,6 +69,7 @@ export class PipelineComponent {
   isStagePanelOpen = false;
   isVariablePanelOpen = false;
   loadingStages = false;
+  resolvedFailure: { [key: string]: string } = {};
 
   @Input() server!: Server;
 
@@ -110,6 +114,7 @@ export class PipelineComponent {
   branchSelected(event: MatAutocompleteSelectedEvent) {
     //this.profile!.branch = event.option.value;
     this.branchSelect.close();
+    this.stages = [];
     this.loadParameterAndResources();
     this.selectedPipeline!.configurations.branch = event.option.value;
   }
@@ -184,6 +189,7 @@ export class PipelineComponent {
         this.selectedPipeline!.configurations.parameterValues[p.name] = p.default;
       }
     });
+    this.resolvedFailure = {};
     this.cd.detectChanges();
   }
 
@@ -317,6 +323,7 @@ export class PipelineComponent {
     }).onAction().subscribe(() => {
       this.profile!.pipelines = this.profile!.pipelines.filter(p => p != this.selectedPipeline);
       this.selectedPipeline = undefined;
+      this.resolvedFailure = {};
       this.save();
     })
   }
@@ -386,6 +393,15 @@ export class PipelineComponent {
         this.selectedPipeline!.configurations.stagesToSkip[stg.stage] = true;
       }
       );
+    }
+  }
+
+  async resolveBuildId(pipelineResource: string) {
+    try {
+      await this.selectedPipeline!.resolveBuildNumber(this.selectedPipeline?.configurations.resources.pipelines[pipelineResource]!, this.sendGetRequest.bind(this));
+      delete this.resolvedFailure[pipelineResource];
+    } catch (e) {
+      this.resolvedFailure[pipelineResource] = e as string;
     }
   }
 }

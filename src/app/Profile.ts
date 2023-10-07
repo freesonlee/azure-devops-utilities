@@ -51,7 +51,8 @@ export class ProfilePipeline {
     pipelineId?: string;
 
     isNew?: boolean
-    name?: string
+    name?: string;
+    resolvedPipelineResources: { [pipeline: string]: { buildNumber: string, id: number } } = {};
     configurations: {
         branch: string
         parameterValues: {
@@ -75,6 +76,7 @@ export class ProfilePipeline {
                     branch: string
                     pipeline: string
                     source: string
+                    tags: string[]
                     selectedBranch: string
                     artifact: string
                 }
@@ -190,26 +192,69 @@ export class ProfilePipeline {
         return payload;
     }
 
-    async getPipelineResources(sendGetRequest: (url: string) => Promise<unknown>) {
-        //const payload: { [ppeline: string]: { version: string } };
+    async resolveBuildNumber(pipelineResource: typeof this.configurations.resources.pipelines[string], sendGetRequest: (url: string) => Promise<unknown>) {
 
-        const getBuilds = Object.values(this.configurations.resources.pipelines).filter(p => p.selectedBranch).map(async p => {
+        const selectedBranch = pipelineResource.selectedBranch ?? '';
+        const match = selectedBranch.matchAll(/^((?<branch>([<]self[>])|(?:[^0-9#'"][^#\n]+))([#](?<tags>[^\n]+))?)$|^(?<buildId>\d+)$|^(['"](?<buildNumber>[^'"]+)['"])$/g).next();
+        delete this.resolvedPipelineResources[pipelineResource.pipeline];
 
-            const branch = p.selectedBranch == '<self>' ? this.configurations.branch : (p.selectedBranch ?? p.branch);
-            const buildDef: any = await sendGetRequest(`/_apis/build/definitions?name=${p.source}`);
-            const pipelineId = buildDef.value[0].id;
+        if (selectedBranch !== '' && match.done) {
+            throw (`bad branch ${selectedBranch}`);
+        }
 
-            const resp: any = await sendGetRequest(`/_apis/build/builds?definitions=${pipelineId}&$top=1&branchName=refs/heads/${branch}`);
-            return {
-                [p.pipeline]: {
-                    version: resp.value[0].buildNumber
-                }
+        const buildDef: any = await sendGetRequest(`/_apis/build/definitions?name=${pipelineResource.source}`);
+        const pipelineId = buildDef.value[0].id;
+
+        let requestUrl;
+
+        let buildNumber = match.done ? undefined : match.value.groups!['buildNumber'];
+        let buildId = match.done ? undefined : match.value.groups!['buildId'];
+
+        if (buildNumber) {
+            requestUrl = `/_apis/build/builds?definitions=${pipelineId}&$top=1&buildNumber=${buildNumber}`;
+        } else if (buildId) {
+            requestUrl = `/_apis/build/builds?buildIds=${buildId}`;
+        } else {
+            let branch = selectedBranch == '' ? pipelineResource.branch : match.value.groups!['branch'];
+            if (branch == '<self>') {
+                branch = this.configurations.branch;
             }
-        });
+            let tags = match.value?.groups['tags'];
 
-        const builds = await Promise.all(getBuilds);
+            requestUrl = `/_apis/build/builds?definitions=${pipelineId}&$top=1&branchName=refs/heads/${branch}`;
 
-        const payload = Object.values(builds).reduce((pv, cv) => ({ ...pv, ...cv }), {})
+            if (tags) {
+                requestUrl = requestUrl + `&tagFilters=${tags}`
+            }
+        }
+
+        const resp: any = await sendGetRequest(requestUrl);
+
+        if (resp.count == 0) {
+            throw 'build not found'
+        }
+
+        if (resp.value[0].definition.id != pipelineId) {
+            throw `Build is not from ${pipelineResource.source}`;
+        }
+
+        this.resolvedPipelineResources[pipelineResource.pipeline] = {
+            buildNumber: resp.value[0].buildNumber,
+            id: resp.value[0].id
+        };
+    }
+
+    private async getPipelineResources(sendGetRequest: (url: string) => Promise<unknown>) {
+
+        const getBuilds = Object.values(this.configurations.resources.pipelines).map(async p => this.resolveBuildNumber(p, sendGetRequest));
+        await Promise.all(getBuilds);
+
+        const payload = Object.keys(this.configurations.resources.pipelines).reduce((pv, cv) => {
+            if (this.configurations.resources.pipelines[cv].selectedBranch) {
+                pv[cv] = this.resolvedPipelineResources[cv];
+            }
+            return pv;
+        }, <any>{});
 
         return payload;
     }

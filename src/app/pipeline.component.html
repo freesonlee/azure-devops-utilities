@@ -186,9 +186,16 @@
               <mat-form-field class="variableValueCell">
                 <mat-label>
                   <mat-icon>redeem</mat-icon>
-                  Latest build of {{pl.key}} [{{pl.value.source}}]
+                  Build of {{pl.key}} [{{pl.value.source}}] {{ pl.value.tags ? ('on #' + pl.value.tags.join(',')):  '' }}
                 </mat-label>
-                <input type="text" matInput [placeholder]="'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). Leave empty to use default (' + pl.value.branch + ').'" [(ngModel)]="pl.value.selectedBranch">
+                <input type="text" matInput [(ngModel)]="pl.value.selectedBranch" (ngModelChange)="resolveBuildId(pl.key)" [ngModelOptions]="{ updateOn: 'blur' }">
+                <mat-icon matSuffix  [matTooltip]="
+                'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). ' + 
+                'Leave empty to use default yaml(' + pl.value.branch + '). ' + 
+                'Add #tag1,tag2 behind to search for a build with tags' + 
+                'Or put quoted build number or build id'">info</mat-icon>
+                <mat-hint *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]">Resolved to <a target="_blank" href="{{this.server.host}}/_build/results?buildId={{selectedPipeline!.resolvedPipelineResources[pl.key].id}}">{{selectedPipeline!.resolvedPipelineResources[pl.key].buildNumber}}</a></mat-hint>
+                <mat-hint *ngIf="resolvedFailure[pl.key]">Can't resolve to a build: {{resolvedFailure[pl.key]}}</mat-hint>
               </mat-form-field>
                <!--
               <mat-form-field class="artifactNameInput">
