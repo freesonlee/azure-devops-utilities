@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "ads-var-history",
     "publisher": "FreesonLi",
-    "version": "0.8.30",
+    "version": "0.8.31",
     "name": "Variable Group History",
     "description": "History support for variable groups",
     "public": false,
@@ -20,6 +20,11 @@
             "id": "Microsoft.VisualStudio.Services"
         }
     ],
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
     "contributions": [
         {
             "id": "fl.var-history.hub",
@@ -34,6 +39,10 @@
             }
         }
     ],
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/freesonlee/azure-devops-utilities"
+    },
     "files": [
         {
             "path": "dist/azure-devops-variable-group-editor/",
