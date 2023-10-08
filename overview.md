@@ -6,7 +6,7 @@ The tool saves variable groups value snapshots as json file into a repository. E
 > Note: The tool doesn't save value of secret variables.
 
 After install, you should see 
-![Hub](https://github.com/freesonlee/azure-devops-utilities/blob/main/images/variablehistory.hub.png)
+![Hub](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/variablehistory.hub.png?raw=true)
 
 ## Setup
 ### History repository setup
