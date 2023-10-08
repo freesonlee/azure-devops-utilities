@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "pack": "npx tfx-cli extension create"
+    "pack": "npx tfx-cli extension create",
+    "publish": "npx tfx-cli extension create && npx tfx-cli extension publish --rev-version --token $ADS_MKT_PAT"
   },
   "private": true,
   "dependencies": {
@@ -29,6 +30,7 @@
     "zone.js": "~0.13.0"
   },
   "devDependencies": {
+    "@angular-builders/custom-webpack": "^16.0.1",
     "@angular-devkit/build-angular": "^16.1.7",
     "@angular/cli": "~16.1.7",
     "@angular/compiler-cli": "^16.1.0",

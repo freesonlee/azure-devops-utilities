@@ -17,6 +17,9 @@
   .variableValueInput {
     width: 100%
   }
+  .variableGroupNameInput {
+    width: 400px
+  }
   .mat-mdc-form-field-subscript-wrapper .mat-mdc-form-field-bottom-align::before  {
     line-height: 0px !important;
   }

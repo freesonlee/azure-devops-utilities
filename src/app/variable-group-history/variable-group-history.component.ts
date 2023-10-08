@@ -1,14 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, from } from 'rxjs';
 import { Variable, VariableData, VariableGroup, HistoryLocationSettings } from '../Models';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTable } from '@angular/material/table';
 import { CommentComponent } from './comment.component';
 import * as SDK from 'azure-devops-extension-sdk';
-import { CommonServiceIds, IExtensionDataManager, IExtensionDataService, IProjectInfo, IProjectPageService, IVssRestClientOptions, getClient } from 'azure-devops-extension-api';
+import { CommonServiceIds, IExtensionDataManager, IExtensionDataService, ILocationService, IProjectInfo, IProjectPageService, IVssRestClientOptions, getClient } from 'azure-devops-extension-api';
 import { TaskAgentRestClient } from 'azure-devops-extension-api/TaskAgent';
-import { GitRestClient } from 'azure-devops-extension-api/Git';
+
 
 type Mode = 'variables' | 'pipelines';
 
@@ -31,54 +31,44 @@ export class VariableGroupHistoryComponent {
   @ViewChild(MatTable) table!: MatTable<Variable>;
   project: IProjectInfo | undefined;
   taskAgentClient!: TaskAgentRestClient;
-  gitClient!: GitRestClient;
   settings!: HistoryLocationSettings;
   collectionPath!: string;
+  projectPath!: string;
+  accessToken!: string;
+  loading = true;
 
   constructor(private httpClient: HttpClient, private dialog: MatDialog) {
-    //this.loadContribution();    
-    this.loadMock();
+    this.loadContribution();
   }
 
-  loadMock() {
-    this.settings = {
-      repository: "Playground",
-      branch: "variable-history",
-      path: "/"
-    }
-
-    const vssClientOption: IVssRestClientOptions = {
-      rootPath: 'https://dev.azure.com/m3ac-Lif/',
-      authTokenProvider: {
-        getAuthorizationHeader: (forceRefresh?: boolean) => Promise.resolve(this.getRequestOptions().headers.Authorization)
-      }
-    };
-
-    this.gitClient = new GitRestClient(vssClientOption);
-    this.taskAgentClient = new TaskAgentRestClient(vssClientOption);
-    this.project = { id: "c12c13fe-f28e-479d-9668-43b189184073", name: "Playground" };
-    this.collectionPath = <string>vssClientOption.rootPath;
-  }
 
   async loadContribution() {
-    const accessToken = await SDK.getAccessToken();
-    const adsService: IExtensionDataService = await SDK.getService(CommonServiceIds.ExtensionDataService);
-    this.dataManager = await adsService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
-    this.settings = await this.dataManager.getValue('var-history-location', { scopeType: 'User' });
-
+    await SDK.notifyLoadSucceeded();
+    await SDK.ready();
     const projectService = await SDK.getService<IProjectPageService>(CommonServiceIds.ProjectPageService);
     this.project = await projectService.getProject();
-
     this.taskAgentClient = await getClient(TaskAgentRestClient);
-    this.gitClient = await getClient(GitRestClient);
-    this.collectionPath = "/" + SDK.getWebContext().team.name + "/";
+    const locSvc = await SDK.getService<ILocationService>(CommonServiceIds.LocationService);
+    this.collectionPath = await locSvc.getServiceLocation();
+    this.projectPath = this.collectionPath + this.project?.name;
 
-    SDK.notifyLoadSucceeded();
+    this.accessToken = await SDK.getAccessToken();
+    await this.reload();
   }
 
   async reload() {
 
     const variableGroups = await this.taskAgentClient.getVariableGroups(this.project!.id);
+
+    this.loading = false;
+    const variableGroupSettings = variableGroups.find(g => g.name === 'VariableGroupHistorySettings');
+    if (variableGroupSettings) {
+      this.settings = {
+        branch: variableGroupSettings.variables['Branch'].value,
+        path: variableGroupSettings.variables['Path'].value,
+        repository: variableGroupSettings.variables['Repository'].value
+      }
+    }
 
     this.variableGroups = variableGroups.map(g => ({
       description: g.description,
@@ -110,9 +100,47 @@ export class VariableGroupHistoryComponent {
     }
   }
 
-  loadVariable(grp: VariableGroup) {
+  async newGroup() {
+    if (this.variableGroups.length === 0) {
+      await this.reload();
+
+    }
+    this.variableGroups.push((this.variableGroup = {
+      id: 0,
+      name: 'New variable group',
+      description: '',
+      variablesForView: [],
+      hasBad: false,
+      hasChange: true
+    }));
+    this.variables = [{
+      name: "",
+      value: "",
+      isSecret: false,
+      hasChanged: false,
+      isBad: true,
+      markForDeletion: false
+    }];
+  }
+
+  async cloneGroup() {
+    this.variableGroups.push((this.variableGroup = {
+      id: 0,
+      name: this.variableGroup?.name + " Clone",
+      description: '',
+      variablesForView: this.variableGroup!.variablesForView,
+      hasBad: false,
+      hasChange: true,
+    }));
+    this.hasChange = true;
+  }
+
+  async loadVariable(grp: VariableGroup) {
     this.variableGroup = grp;
     this.variables = grp.variablesForView;
+
+
+
   }
   checkChange(variable: Variable) {
     variable.hasChanged = (
@@ -167,7 +195,7 @@ export class VariableGroupHistoryComponent {
   getRequestOptions() {
     return {
       headers: {
-        Authorization: `Basic ${btoa(`user:z6o4btg5w7mnu6imfbnuap7a3ccpipqbiptzxlbibznb5qq2h66q`)}`
+        Authorization: "Bearer " + this.accessToken
       }
     };
   }
@@ -177,7 +205,7 @@ export class VariableGroupHistoryComponent {
     const payloads = this.generateUpdatePayload();
 
     const currentLastCommit: any = await firstValueFrom(this.httpClient.get(
-      `${this.collectionPath}/_apis/git/repositories/${this.settings!.repository}/items?versionDescriptor.version=${this.settings!.branch}`,
+      `${this.projectPath}/_apis/git/repositories/${this.settings!.repository}/items?versionDescriptor.version=${this.settings!.branch}`,
       this.getRequestOptions()));
 
     let path = this.settings!.path;
@@ -186,7 +214,7 @@ export class VariableGroupHistoryComponent {
     }
 
     const fileItems: any = await firstValueFrom(this.httpClient.get(
-      `${this.collectionPath}/_apis/git/repositories/${this.settings!.repository}/trees/${currentLastCommit.value[0].objectId}?recursive=true`,
+      `${this.projectPath}/_apis/git/repositories/${this.settings!.repository}/trees/${currentLastCommit.value[0].objectId}?recursive=true`,
       this.getRequestOptions()));
 
     const commitPayload = {
@@ -210,16 +238,23 @@ export class VariableGroupHistoryComponent {
     }
 
     await firstValueFrom(this.httpClient.post(
-      `https://dev.azure.com/freesonlee/_apis/git/repositories/${this.settings!.repository}/pushes?api-version=5.0`,
+      `${this.projectPath}/_apis/git/repositories/${this.settings!.repository}/pushes?api-version=5.0`,
       commitPayload,
       this.getRequestOptions()))
 
     const requests = payloads.map(payload => {
 
-      return firstValueFrom(this.httpClient.put(
-        `https://dev.azure.com/freesonlee/_apis/distributedtask/variablegroups/${payload.id}?api-version=5.0-preview.1`,
-        payload,
-        this.getRequestOptions()));
+      if (payload.id === 0) {
+        return firstValueFrom(this.httpClient.post(
+          `${this.projectPath}/_apis/distributedtask/variablegroups/?api-version=5.0-preview.1`,
+          payload,
+          this.getRequestOptions()));
+      } else {
+        return firstValueFrom(this.httpClient.put(
+          `${this.projectPath}/_apis/distributedtask/variablegroups/${payload.id}?api-version=5.0-preview.1`,
+          payload,
+          this.getRequestOptions()));
+      }
     });
 
     await Promise.all(requests);

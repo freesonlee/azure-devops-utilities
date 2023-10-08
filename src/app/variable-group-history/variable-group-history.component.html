@@ -1,7 +1,14 @@
-<button mat-raised-button (click)="reload()">Reload</button>
+<mat-label *ngIf="!this.settings && !this.loading">Variable group settings not found. Create variable group "VariableGroupHistorySettings" with variables Branch, Path, Repository first</mat-label>
+<mat-label *ngIf="this.loading">Loading Variable group history settings...</mat-label>
+<div *ngIf="this.settings">
+  <button mat-raised-button (click)="reload()">Reload</button>
 <button mat-raised-button (click)="openSaveDialog()" color="warn" #saveButton [disabled]="!hasChange">Save Changes</button>
+<button mat-raised-button (click)="newGroup()">Create new group</button>
+
+</div>
+
 <br>
-<mat-drawer-container autosize *ngIf="mode=='variables'">
+<mat-drawer-container autosize *ngIf="this.settings">
   <mat-drawer mode="side" opened>
     
     <mat-action-list>
@@ -13,8 +20,11 @@
 
   </mat-drawer>
   <mat-drawer-content>
-    <mat-label class="variableTitle">{{variableGroup?.name}}</mat-label>
-    <button mat-raised-button (click)="newVariable()" *ngIf="variableGroup">Add New</button>
+    <mat-form-field *ngIf="variableGroup" class="variableGroupNameInput">
+      <input matInput [(ngModel)]="variableGroup!.name">
+    </mat-form-field>
+    <button mat-raised-button (click)="newVariable()" *ngIf="variableGroup">Add Variable</button>
+    <button mat-raised-button (click)="cloneGroup()" *ngIf="variableGroup">Clone group</button>
     <button mat-raised-button color="warn" (click)="deleteGroup()" *ngIf="variableGroup && false">Delete Group</button>
     <br>
     <table mat-table [dataSource]="variables">

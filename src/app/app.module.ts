@@ -21,13 +21,11 @@ import { PipelineComponent } from './pipeline.component';
 
 import * as SDK from 'azure-devops-extension-sdk';
 import { VariableGroupHistoryComponent } from './variable-group-history/variable-group-history.component';
-import { SettingsComponent } from './settings.component';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 @NgModule({
   declarations: [
     AppComponent,
-    VariableGroupHistoryComponent,
-    SettingsComponent
+    VariableGroupHistoryComponent
   ],
   imports: [
     BrowserModule,

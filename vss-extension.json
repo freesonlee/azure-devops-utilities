@@ -2,10 +2,16 @@
     "manifestVersion": 1,
     "id": "ads-var-history",
     "publisher": "FreesonLi",
-    "version": "0.8.7",
+    "version": "0.8.30",
     "name": "Variable Group History",
     "description": "History support for variable groups",
     "public": false,
+    "baseUri": "https://localhost:4200",
+    "scopes": [
+        "vso.variablegroups_manage",
+        "vso.code_write",
+        "vso.build_execute"
+    ],
     "categories": [
         "Azure Pipelines"
     ],
@@ -33,6 +39,11 @@
             "path": "dist/azure-devops-variable-group-editor/",
             "addressable": true,
             "packagePath": "/"
+        },
+        {
+            "path": "node_modules/azure-devops-extension-sdk",
+            "addressable": true,
+            "packagePath": "lib"
         }
     ]
 }
