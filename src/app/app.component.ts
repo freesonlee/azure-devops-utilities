@@ -87,6 +87,43 @@ export class AppComponent {
     }
   }
 
+  async newGroup() {
+    if (this.variableGroups.length === 0) {
+      await this.reload();
+
+    }
+    this.variableGroups.push((this.variableGroup = {
+      id: 0,
+      name: 'New variable group',
+      description: '',
+      variablesForView: [],
+      hasBad: false,
+      hasChange: true,
+      variables: {}
+    }));
+    this.variables = [{
+      name: "",
+      value: "",
+      isSecret: false,
+      hasChanged: false,
+      isBad: true,
+      markForDeletion: false
+    }];
+  }
+
+  async cloneGroup() {
+    this.variableGroups.push((this.variableGroup = {
+      id: 0,
+      name: this.variableGroup?.name + " Clone",
+      description: '',
+      variablesForView: this.variableGroup!.variablesForView,
+      hasBad: false,
+      hasChange: true,
+      variables: {}
+    }));
+    this.hasChange = true;
+  }
+
   async loadVariable(grp: VariableGroup) {
     this.variableGroup = grp;
 

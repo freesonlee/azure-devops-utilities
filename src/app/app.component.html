@@ -13,9 +13,12 @@
 <button mat-raised-button (click)="mode='pipelines'" [disabled]="!server" *ngIf="mode=='variables'">Run Pipeline(s)</button>
 <button mat-raised-button (click)="mode='variables'" [disabled]="!server" *ngIf="mode=='pipelines'">Variables</button>
 <br>
+
+ 
 <mat-drawer-container autosize *ngIf="mode=='variables'">
-  <mat-drawer mode="side" opened>
     
+  <mat-drawer mode="side" opened>
+    <button mat-raised-button (click)="newGroup()">Create new group</button>
     <mat-action-list>
       <mat-list-item *ngFor="let grp of variableGroups" [ngClass]="grp.hasBad ? 'badRow' : (grp.hasChange?'dirtyRow':'')">
         <button mat-list-item (click)="loadVariable(grp)">{{grp.name}}</button>
@@ -25,8 +28,11 @@
 
   </mat-drawer>
   <mat-drawer-content>
-    <mat-label class="variableTitle">{{variableGroup?.name}}</mat-label>
+    <mat-form-field *ngIf="variableGroup" class="variableGroupNameInput">
+        <input matInput [(ngModel)]="variableGroup!.name">
+      </mat-form-field>
     <button mat-raised-button (click)="newVariable()" *ngIf="variableGroup">Add New</button>
+    <button mat-raised-button (click)="cloneGroup()" *ngIf="variableGroup">Clone group</button>
     <button mat-raised-button color="warn" (click)="deleteGroup()" *ngIf="variableGroup && false">Delete Group</button>
     <br>
     <table mat-table [dataSource]="variables">

@@ -11,6 +11,9 @@
   .variableTitle {
     font-size: x-large;
   }
+  .variableGroupNameInput {
+    width: 400px
+  }
   .variableValueCell {
     width: calc(100%-40px);
   }
