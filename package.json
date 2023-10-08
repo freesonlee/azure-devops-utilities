@@ -8,7 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "pack": "npx tfx-cli extension create",
-    "publish": "npx tfx-cli extension create && npx tfx-cli extension publish --rev-version --token $ADS_MKT_PAT"
+    "publish": "npx tfx-cli extension create && npx tfx-cli extension publish --rev-version --token $ADS_MKT_PAT && rm *.vsix"
   },
   "private": true,
   "dependencies": {

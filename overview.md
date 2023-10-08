@@ -10,8 +10,14 @@ After install, you should see
 ![Hub](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/variablehistory.hub.png?raw=true)
 
 ## Setup
+### Grant access.
+In Azure DevOps Extension management page, Review and allow permission to the extension. The permission required for this extensions are:
+1. Variable Groups (read, create and manage)
+1. Code (read and write)
+
 ### History repository setup
 The respository and branch must be created manually first. Create a repository in same project and a branch. Then create a variable group `VariableGroupHistorySettings` with these 3variables:
 1. `Repository` with value of repository name
 1. `Path` with value of path.
 1. `Branch` with value of the branch name. Do not start with `refs/heads/xxx`
+
