@@ -1,6 +1,7 @@
 ## Variable Group History 
 
-An alternative UI to update values in Azure DevOps variable groups, which saves variable value history into a Azure DevOps Git repository. This is not replacement to Variable Group managment page, you still need that to manage description, security of variable groups.
+An alternative UI to update values in Azure DevOps variable groups, which saves variable value history into a Azure DevOps Git repository. 
+![Hub](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/variablehistory.ui.png?raw=true)This is not replacement to Variable Group managment page, you still need that to manage description, security of variable groups.
 The tool saves variable groups value snapshots as json file into a repository. Each variable group will have one json file and you can compare the change history.
 
 > Note: The tool doesn't save value of secret variables.
