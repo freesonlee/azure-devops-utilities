@@ -17,7 +17,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
 import { HttpClientModule } from '@angular/common/http';
-import { PipelineComponent } from './pipeline.component';
 
 import * as SDK from 'azure-devops-extension-sdk';
 import { VariableGroupHistoryComponent } from './variable-group-history/variable-group-history.component';
@@ -43,7 +42,6 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatDialogModule,
     MatSelectModule,
     MatIconModule,
-    PipelineComponent,
     ReactiveFormsModule,
     MatAutocompleteModule
 
