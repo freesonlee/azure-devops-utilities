@@ -6,7 +6,7 @@
     "types": []
   },
   "files": [
-    "src/main.ts"
+    "src/app/variable-group-history/main.ts"
   ],
   "include": [
     "src/**/*.d.ts"

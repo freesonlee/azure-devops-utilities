@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "pack": "npx tfx-cli extension create",
+    "pack-history": "npx tfx-cli extension create --manifests ./variable-group-history.vss.json",
+    "pack-pipeline": "npx tfx-cli extension create --manifests ./pipeline-profiles.vss.json",
     "publish": "npx tfx-cli extension create && npx tfx-cli extension publish --rev-version --token $ADS_MKT_PAT && rm *.vsix"
   },
   "private": true,

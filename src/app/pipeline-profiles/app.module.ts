@@ -19,12 +19,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { HttpClientModule } from '@angular/common/http';
 
 import * as SDK from 'azure-devops-extension-sdk';
-import { VariableGroupHistoryComponent } from './variable-group-history/variable-group-history.component';
+import { PipelineComponent } from './pipeline.component';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 @NgModule({
   declarations: [
-    AppComponent,
-    VariableGroupHistoryComponent
+    AppComponent
   ],
   imports: [
     BrowserModule,
@@ -43,8 +42,8 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatSelectModule,
     MatIconModule,
     ReactiveFormsModule,
-    MatAutocompleteModule
-
+    MatAutocompleteModule,
+    PipelineComponent
   ],
   providers: [],
   bootstrap: [AppComponent]

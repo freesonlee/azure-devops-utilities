@@ -50,33 +50,6 @@ export type Server = {
     branch: string
     filePath: string
 }
-export type Pipeline = {
-    yamlFilename?: string
-    folder: string
-    projectId?: string
-    repositoryId?: string
-    repositoryProject?: string
-    id: string
-    name: string
-    defaultBranch?: string
-    branches?: string[]
-    fullName?: string
-    variables?: PipelineVariable[]
-}
-
-export type PipelineVariable = {
-    name: string
-    value: string
-    allowOverride: boolean
-}
-
-export type Parameter = {
-    name: string
-    displayName: string
-    type: 'string' | 'boolean' | 'object'
-    values?: string[]
-    default: boolean | string
-}
 
 export type HistoryLocationSettings = {
     repository: string,

@@ -20,7 +20,7 @@
     ],
     "content": {
         "details": {
-            "path": "overview.md"
+            "path": "variablegrouphistory.overview.md"
         }
     },
     "contributions": [
@@ -39,7 +39,7 @@
     ],
     "repository": {
         "type": "git",
-        "uri": "https://github.com/freesonlee/azure-devops-utilities"
+        "uri": "https://github.com/freesonlee/azure-devops-utilities/src/app/variable-group-history"
     },
     "files": [
         {

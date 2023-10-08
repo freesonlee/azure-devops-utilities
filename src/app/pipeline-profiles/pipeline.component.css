@@ -1,0 +1,16 @@
+
+  mat-drawer-container {
+    height: 95%;
+  }
+  .pipelineList {
+    width: 600px
+  }
+  .variableNameCell {
+    width: 100%
+  }
+  .variableValueCell {
+    width: 80%
+  }
+  .artifactNameInput {
+    width: 80%
+  }

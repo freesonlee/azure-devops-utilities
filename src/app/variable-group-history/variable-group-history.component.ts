@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild } from '@angular/core';
 import { firstValueFrom, from } from 'rxjs';
-import { Variable, VariableData, VariableGroup, HistoryLocationSettings } from '../Models';
+import { Variable, VariableData, VariableGroup, HistoryLocationSettings } from './Models';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTable } from '@angular/material/table';
 import { CommentComponent } from './comment.component';
@@ -192,7 +192,7 @@ export class VariableGroupHistoryComponent {
 
   }
 
-  getRequestOptions() {
+  private getRequestOptions() {
     return {
       headers: {
         Authorization: "Bearer " + this.accessToken
