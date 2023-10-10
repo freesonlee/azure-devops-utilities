@@ -11,6 +11,7 @@ export type VariableGroupData = {
     id: number
     name: string
     description: string
+    desc: string
     variables: {
         [name: string]: VariableData
     }
@@ -21,21 +22,35 @@ export class VariableData {
         this.value = variable.value;
         this.name = variable.name;
         this.isSecret = variable.isSecret;
+        this.mlSource = variable.mlSource;
+        this.mlType = variable.mlType;
+        this.desc = variable.desc;
+        this.description = variable.description
     }
     public value: string
+    public mlSource: string
     public name: string
     public isSecret: boolean
+    public mlType: string
+    public desc: string
+    public description: string
 }
 
 export type Variable = VariableData & {
     original?: {
         name: string
         value: string
+        mlValue: string
         isSecret: boolean
+        mlType: string
+        desc: string
+        description: string
     }
     hasChanged: boolean
     markForDeletion: boolean
     isBad: boolean
+    description: string
+    desc: string
 }
 
 export type ListResponse<T> = {

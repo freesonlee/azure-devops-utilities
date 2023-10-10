@@ -15,7 +15,7 @@
     width: 400px
   }
   .variableValueCell {
-    width: calc(100%-40px);
+    width: calc(50%-20px);
   }
   .variableValueInput {
     width: 100%
@@ -57,4 +57,23 @@
   .secretCell {
     width: 80px
   }
+.mloption {
+  width: 250px;
 
+}
+.example-element-detail {
+  overflow: hidden;
+}
+tr.example-detail-row {
+  height: 0;
+}
+.value-multiline-input { 
+  width: 100%
+}
+.ta-ml-input {
+  min-height: 60px;
+}
+.mloption-item {
+  padding-left: 5px;
+  padding-right: 5px;
+ }

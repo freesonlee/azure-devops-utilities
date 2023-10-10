@@ -35,9 +35,10 @@
     <button mat-raised-button (click)="cloneGroup()" *ngIf="variableGroup">Clone group</button>
     <button mat-raised-button color="warn" (click)="deleteGroup()" *ngIf="variableGroup && false">Delete Group</button>
     <br>
-    <table mat-table [dataSource]="variables">
+    <table mat-table [dataSource]="variables" multiTemplateDataRows>
 
       <ng-container matColumnDef="isSecret">
+        <th mat-header-cell *matHeaderCellDef>Secret</th>
         <td mat-cell *matCellDef="let variable" class="secretCell">
           <mat-checkbox class="variableIsSecret" [(ngModel)]="variable.isSecret" (change)="checkChange(variable)">
             <mat-icon>lock</mat-icon>
@@ -46,6 +47,7 @@
       </ng-container>
 
       <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
         <td mat-cell *matCellDef="let variable" width="350px">
           <mat-form-field class="variableNameInput">
             <input type="text" matInput  [(ngModel)]="variable.name" spellcheck="false" (change)="checkChange(variable)">
@@ -64,7 +66,19 @@
         </td>
       </ng-container>
 
+      <ng-container matColumnDef="expand">
+        <th mat-header-cell *matHeaderCellDef aria-label="row actions">&nbsp;</th>
+        <td mat-cell *matCellDef="let variable" width="10px">
+          <button mat-icon-button aria-label="multiple line" (click)="(expandedVariable = expandedVariable === variable ? null : variable); $event.stopPropagation()">
+            <mat-icon *ngIf="expandedVariable !== variable">keyboard_arrow_down</mat-icon>
+            <mat-icon *ngIf="expandedVariable === variable">keyboard_arrow_up</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      
+
       <ng-container matColumnDef="value">
+        <th mat-header-cell *matHeaderCellDef>Value</th>
         <td mat-cell *matCellDef="let variable" class="variableValueCell">
           <mat-form-field class="variableValueInput">
             <input type="text" matInput  [(ngModel)]="variable.value" spellcheck="false" *ngIf="!variable.isSecret" (change)="checkChange(variable)">
@@ -73,8 +87,51 @@
         </td>
       </ng-container>
 
-    <tr mat-row *matRowDef="let row; columns: ['isSecret','name','value', 'action'];" 
+      <ng-container matColumnDef="desc">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let variable" class="variableValueCell">
+          <mat-form-field class="variableValueInput">
+            <input type="text" matInput  [(ngModel)]="variable.desc" spellcheck="false" (change)="checkChange(variable)">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+
+      <ng-container matColumnDef="multilineValue">
+        <td mat-cell *matCellDef="let variable" [attr.colspan]="3">
+          <div class="example-element-detail"
+               [@detailExpand]="variable == expandedVariable ? 'expanded' : 'collapsed'">
+
+              <mat-select hideSingleSelectionIndicator="true" class="mloption" [(value)]="variable.mlType" (valueChange)="variable.value=evaluateVariable(variable.mlType, mlinput.value);checkChange(variable)">
+                <mat-option value="|" class="mloption-item">Keep newlines</mat-option>
+                <mat-option value=">" class="mloption-item">Replace newlines with spaces</mat-option>
+              </mat-select>
+
+            <mat-form-field class="value-multiline-input">
+              <textarea class="ta-ml-input" matInput cdkTextareaAutosize #mlinput [value]="variable.mlSource" cdkAutosizeMaxRows="5" (input)="onMultiLineValueChange(variable, $event)"></textarea>
+            </mat-form-field>
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="multilineDescription">
+        <td mat-cell *matCellDef="let variable" [attr.colspan]="2">
+          <div class="example-element-detail"
+               [@detailExpand]="variable == expandedVariable ? 'expanded' : 'collapsed'">
+                  Long description
+            <mat-form-field class="value-multiline-input">
+              <textarea class="ta-ml-input" matInput cdkTextareaAutosize  [value]="variable.description" cdkAutosizeMaxRows="5" (input)="updateDescription(variable, $event)"></textarea>
+            </mat-form-field>
+          </div>
+        </td>
+      </ng-container>
+    
+      <tr mat-header-row *matHeaderRowDef="['isSecret', 'name', 'value', 'desc']" ></tr>
+
+    <tr mat-row *matRowDef="let row; columns: ['isSecret','name','value', 'desc', 'expand', 'action'];" 
       [ngClass]="row.isBad ? 'badRow' : (row.hasChanged ? 'dirtyRow': (row.markForDeletion ? 'deleted':'' ) )"></tr>
+
+      <tr mat-row *matRowDef="let row; columns: ['multilineValue', 'multilineDescription']" class="example-detail-row"></tr>
     </table>
   </mat-drawer-content>
 </mat-drawer-container>

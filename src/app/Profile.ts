@@ -52,7 +52,7 @@ export class ProfilePipeline {
 
     isNew?: boolean
     name?: string;
-    resolvedPipelineResources: { [pipeline: string]: { buildNumber: string, id: number } } = {};
+    resolvedPipelineResources: { [pipeline: string]: { buildNumber: string, id: number, triggerMessage: string } } = {};
     configurations: {
         branch: string
         parameterValues: {
@@ -240,7 +240,8 @@ export class ProfilePipeline {
 
         this.resolvedPipelineResources[pipelineResource.pipeline] = {
             buildNumber: resp.value[0].buildNumber,
-            id: resp.value[0].id
+            id: resp.value[0].id,
+            triggerMessage: resp.value[0].triggerInfo == undefined ? '' : resp.value[0].triggerInfo['ci.message']
         };
     }
 
