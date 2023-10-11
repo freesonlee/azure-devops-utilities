@@ -196,7 +196,10 @@
                 'Or put quoted build number or build id'">info</mat-icon>
                 <mat-hint *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]">Resolved to 
                   <a target="_blank" href="{{this.server.host}}/_build/results?buildId={{selectedPipeline!.resolvedPipelineResources[pl.key].id}}">{{selectedPipeline!.resolvedPipelineResources[pl.key].buildNumber}} {{selectedPipeline!.resolvedPipelineResources[pl.key].triggerMessage}}</a>
-                  &nbsp;&nbsp;<a routerLink="" href="javascript:void(0)" (click)="resolveBuildId(pl.key)">Refresh</a>
+                  &nbsp;&nbsp;
+                  <button mat-icon-button class="refreshbutton" (click)="resolveBuildId(pl.key)">
+                    <mat-icon >refresh</mat-icon>
+                  </button>
                 </mat-hint>
                 <mat-hint *ngIf="resolvedFailure[pl.key]">Can't resolve to a build: {{resolvedFailure[pl.key]}}</mat-hint>
               </mat-form-field>
