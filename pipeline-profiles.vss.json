@@ -2,10 +2,11 @@
     "manifestVersion": 1,
     "id": "ads-pipeline-profiles",
     "publisher": "FreesonLi",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "name": "Pipeline Profiles",
     "description": "Save pipeline resources, parameters and variables",
     "public": false,
+    "baseUri": "https://localhost:4200/azure-devops-pipeline-profiles",
     "scopes": [
         "vso.build_execute"
     ],
@@ -19,7 +20,7 @@
     ],
     "content": {
         "details": {
-            "path": "pipeline-profiles.overview.md"
+            "path": "./src/app/pipeline-profiles/readme.md"
         }
     },
     "contributions": [
