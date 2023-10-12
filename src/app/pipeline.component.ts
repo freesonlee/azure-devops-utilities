@@ -115,8 +115,9 @@ export class PipelineComponent {
     //this.profile!.branch = event.option.value;
     this.branchSelect.close();
     this.stages = [];
-    this.loadParameterAndResources();
+    this.parameters = [];
     this.selectedPipeline!.configurations.branch = event.option.value;
+    this.loadParameterAndResources(true);
   }
 
   async loadBranches() {
@@ -156,13 +157,13 @@ export class PipelineComponent {
     this.selectedPipeline!.setPipeline(this.pipelines!.find(p => p.fullName == pipelineName)!);
     const pipelineDef = await this.loadBranches();
     this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
-    await this.loadParameterAndResources();
+    await this.loadParameterAndResources(true);
     //this.selectedPipeline!.setParameterSelection(this.parameters);
   }
 
-  async loadParameterAndResources() {
+  async loadParameterAndResources(defaultResources: boolean) {
 
-    const plan = await this.loadStages();
+    const plan = await this.loadStages(defaultResources);
     if (!plan) {
       return;
     }
@@ -276,7 +277,7 @@ export class PipelineComponent {
       return ['', 'no pipeline provided'];
     }
 
-    const payload = await pipeline.getQueuePayload(false, this.sendGetRequest.bind(this));
+    const payload = await pipeline.getQueuePayload({ defaultResources: false, previewRun: false }, this.sendGetRequest.bind(this));
 
 
     try {
@@ -308,9 +309,10 @@ export class PipelineComponent {
   async pipelineDefSelected(pipeline: ProfilePipeline) {
     this.selectedPipeline = pipeline;
     this.stages = [];
+    this.parameters = [];
     this.isStagePanelOpen = this.isVariablePanelOpen = false;
     const pipelineDef = await this.loadBranches();
-    await this.loadParameterAndResources();
+    await this.loadParameterAndResources(false);
 
     pipeline.loadVariables(pipelineDef.variables!);
     //this.selectedPipeline.setParameterSelection(this.parameters);
@@ -328,7 +330,7 @@ export class PipelineComponent {
     })
   }
 
-  async loadStages() {
+  async loadStages(defaultResources: boolean) {
     if (!this.selectedPipeline) {
       return;
     }
@@ -337,8 +339,11 @@ export class PipelineComponent {
     }
 
     this.loadingStages = true;
-    const payload = await this.selectedPipeline.getQueuePayload(true, this.sendGetRequest.bind(this));
-    payload.previewRun = true;
+    const payload = await this.selectedPipeline.getQueuePayload({
+      previewRun: true,
+      defaultResources: defaultResources
+    }, this.sendGetRequest.bind(this));
+
     const response: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/_apis/pipelines/${this.selectedPipeline.pipelineId}/runs?api-version=5.1-preview.1`, payload, this.getRequestOptions()))
       .catch((e) => {
         const barRef = this._snackBar.open(e.error.message, 'Close');

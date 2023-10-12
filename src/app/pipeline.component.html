@@ -146,7 +146,7 @@
             </table>
           </mat-expansion-panel>
 
-          <mat-expansion-panel (afterExpand)="loadStages()" #stagePanel [hidden]="stages.length >= 2" [(expanded)]="isStagePanelOpen">
+          <mat-expansion-panel (afterExpand)="loadStages(false)" #stagePanel [hidden]="stages.length >= 2" [(expanded)]="isStagePanelOpen">
             <mat-expansion-panel-header>
               <mat-panel-title>Stages to run</mat-panel-title>
             </mat-expansion-panel-header>

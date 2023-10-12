@@ -260,21 +260,24 @@ export class ProfilePipeline {
         return payload;
     }
 
-    async getQueuePayload(previewRun: boolean, sendGetRequest: (url: string) => Promise<unknown>) {
-        const pipelineResource = await this.getPipelineResources(sendGetRequest);
+    async getQueuePayload(payloadRequest: {
+        previewRun: boolean,
+        defaultResources: boolean
+    }, sendGetRequest: (url: string) => Promise<unknown>) {
+        const pipelineResource = payloadRequest.defaultResources ? {} : await this.getPipelineResources(sendGetRequest);
 
         return {
-            previewRun,
+            previewRun: payloadRequest.previewRun,
             resources: {
                 repositories: {
                     self: {
                         refName: `refs/heads/${this.configurations.branch}`
                     },
-                    ...this.getRepositoryResources()
+                    ...(payloadRequest.defaultResources ? {} : this.getRepositoryResources())
                 },
                 pipelines: pipelineResource
             },
-            stagesToSkip: previewRun ? [] : Object.keys(this.configurations.stagesToSkip).filter(stg => this.configurations.stagesToSkip[stg]),
+            stagesToSkip: payloadRequest.previewRun ? [] : Object.keys(this.configurations.stagesToSkip).filter(stg => this.configurations.stagesToSkip[stg]),
             templateParameters: this.configurations.parameterValues,
             variables: {
                 ...this.configurations.variables.reduce((pv, cv) => ({ ...pv, [cv.name]: { value: cv.value, isSecret: false } }), {}),
