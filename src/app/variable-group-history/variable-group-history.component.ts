@@ -8,6 +8,7 @@ import { CommentComponent } from './comment.component';
 import * as SDK from 'azure-devops-extension-sdk';
 import { CommonServiceIds, IExtensionDataManager, IExtensionDataService, ILocationService, IProjectInfo, IProjectPageService, IVssRestClientOptions, getClient } from 'azure-devops-extension-api';
 import { TaskAgentRestClient } from 'azure-devops-extension-api/TaskAgent';
+import { animate, state, style, transition, trigger } from '@angular/animations';
 
 
 type Mode = 'variables' | 'pipelines';
@@ -15,6 +16,13 @@ type Mode = 'variables' | 'pipelines';
 @Component({
   selector: 'variable-group-history',
   templateUrl: './variable-group-history.component.html',
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed', style({ height: '0px', minHeight: '0' })),
+      state('expanded', style({ height: '*' })),
+
+    ]),
+  ],
   styleUrls: ['./variable-group-history.component.css']
 })
 export class VariableGroupHistoryComponent {
@@ -36,6 +44,7 @@ export class VariableGroupHistoryComponent {
   projectPath!: string;
   accessToken!: string;
   loading = true;
+  expandedVariable?: Variable;
 
   constructor(private httpClient: HttpClient, private dialog: MatDialog) {
     this.loadContribution();
@@ -83,10 +92,18 @@ export class VariableGroupHistoryComponent {
         hasChanged: false,
         markForDeletion: false,
         isBad: false,
+        desc: '',
+        description: '',
+        mlType: '|',
+        mlSource: '',
         original: {
           name: name,
           value: g.variables[name].value,
-          isSecret: g.variables[name].isSecret
+          isSecret: g.variables[name].isSecret,
+          desc: '',
+          description: '',
+          mlType: '|',
+          mlValue: ''
         }
       }))
     }));
@@ -116,10 +133,14 @@ export class VariableGroupHistoryComponent {
     this.variables = [{
       name: "",
       value: "",
+      mlType: "|",
+      description: "",
+      desc: "",
       isSecret: false,
       hasChanged: false,
       isBad: true,
-      markForDeletion: false
+      markForDeletion: false,
+      mlSource: ''
     }];
   }
 
@@ -140,12 +161,41 @@ export class VariableGroupHistoryComponent {
     this.variables = grp.variablesForView;
 
 
-
+    await this.loadMore(grp);
   }
+
+  private async loadMore(variableGroup: VariableGroup) {
+    let path = this.settings.path;
+    if (path[path.length - 1] != '/') {
+      path += '/';
+    }
+
+    try {
+      const h = this.getRequestOptions();
+      (h.headers as any).Accept = '*/*'
+
+      const snapshot: any = await firstValueFrom(this.httpClient.get(
+        `${this.projectPath}/_apis/git/repositories/${this.settings.repository}/items?path=${path}${variableGroup.name}.json&versionDescriptor.version=${this.settings.branch}`,
+        h));
+
+      this.variables.forEach(v => {
+        v.mlType = snapshot.variables[v.name]?.mlType ?? '|'
+        v.original!.mlValue = v.mlSource = snapshot.variables[v.name]?.mlSource ?? '';
+        v.description = v.original!.description = snapshot.variables[v.name]?.description ?? '';
+        v.desc = v.original!.desc = snapshot.variables[v.name]?.desc ?? '';
+      })
+
+    } catch (e) {
+
+    }
+  }
+
+
   checkChange(variable: Variable) {
     variable.hasChanged = (
       (variable.isSecret != variable.original?.isSecret) ||
-      (variable.value != variable.original?.value)
+      (variable.value != variable.original?.value) ||
+      (variable.description !== variable.original?.description)
     );
 
     this.checkChangeGroup(this.variableGroup!);
@@ -179,8 +229,6 @@ export class VariableGroupHistoryComponent {
   }
 
   async openSaveDialog() {
-
-    console.log(this.generateUpdatePayload());
 
     this.dialog.open(CommentComponent, {
       data: ''
@@ -292,7 +340,11 @@ export class VariableGroupHistoryComponent {
       markForDeletion: false,
       name: '',
       value: '',
-      isBad: true
+      isBad: true,
+      mlSource: '',
+      mlType: '|',
+      description: '',
+      desc: ''
     };
     this.variables.push(newVar);
     this.variableGroup!.hasBad = true;
@@ -327,6 +379,32 @@ export class VariableGroupHistoryComponent {
       this.variableGroup!.variablesForView = this.variables = this.variables.filter(v => v != variable);
     }
 
+    this.checkChange(variable);
+  }
+
+
+  onMultiLineValueChange(variable: Variable, $event: Event) {
+
+    let newValue = ($event.target as HTMLTextAreaElement).value;
+    variable.mlSource = newValue
+    newValue = this.evaluateVariable(variable.mlType, newValue);
+
+    variable.value = newValue;
+
+    this.checkChange(variable);
+
+  }
+  evaluateVariable(multilineType: string, mlSource: string): any {
+
+    if (multilineType == '>') {
+      return mlSource.replace(/\n/g, ' ');
+    }
+
+    return mlSource;
+  }
+
+  updateDescription(variable: Variable, $event: Event) {
+    variable.description = ($event.target as HTMLTextAreaElement).value
     this.checkChange(variable);
   }
 }
