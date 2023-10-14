@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
-import { Observable, first, firstValueFrom, map, pipe, startWith } from 'rxjs';
+import { Observable, first, firstValueFrom, from, map, pipe, startWith } from 'rxjs';
 import { ListResponse, Parameter, Pipeline, Server, Variable, VariableData, VariableGroup } from './Models';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -143,6 +143,12 @@ export class PipelineComponent {
         pipelineDef.variables = [];
       }
 
+      if (response.repository.type !== 'TfsGit') {
+        this._snackBar.open(`Pipeline repository on ${response.repository.type} is not supported yet.`, 'OK');
+        this.filteredBranches = from([]);
+        return pipelineDef;
+      }
+
       const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/../${pipelineDef.repositoryProject}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
       pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
 
@@ -161,6 +167,7 @@ export class PipelineComponent {
     this.selectedPipeline!.setPipeline(this.pipelines!.find(p => p.fullName == pipelineName)!);
     const pipelineDef = await this.loadBranches();
     this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
+    this.stages = [];
     await this.loadParameterAndResources(true);
     //this.selectedPipeline!.setParameterSelection(this.parameters);
   }
@@ -316,7 +323,7 @@ export class PipelineComponent {
     this.parameters = [];
     this.isStagePanelOpen = this.isVariablePanelOpen = false;
     const pipelineDef = await this.loadBranches();
-    await this.loadParameterAndResources(false);
+    await this.loadParameterAndResources(true);
 
     pipeline.loadVariables(pipelineDef.variables!);
     //this.selectedPipeline.setParameterSelection(this.parameters);

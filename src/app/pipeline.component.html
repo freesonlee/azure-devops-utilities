@@ -26,14 +26,16 @@
       </mat-drawer>   
       <mat-drawer-content *ngIf="selectedPipeline!=null">
 
-        <div *ngIf="!selectedPipeline.isNew">{{ selectedPipeline.name }}</div>
+        <br/>
+        <div *ngIf="!selectedPipeline.isNew">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="{{this.server.host}}/_build?definitionId={{selectedPipeline.pipelineId}}" target="_blank">{{ selectedPipeline.name }}</a></div>
+
 
         <mat-form-field class="pipelineList" *ngIf="selectedPipeline.isNew">
           <input type="text"
                  matInput
                  [formControl]="pipelineControl"
                  [matAutocomplete]="auto">
-          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value);">
+          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value);resourcesPanel.close();">
             <mat-option *ngFor="let pipeline of filteredPipelines | async" [value]="pipeline.fullName">
               {{pipeline.fullName}}
             </mat-option>
@@ -150,6 +152,8 @@
             <mat-expansion-panel-header>
               <mat-panel-title>Stages to run</mat-panel-title>
             </mat-expansion-panel-header>
+
+            <div *ngIf="stages.length > 1">
             <mat-checkbox [checked]="hasNoSkippedStage()" (change)="toggleAllStages($event)">Run all stages</mat-checkbox>
 
             <mat-selection-list>
@@ -158,7 +162,10 @@
                 {{stage.displayName || stage.stage}}
               </mat-list-option>
             </mat-selection-list>
-
+          </div>
+          <div *ngIf="stages.length <= 1">
+              <mat-label>Configuration is only available for multi-stage pipelines.</mat-label>
+          </div>
             <mat-progress-bar mode="indeterminate" *ngIf="loadingStages"></mat-progress-bar>
           </mat-expansion-panel>
 
@@ -203,6 +210,9 @@
                   <button [matTooltip]="'Copy build id to clipboard'" mat-icon-button class="refreshbutton" *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]" (click)="copyBuildId(selectedPipeline!.resolvedPipelineResources[pl.key].id)">
                     <mat-icon >content_copy</mat-icon>
                   </button>
+                </mat-hint>
+                <mat-hint *ngIf="!selectedPipeline!.resolvedPipelineResources[pl.key]">
+                  <a href="javascript:void()" (click)="resolveBuildId(pl.key)">Resolve Build</a>
                 </mat-hint>
                 <mat-hint *ngIf="resolvedFailure[pl.key]">Can't resolve to a build: {{resolvedFailure[pl.key]}}</mat-hint>
               </mat-form-field>

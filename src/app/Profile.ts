@@ -132,6 +132,7 @@ export class ProfilePipeline {
             ...this,
             isNew: undefined,
             pipelineDef: undefined,
+            _pipelineDef: undefined
         };
     }
     checkVariableName(variable: PipelineVariable) {
