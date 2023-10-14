@@ -199,6 +199,9 @@
                   &nbsp;&nbsp;
                   <button mat-icon-button class="refreshbutton" (click)="resolveBuildId(pl.key)">
                     <mat-icon >refresh</mat-icon>
+                  </button>&nbsp;&nbsp;
+                  <button [matTooltip]="'Copy build id to clipboard'" mat-icon-button class="refreshbutton" *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]" (click)="copyBuildId(selectedPipeline!.resolvedPipelineResources[pl.key].id)">
+                    <mat-icon >content_copy</mat-icon>
                   </button>
                 </mat-hint>
                 <mat-hint *ngIf="resolvedFailure[pl.key]">Can't resolve to a build: {{resolvedFailure[pl.key]}}</mat-hint>

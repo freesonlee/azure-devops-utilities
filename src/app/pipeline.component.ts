@@ -25,6 +25,8 @@ import { Profile, ProfilePipeline } from './Profile';
 import { KeyValue } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ClipboardModule } from '@angular/cdk/clipboard';
+import { Clipboard } from '@angular/cdk/clipboard';
 
 @Component({
   selector: 'pipeline-list',
@@ -51,7 +53,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     KeyValuePipe,
     MatSnackBarModule,
     MatProgressBarModule,
-    MatTooltipModule
+    MatTooltipModule,
+    ClipboardModule
   ]
 })
 export class PipelineComponent {
@@ -79,7 +82,8 @@ export class PipelineComponent {
   @ViewChild(MatExpansionPanel) variablesPanel?: MatExpansionPanel;
 
   parameters?: Parameter[];
-  constructor(private httpClient: HttpClient, private dialog: MatDialog, private _snackBar: MatSnackBar, private cd: ChangeDetectorRef) {
+  constructor(private httpClient: HttpClient, private dialog: MatDialog, private _snackBar: MatSnackBar, private cd: ChangeDetectorRef,
+    private clipboard: Clipboard) {
 
   }
 
@@ -408,5 +412,9 @@ export class PipelineComponent {
     } catch (e) {
       this.resolvedFailure[pipelineResource] = e as string;
     }
+  }
+
+  copyBuildId(buildId: number) {
+    this.clipboard.copy(buildId.toString());
   }
 }
