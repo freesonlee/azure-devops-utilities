@@ -19,6 +19,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Profile, ProfilePipeline, Parameter, Pipeline } from './Profile';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ClipboardModule } from '@angular/cdk/clipboard';
+import { Clipboard } from '@angular/cdk/clipboard';
 import * as SDK from 'azure-devops-extension-sdk';
 import { IProjectPageService, CommonServiceIds, getClient, ILocationService, IProjectInfo, IExtensionDataService, IExtensionDataManager } from 'azure-devops-extension-api';
 import { TaskAgentRestClient } from 'azure-devops-extension-api/TaskAgent';
@@ -48,7 +51,9 @@ import { ListResponse, Variable } from '../variable-group-history/Models';
     AsyncPipe,
     KeyValuePipe,
     MatSnackBarModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatTooltipModule,
+    ClipboardModule
   ]
 })
 export class PipelineComponent {
@@ -65,6 +70,7 @@ export class PipelineComponent {
   isStagePanelOpen = false;
   isVariablePanelOpen = false;
   loadingStages = false;
+  resolvedFailure: { [key: string]: string } = {};
   project: IProjectInfo | undefined;
   taskAgentClient!: TaskAgentRestClient;
 
@@ -78,7 +84,8 @@ export class PipelineComponent {
   projectPath!: string;
   accessToken!: string;
   dataManager!: IExtensionDataManager;
-  constructor(private httpClient: HttpClient, private dialog: MatDialog, private _snackBar: MatSnackBar, private cd: ChangeDetectorRef) {
+  constructor(private httpClient: HttpClient, private dialog: MatDialog, private _snackBar: MatSnackBar, private cd: ChangeDetectorRef,
+    private clipboard: Clipboard) {
 
   }
 
@@ -184,6 +191,7 @@ export class PipelineComponent {
     this.selectedPipeline!.setPipeline(this.pipelines!.find(p => p.fullName == pipelineName)!);
     const pipelineDef = await this.loadBranches();
     this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
+    this.stages = [];
     await this.loadParameterAndResources(true);
     //this.selectedPipeline!.setParameterSelection(this.parameters);
   }
@@ -280,6 +288,18 @@ export class PipelineComponent {
     });
   }
 
+  async deleteProfile() {
+    this._snackBar.open(`Are you sure to delete profile ${this.profile?.name} and all builds?`, 'DELETE', {
+      duration: 5000,
+    }).onAction().subscribe(() => {
+      this.profiles = this.profiles.filter(p => p != this.profile);
+      this.selectedPipeline = undefined;
+      this.profile = undefined;
+      this.save();
+    })
+  }
+
+
   async runPipeline(pipeline: ProfilePipeline | undefined, showSnackbar?: boolean): Promise<[string, string]> {
 
     if (!pipeline) {
@@ -321,7 +341,7 @@ export class PipelineComponent {
     this.parameters = [];
     this.isStagePanelOpen = this.isVariablePanelOpen = false;
     const pipelineDef = await this.loadBranches();
-    await this.loadParameterAndResources(false);
+    await this.loadParameterAndResources(true);
 
     pipeline.loadVariables(pipelineDef.variables!);
     //this.selectedPipeline.setParameterSelection(this.parameters);
@@ -407,5 +427,18 @@ export class PipelineComponent {
       }
       );
     }
+  }
+
+  async resolveBuildId(pipelineResource: string) {
+    try {
+      await this.selectedPipeline!.resolveBuildNumber(this.selectedPipeline?.configurations.resources.pipelines[pipelineResource]!, this.sendGetRequest.bind(this));
+      delete this.resolvedFailure[pipelineResource];
+    } catch (e) {
+      this.resolvedFailure[pipelineResource] = e as string;
+    }
+  }
+
+  copyBuildId(buildId: number) {
+    this.clipboard.copy(buildId.toString());
   }
 }

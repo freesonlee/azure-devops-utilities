@@ -4,6 +4,7 @@
     <mat-action-list>
       <mat-list-item *ngFor="let profile of profiles">
         <button mat-list-item (click)="loadProfile(profile)">{{profile.name}}</button>
+        
       </mat-list-item>
       
     </mat-action-list>
@@ -14,7 +15,8 @@
     <mat-drawer-container autosize>
       <mat-drawer mode="side" opened>
         <button mat-raised-button (click)="newProfilePipeline()">Add new build to {{profile?.name}}</button>
-        <button mat-raised-button (click)="runProfile()">Run all</button>
+        <!-- <button mat-raised-button (click)="runProfile()">Run all</button> -->
+        <button mat-raised-button (click)="deleteProfile()" color="warn">Delete profile</button>
         <mat-action-list>
           <mat-list-item *ngFor="let pipeline of profile?.pipelines">
             <button mat-list-item (click)="pipelineDefSelected(pipeline);">{{pipeline.name}}</button>
@@ -23,15 +25,15 @@
         </mat-action-list>
       </mat-drawer>   
       <mat-drawer-content *ngIf="selectedPipeline!=null">
-
-        <div *ngIf="!selectedPipeline.isNew">{{ selectedPipeline.name }}</div>
+        <br/>
+        <div *ngIf="!selectedPipeline.isNew">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="{{this.projectPath}}/_build?definitionId={{selectedPipeline.pipelineId}}" target="_blank">{{ selectedPipeline.name }}</a></div>
 
         <mat-form-field class="pipelineList" *ngIf="selectedPipeline.isNew">
           <input type="text"
                  matInput
                  [formControl]="pipelineControl"
                  [matAutocomplete]="auto">
-          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value);">
+          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value);resourcesPanel.close();">
             <mat-option *ngFor="let pipeline of filteredPipelines | async" [value]="pipeline.fullName">
               {{pipeline.fullName}}
             </mat-option>
@@ -75,7 +77,7 @@
 
             <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value;stagePanel.close()" >
+              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value;stagePanel.close();stages=[]" >
                 <mat-list-option *ngFor="let option of para.values" checkboxPosition="before" [value]="option" [selected]="
                   selectedPipeline!.configurations.parameterValues[para.name] ?
                     (option == selectedPipeline!.configurations.parameterValues[para.name]) : 
@@ -87,14 +89,14 @@
 
             <mat-form-field *ngIf="para.type=='string'&&para.values&&para.values.length>5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-select [value]="para.default||para.values[0]" (selectionChange)="stagePanel.close()">
+              <mat-select [value]="para.default||para.values[0]" (selectionChange)="stagePanel.close();stages=[]">
                 <mat-option *ngFor="let option of para.values" [value]="option">
                   {{option}}
                 </mat-option>                
               </mat-select>
             </mat-form-field>
 
-            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close()">{{para.displayName || para.name}}</mat-checkbox>
+            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close();stages=[]">{{para.displayName || para.name}}</mat-checkbox>
 
           </div>
 
@@ -144,19 +146,23 @@
             </table>
           </mat-expansion-panel>
 
-          <mat-expansion-panel (afterExpand)="loadStages(true)" #stagePanel [hidden]="stages.length >= 2" [(expanded)]="isStagePanelOpen">
+          <mat-expansion-panel (afterExpand)="loadStages(false)" #stagePanel [hidden]="stages.length >= 2" [(expanded)]="isStagePanelOpen">
             <mat-expansion-panel-header>
               <mat-panel-title>Stages to run</mat-panel-title>
             </mat-expansion-panel-header>
-            <mat-checkbox [checked]="hasNoSkippedStage()" (change)="toggleAllStages($event)">Run all stages</mat-checkbox>
 
+            <div *ngIf="stages.length > 1">
+            <mat-checkbox [checked]="hasNoSkippedStage()" (change)="toggleAllStages($event)">Run all stages</mat-checkbox>
             <mat-selection-list>
               <mat-list-option *ngFor="let stage of stages" checkboxPosition="before" [selected]="!selectedPipeline!.configurations.stagesToSkip[stage.stage]" 
                 (selectedChange)="selectedPipeline!.configurations.stagesToSkip[stage.stage]=!$event">
                 {{stage.displayName || stage.stage}}
               </mat-list-option>
             </mat-selection-list>
-
+          </div>
+          <div *ngIf="stages.length <= 1">
+              <mat-label>Configuration is only available for multi-stage pipelines.</mat-label>
+          </div>
             <mat-progress-bar mode="indeterminate" *ngIf="loadingStages"></mat-progress-bar>
           </mat-expansion-panel>
 
@@ -184,9 +190,28 @@
               <mat-form-field class="variableValueCell">
                 <mat-label>
                   <mat-icon>redeem</mat-icon>
-                  Latest build of {{pl.key}} [{{pl.value.source}}]
+                  Build of {{pl.key}} [{{pl.value.source}}] {{ pl.value.tags ? ('on #' + pl.value.tags.join(',')):  '' }}
                 </mat-label>
-                <input type="text" matInput [placeholder]="'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). Leave empty to use default (' + pl.value.branch + ').'" [(ngModel)]="pl.value.selectedBranch">
+                <input type="text" matInput [(ngModel)]="pl.value.selectedBranch" (ngModelChange)="resolveBuildId(pl.key)" [ngModelOptions]="{ updateOn: 'blur' }">
+                <mat-icon matSuffix  [matTooltip]="
+                'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). ' + 
+                'Leave empty to use default yaml(' + pl.value.branch + '). ' + 
+                'Add #tag1,tag2 behind to search for a build with tags' + 
+                'Or put quoted build number or build id'">info</mat-icon>
+                <mat-hint *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]">Resolved to 
+                  <a target="_blank" href="{{this.projectPath}}/_build/results?buildId={{selectedPipeline!.resolvedPipelineResources[pl.key].id}}">{{selectedPipeline!.resolvedPipelineResources[pl.key].buildNumber}} {{selectedPipeline!.resolvedPipelineResources[pl.key].triggerMessage}}</a>
+                  &nbsp;&nbsp;
+                  <button mat-icon-button class="refreshbutton" (click)="resolveBuildId(pl.key)">
+                    <mat-icon >refresh</mat-icon>
+                  </button>&nbsp;&nbsp;
+                  <button [matTooltip]="'Copy build id to clipboard'" mat-icon-button class="refreshbutton" *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]" (click)="copyBuildId(selectedPipeline!.resolvedPipelineResources[pl.key].id)">
+                    <mat-icon >content_copy</mat-icon>
+                  </button>
+                </mat-hint>
+                <mat-hint *ngIf="!selectedPipeline!.resolvedPipelineResources[pl.key]">
+                  <a href="javascript:void()" (click)="resolveBuildId(pl.key)">Resolve Build</a>
+                </mat-hint>
+                <mat-hint *ngIf="resolvedFailure[pl.key]">Can't resolve to a build: {{resolvedFailure[pl.key]}}</mat-hint>
               </mat-form-field>
                <!--
               <mat-form-field class="artifactNameInput">

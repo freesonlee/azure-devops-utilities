@@ -14,3 +14,20 @@
   .artifactNameInput {
     width: 80%
   }
+  .refreshbutton {
+    padding: 0px;
+    height: 12px;
+    width:12px;
+
+    --mdc-icon-button-icon-size: 18px;
+
+    > .mat-mdc-icon-button.mat-mdc-button-base {
+      --mdc-icon-button-state-layer-size: revert
+    }
+
+    > mat-icon {
+      top: -8px;
+      position: absolute;
+      left: -3px;
+    }
+  }
