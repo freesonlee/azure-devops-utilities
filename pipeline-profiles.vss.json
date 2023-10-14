@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "ads-pipeline-profiles",
     "publisher": "FreesonLi",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "name": "Pipeline Profiles",
     "description": "Save pipeline resources, parameters and variables",
     "public": true,
@@ -10,6 +10,9 @@
         "vso.build_execute",
         "vso.code"
     ],
+    "icons": {
+        "default": "images/pipelineprofiles.png"
+    },
     "categories": [
         "Azure Pipelines"
     ],
