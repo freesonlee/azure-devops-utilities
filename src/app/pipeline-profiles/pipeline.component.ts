@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
-import { Observable, firstValueFrom, map, startWith } from 'rxjs';
+import { Observable, firstValueFrom, from, map, startWith } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTable, MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -110,10 +110,16 @@ export class PipelineComponent {
   }
 
   async reload() {
-    const profilesLike = await this.dataManager.getValue<Profile[]>('pipeline-profiles', { scopeType: 'User' });
-    if (profilesLike) {
-      this.profiles = profilesLike.map((p: Profile) => Profile.load(p));
+
+    try {
+      const profilesLike = await this.dataManager.getValue<Profile[]>('pipeline-profiles', { scopeType: 'User' });
+      if (profilesLike) {
+        this.profiles = profilesLike.map((p: Profile) => Profile.load(p));
+      }
+    } catch {
+      this._snackBar.open("Fail to open saved pipeline profiles", "Close");
     }
+
 
     const response = await firstValueFrom(this.httpClient.get(`${this.projectPath}/_apis/pipelines`, this.getRequestOptions())) as ListResponse<Pipeline>;
     response.value.forEach(p => p.fullName = p.folder == '\\' ? p.name : (p.folder.substring(1) + '\\' + p.name));
@@ -152,6 +158,12 @@ export class PipelineComponent {
         pipelineDef.variables = Object.keys(response.variables).map(vn => ({ name: vn, ...response.variables[vn] })) as Pipeline['variables'];
       } else {
         pipelineDef.variables = [];
+      }
+
+      if (response.repository.type !== 'TfsGit') {
+        this._snackBar.open(`Pipeline repository on ${response.repository.type} is not supported yet.`, 'OK');
+        this.filteredBranches = from([]);
+        return pipelineDef;
       }
 
       const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.projectPath}/../${pipelineDef.repositoryProject}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
@@ -244,10 +256,12 @@ export class PipelineComponent {
       });
   }
 
-  save() {
+  async save() {
     this.profiles.forEach(f => f.pipelines.forEach(p => delete p.isNew));
 
-    localStorage.setItem(`profiles-${this.projectPath}`, JSON.stringify(this.profiles));
+    await this.dataManager.setValue('pipeline-profiles', JSON.parse(JSON.stringify(this.profiles)), { scopeType: 'User' });
+
+
     this._snackBar.open('Saved', undefined, {
       duration: 2000
     });

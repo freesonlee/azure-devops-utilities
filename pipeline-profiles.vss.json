@@ -2,13 +2,13 @@
     "manifestVersion": 1,
     "id": "ads-pipeline-profiles",
     "publisher": "FreesonLi",
-    "version": "0.8.1",
+    "version": "1.0.2",
     "name": "Pipeline Profiles",
     "description": "Save pipeline resources, parameters and variables",
-    "public": false,
-    "baseUri": "https://localhost:4200/azure-devops-pipeline-profiles",
+    "public": true,
     "scopes": [
-        "vso.build_execute"
+        "vso.build_execute",
+        "vso.code"
     ],
     "categories": [
         "Azure Pipelines"
@@ -32,7 +32,7 @@
             ],
             "properties": {
                 "name": "Pipeline Profiles",
-                "iconName": "Breakfast",
+                "iconName": "Car",
                 "uri": "index.html"
             }
         }

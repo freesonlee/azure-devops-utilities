@@ -2,14 +2,17 @@
     "manifestVersion": 1,
     "id": "ads-var-history",
     "publisher": "FreesonLi",
-    "version": "1.0.4",
+    "version": "1.0.6",
     "name": "Variable Group History",
     "description": "History support for variable groups",
-    "public": false,
+    "public": true,
     "scopes": [
         "vso.variablegroups_manage",
         "vso.code_write"
     ],
+    "icons": {
+        "default": "images/variablehistory.png"
+    },
     "categories": [
         "Azure Pipelines"
     ],
