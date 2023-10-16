@@ -302,7 +302,7 @@ export class ProfilePipeline {
 
                 this.configurations.resources.repositories[repo.repository] = {
                     ...repo,
-                    ...this.configurations.resources.repositories[repo.repository]
+                    selectedRef: this.configurations.resources.repositories[repo.repository].selectedRef
                 };
             });
 
@@ -319,7 +319,8 @@ export class ProfilePipeline {
 
                 this.configurations.resources.pipelines[pl.pipeline] = {
                     ...pl,
-                    ...this.configurations.resources.pipelines[pl.pipeline]
+                    tags: this.configurations.resources.pipelines[pl.pipeline].tags,
+                    selectedBranch: this.configurations.resources.pipelines[pl.pipeline].selectedBranch
                 };
             });
 
