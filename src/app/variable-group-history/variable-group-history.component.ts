@@ -190,12 +190,18 @@ export class VariableGroupHistoryComponent {
     }
   }
 
+  isEqual(valueA: string | undefined, valueB: string | undefined, defaultValue: string = '') {
+    return (valueA ?? defaultValue) == (valueB ?? defaultValue);
+  }
 
   checkChange(variable: Variable) {
     variable.hasChanged = (
       (variable.isSecret != variable.original?.isSecret) ||
-      (variable.value != variable.original?.value) ||
-      (variable.description !== variable.original?.description)
+      !this.isEqual(variable.value, variable.original?.value) ||
+      !this.isEqual(variable.description, variable.original?.description) ||
+      !this.isEqual(variable.desc, variable.original?.desc) ||
+      !this.isEqual(variable.mlType, variable.original?.mlType, '|') ||
+      !this.isEqual(variable.mlSource, variable.original?.mlValue)
     );
 
     this.checkChangeGroup(this.variableGroup!);
