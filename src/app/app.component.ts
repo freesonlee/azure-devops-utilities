@@ -193,11 +193,19 @@ export class AppComponent {
     }
   }
 
+  isEqual(valueA: string | undefined, valueB: string | undefined, defaultValue: string = '') {
+    return (valueA ?? defaultValue) == (valueB ?? defaultValue);
+  }
+
+
   checkChange(variable: Variable) {
     variable.hasChanged = (
       (variable.isSecret != variable.original?.isSecret) ||
-      (variable.value != variable.original?.value) ||
-      (variable.description !== variable.original?.description)
+      !this.isEqual(variable.value, variable.original?.value) ||
+      !this.isEqual(variable.description, variable.original?.description) ||
+      !this.isEqual(variable.desc, variable.original?.desc) ||
+      !this.isEqual(variable.mlType, variable.original?.mlType, '|') ||
+      !this.isEqual(variable.mlSource, variable.original?.mlValue)
     );
 
     this.checkChangeGroup(this.variableGroup!);
@@ -240,6 +248,9 @@ export class AppComponent {
     this.dialog.open(CommentComponent, {
       data: ''
     }).afterClosed().subscribe(result => {
+
+      if (result === undefined)
+        return;
 
       this.save(result);
 
@@ -367,6 +378,10 @@ export class AppComponent {
       variable.value = variable.original.value;
       variable.isSecret = variable.original.isSecret;
       variable.name = variable.original.name;
+      variable.desc = variable.original.desc;
+      variable.description = variable.original.description;
+      variable.mlSource = variable.original.mlValue;
+      variable.mlType = variable.original.mlType;
     } else {
       this.variableGroup!.variablesForView = this.variables = this.variables.filter(v => v != variable);
     }
