@@ -319,8 +319,8 @@ export class ProfilePipeline {
 
                 this.configurations.resources.pipelines[pl.pipeline] = {
                     ...pl,
-                    tags: this.configurations.resources.pipelines[pl.pipeline].tags,
-                    selectedBranch: this.configurations.resources.pipelines[pl.pipeline].selectedBranch
+                    tags: this.configurations.resources.pipelines[pl.pipeline]?.tags,
+                    selectedBranch: this.configurations.resources.pipelines[pl.pipeline]?.selectedBranch
                 };
             });
 
