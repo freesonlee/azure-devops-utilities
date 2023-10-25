@@ -330,7 +330,7 @@ export class ProfilePipeline {
 
                 this.configurations.resources.repositories[repo.repository] = {
                     ...repo,
-                    selectedRef: this.configurations.resources.repositories[repo.repository].selectedRef
+                    selectedRef: this.configurations.resources.repositories[repo.repository]?.selectedRef
                 };
             });
 
