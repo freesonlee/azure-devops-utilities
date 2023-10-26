@@ -253,7 +253,7 @@ export class ProfilePipeline {
 
         const payload = Object.keys(this.configurations.resources.pipelines).reduce((pv, cv) => {
             if (this.configurations.resources.pipelines[cv].selectedBranch) {
-                pv[cv] = this.resolvedPipelineResources[cv];
+                pv[cv] = { version: this.resolvedPipelineResources[cv].buildNumber };
             }
             return pv;
         }, <any>{});
