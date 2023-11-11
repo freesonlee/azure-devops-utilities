@@ -37,6 +37,7 @@ export class AppComponent {
   @ViewChild('pipelineComp')
   pipelineComp!: PipelineComponent;
   expandedVariable?: Variable;
+  descColHiding = true;
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
 
@@ -427,5 +428,11 @@ export class AppComponent {
   updateDescription(variable: Variable, $event: Event) {
     variable.description = ($event.target as HTMLTextAreaElement).value
     this.checkChange(variable);
+  }
+
+  generateDescription(variable: Variable) {
+    return `${variable.desc}
+    
+    ${variable.description}`;
   }
 }

@@ -16,6 +16,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { HttpClientModule } from '@angular/common/http';
 import { PipelineComponent } from './pipeline.component';
@@ -39,6 +40,7 @@ import { PipelineComponent } from './pipeline.component';
     MatDialogModule,
     MatSelectModule,
     MatIconModule,
+    MatTooltipModule,
     MatRadioModule,
     PipelineComponent
   ],

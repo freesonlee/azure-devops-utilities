@@ -17,6 +17,15 @@
   .variableValueCell {
     width: calc(50%-20px);
   }
+  .variableValueCell-wide {
+    width: calc(100%-40px);
+  }
+  .descValue {
+    width: calc(50%-20px);
+  }
+  .descValue-hide {
+    width: 20px;
+  }
   .variableValueInput {
     width: 100%
   }
@@ -84,4 +93,7 @@ tr.example-detail-row {
   height: 60px;
   background-color: white;
   z-index: 100;
+}
+.matmline-tooltip {
+  white-space: pre-line;
 }
