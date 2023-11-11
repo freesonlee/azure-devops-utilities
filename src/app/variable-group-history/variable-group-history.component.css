@@ -12,7 +12,16 @@
     font-size: x-large;
   }
   .variableValueCell {
-    width: calc(50%-20px);
+    width: calc(50% - 20px);
+  }
+  .variableValueCell-wide {
+    width: calc(100% - 40px);
+  }
+  .descValue {
+    width: calc(50% - 20px);
+  }
+  .descValue-hide {
+    width: 20px;
   }
   .variableValueInput {
     width: 100%

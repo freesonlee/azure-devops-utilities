@@ -15,6 +15,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { HttpClientModule } from '@angular/common/http';
 
@@ -42,6 +43,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatDialogModule,
     MatSelectModule,
     MatIconModule,
+    MatTooltipModule,
     ReactiveFormsModule,
     MatAutocompleteModule
 

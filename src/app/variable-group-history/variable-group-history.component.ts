@@ -45,6 +45,7 @@ export class VariableGroupHistoryComponent {
   accessToken!: string;
   loading = true;
   expandedVariable?: Variable;
+  descColHiding = true;
 
   constructor(private httpClient: HttpClient, private dialog: MatDialog) {
     this.loadContribution();
@@ -381,6 +382,10 @@ export class VariableGroupHistoryComponent {
       variable.value = variable.original.value;
       variable.isSecret = variable.original.isSecret;
       variable.name = variable.original.name;
+      variable.desc = variable.original.desc;
+      variable.description = variable.original.description;
+      variable.mlSource = variable.original.mlValue;
+      variable.mlType = variable.original.mlType;
     } else {
       this.variableGroup!.variablesForView = this.variables = this.variables.filter(v => v != variable);
     }
@@ -412,5 +417,11 @@ export class VariableGroupHistoryComponent {
   updateDescription(variable: Variable, $event: Event) {
     variable.description = ($event.target as HTMLTextAreaElement).value
     this.checkChange(variable);
+  }
+
+  generateDescription(variable: Variable) {
+    return `${variable.desc}
+    
+    ${variable.description}`;
   }
 }
