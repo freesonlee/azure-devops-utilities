@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "ads-pipeline-profiles",
     "publisher": "FreesonLi",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "name": "Pipeline Profiles",
     "description": "Save pipeline resources, parameters and variables",
     "public": true,
