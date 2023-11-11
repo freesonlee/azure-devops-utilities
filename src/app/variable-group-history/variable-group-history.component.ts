@@ -241,6 +241,9 @@ export class VariableGroupHistoryComponent {
       data: ''
     }).afterClosed().subscribe(result => {
 
+      if (result === undefined)
+        return;
+      
       this.save(result);
 
     });
