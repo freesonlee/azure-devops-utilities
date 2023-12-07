@@ -10,7 +10,7 @@ import { AsyncPipe, NgFor, NgIf, KeyValuePipe } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { load as yamlLoad } from 'js-yaml';
 import { MatIconModule } from '@angular/material/icon';
@@ -73,6 +73,7 @@ export class PipelineComponent {
   resolvedFailure: { [key: string]: string } = {};
   project: IProjectInfo | undefined;
   taskAgentClient!: TaskAgentRestClient;
+  stringParaControl: { [key: string]: FormControl } = {};
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
   @ViewChild(MatExpansionPanel) branchSelect!: MatExpansionPanel;
@@ -212,7 +213,12 @@ export class PipelineComponent {
       });
     }
 
+    this.stringParaControl = {};
     this.parameters?.forEach(p => {
+      if (p.type == 'string') {
+        this.stringParaControl[p.name] = new FormControl(this.selectedPipeline!.configurations.parameterValues[p.name] ?? p.default, [Validators.required]);
+      }
+
       if (this.selectedPipeline!.configurations.parameterValues[p.name] == undefined) {
         this.selectedPipeline!.configurations.parameterValues[p.name] = p.default;
       }
