@@ -158,7 +158,7 @@ export class PipelineComponent {
       const response: any = await firstValueFrom(this.httpClient.get(`${this.projectPath}/_apis/build/definitions/${pipelineDef.id}`, this.getRequestOptions()));
       pipelineDef.defaultBranch = response.repository.defaultBranch.replace('refs/heads/', '');
       pipelineDef.repositoryId = response.repository.id;
-      pipelineDef.repositoryProject = new URL(response.repository.url).pathname.split('/')[2];
+      pipelineDef.repositoryProject = new URL(response.repository.url).pathname.split('/')[1];
       pipelineDef.defaultBranch = response.repository.defaultBranch.replace('refs/heads/', '');
       pipelineDef.projectId = response.project.id;
       pipelineDef.yamlFilename = response.process.yamlFilename;
