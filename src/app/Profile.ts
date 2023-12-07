@@ -279,7 +279,7 @@ export class ProfilePipeline {
                 pipelines: pipelineResource
             },
             stagesToSkip: payloadRequest.previewRun ? [] : Object.keys(this.configurations.stagesToSkip).filter(stg => this.configurations.stagesToSkip[stg]),
-            templateParameters: this.configurations.parameterValues,
+            templateParameters: payloadRequest.defaultResources ? {} : this.configurations.parameterValues,
             variables: {
                 ...this.configurations.variables.reduce((pv, cv) => ({ ...pv, [cv.name]: { value: cv.value, isSecret: false } }), {}),
                 ...(this.configurations.enableDiag ? {
