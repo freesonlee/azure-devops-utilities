@@ -74,7 +74,8 @@
 
             <mat-form-field *ngIf="para.type=='string'&&!para.values">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <input type="text" matInput [(ngModel)]="selectedPipeline!.configurations.parameterValues[para.name]">
+              <input type="text" matInput [(ngModel)]="selectedPipeline!.configurations.parameterValues[para.name]" [formControl]="stringParaControl[para.name]">
+                <mat-error *ngIf="stringParaControl[para.name].hasError('required')">Email is <strong>required</strong></mat-error>
             </mat-form-field>
 
             <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
