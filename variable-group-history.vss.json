@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "ads-var-history",
     "publisher": "FreesonLi",
-    "version": "1.0.12",
+    "version": "1.0.14",
     "name": "Variable Group History",
     "description": "History support for variable groups",
     "public": true,

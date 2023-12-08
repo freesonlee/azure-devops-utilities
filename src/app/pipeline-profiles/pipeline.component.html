@@ -233,6 +233,7 @@
           <button mat-raised-button (click)="this.selectedPipeline!.addNewVariable();variableTable.renderRows()">Add Variable</button>
           <button mat-raised-button [disabled]="!canSave()" (click)="runPipeline(selectedPipeline, true)">Run</button>
           <button mat-raised-button (click)="deletePipeline()" color="warn">Delete</button>
+          &nbsp;&nbsp;<a href="https://github.com/freesonlee/azure-devops-utilities/issues/new" target="_blank">Report Issue</a>
       </mat-drawer-content>
   
     </mat-drawer-container>
