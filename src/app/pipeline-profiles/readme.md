@@ -15,6 +15,7 @@ A pipeline profile that you can save pipeline start up variables, parameters, re
 ![Stages](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/stages.png?raw=true)
 
 ### Select Resources
+![Resources](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/pipeline-resources.png?raw=true)
 
 Use these below format to have pipeline run using build that you want:
 
