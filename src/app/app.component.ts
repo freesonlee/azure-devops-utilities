@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild } from '@angular/core';
-import { Observable, delay, first, firstValueFrom } from 'rxjs';
+import { Observable, concatAll, delay, first, firstValueFrom, iif, map, of } from 'rxjs';
 import { ListResponse, Server, Variable, VariableData, VariableGroup } from './Models';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatTable } from '@angular/material/table';
 import { SettingsComponent } from './settings.component';
-import { CommentComponent } from './comment.component';
+import { CommentComponent, DialogData } from './comment.component';
 import { PipelineComponent } from './pipeline.component';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 
@@ -140,6 +140,10 @@ export class AppComponent {
     this.hasChange = true;
   }
 
+  getVariableGroupHistoryUrl(grp: VariableGroup) {
+    return `${this.server?.host}/_git/${this.server?.repository}?path=${encodeURIComponent(this.server!.filePath)}${encodeURIComponent(grp.name)}.json&version=GB${this.server?.branch}&_a=history`;
+  }
+
   async loadVariable(grp: VariableGroup) {
     this.variableGroup = grp;
 
@@ -247,7 +251,32 @@ export class AppComponent {
     }
 
     this.dialog.open(CommentComponent, {
-      data: ''
+      data: {
+        comment: '',
+        requestWorkItemList: (input: string) => {
+
+          return this.httpClient.post(`${this.server!.host}/_apis/wit/wiql?api-version=6.0`, {
+            query: "SELECT [System.Id] FROM WorkItems WHERE (([System.AuthorizedAs] = @me AND [System.AuthorizedDate] >= @today - 30) OR ([System.CreatedBy] = @me AND [System.CreatedDate] >= @today - 30) OR ([System.AssignedTo] = @me AND [System.AuthorizedDate] >= @today - 30) ) AND NOT ([System.WorkItemType] = 'Bug' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Code Review Request' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Code Review Response' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Epic' AND [System.State] IN ('Closed','Removed')) AND NOT ([System.WorkItemType] = 'Feature' AND [System.State] IN ('Closed','Removed')) AND NOT ([System.WorkItemType] = 'Feedback Request' AND [System.State] IN ('Closed','Removed')) AND NOT ([System.WorkItemType] = 'Feedback Response' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Shared Steps' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Task' AND [System.State] IN ('Closed','Removed')) AND NOT ([System.WorkItemType] = 'Test Case' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Test Plan' AND [System.State] IN ('Inactive')) AND NOT ([System.WorkItemType] = 'Test Suite' AND [System.State] IN ('Completed')) AND NOT ([System.WorkItemType] = 'User Story' AND [System.State] IN ('Closed','Removed')) AND NOT ([System.WorkItemType] = 'Issue' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Shared Parameter' AND [System.State] IN ('Inactive')) AND NOT ([System.WorkItemType] = 'Production Issue' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Tech Task' AND [System.State] IN ('Closed','Rejected')) AND NOT ([System.WorkItemType] = 'Root Cause Analysis' AND [System.State] IN ('Closed')) AND NOT ([System.WorkItemType] = 'Service Request' AND [System.State] IN ('Closed')) ORDER BY [System.AuthorizedDate] DESC"
+          }, this.getRequestOptions())
+            .pipe(map((resp: any) => resp.workItems.map((wi: any) => ({
+              id: wi.id
+            }))),
+              map((wi: any) => {
+                return this.httpClient.get(`${this.server!.host}/_apis/wit/workitems?ids=${wi.map((_: any) => _.id).join(',')}`, this.getRequestOptions());
+              }),
+              concatAll(),
+              map((final: any) => {
+                return final.value.map((r: any) => {
+                  return {
+                    id: r.id,
+                    desc: r.fields['System.Title'],
+                    rev: r.rev
+                  }
+                })
+              })
+            )
+        }
+      }
     }).afterClosed().subscribe(result => {
 
       if (result === undefined)
@@ -259,7 +288,7 @@ export class AppComponent {
 
   }
 
-  async save(comment: string) {
+  async save(data: DialogData) {
 
     const payloads = this.generateUpdatePayload();
 
@@ -278,7 +307,7 @@ export class AppComponent {
 
     const commitPayload = {
       commits: [{
-        comment: comment ?? "No comment provided",
+        comment: data.comment ?? "No comment provided",
         changes: payloads.map(p => ({
           changeType: fileItems.treeEntries.findIndex((f: any) => `/${f.relativePath}` == `${path}${p.name}.json`) >= 0 ? 2 : 1,
           item: {
@@ -296,10 +325,44 @@ export class AppComponent {
       }]
     }
 
-    await firstValueFrom(this.httpClient.post(
+    const commitResp: any = await firstValueFrom(this.httpClient.post(
       `${this.server!.host}/_apis/git/repositories/${this.server!.repository}/pushes?api-version=5.0`,
       commitPayload,
       this.getRequestOptions()))
+
+    if (data.selectedWorkItemId) {
+
+      const commitUrl = new URL(commitResp.commits[0].url);
+      const [, projectid, , , , repoid, , commitid] = commitUrl.pathname.split('/');
+      const gitUrl = `vstfs:///Git/Commit/${projectid}/${repoid}/${commitid}`
+
+      const wiUpdateResp = await firstValueFrom(this.httpClient.patch(
+        `${this.server!.host}/_apis/wit/workItems/${data.selectedWorkItemId}?api-version=5.0`,
+        [{
+          op: "test",
+          path: "/rev",
+          value: data.rev
+        },
+
+        {
+          op: "add",
+          path: "/relations/-",
+          value: {
+            rel: "ArtifactLink",
+            url: gitUrl,
+            attributes: {
+              name: "Fixed in Commit"
+            }
+          }
+        }],
+        {
+          headers: {
+            ...this.getRequestOptions().headers,
+            "Content-Type": "application/json-patch+json"
+          }
+        }
+      ))
+    }
 
     const requests = payloads.map(payload => {
 
