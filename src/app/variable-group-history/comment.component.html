@@ -1,9 +1,30 @@
 <div class="container">
-    <mat-form-field class="commentsEditor">
-     
-      <textarea matInput [(ngModel)]="comment" rows="10" cdkFocusInitial></textarea>
-      
-    </mat-form-field>
-    <button mat-raised-button [mat-dialog-close]="comment" >Save</button>
+  <mat-form-field class="commentsEditor">
+   
+    <textarea matInput [(ngModel)]="initValues.comment" rows="10" cdkFocusInitial></textarea>
+    
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Work Item</mat-label>
+      <input type="text"
+      matInput
+      [formControl]="workItemsControl"
+      [matAutocomplete]="auto">
+    <mat-autocomplete #auto="matAutocomplete" (optionSelected)="workItemSelected($event.option);">
+      <mat-option *ngFor="let wi of filteredWorkItems | async" [value]="wi.id + ' ' + wi.desc" [id]="wi.id + '/' + wi.rev" >
+        {{wi.id}} {{wi.desc}}
+      </mat-option>
+    </mat-autocomplete>
+    <button *ngIf="initValues.selectedWorkItemId" matSuffix mat-icon-button aria-label="Clear" (click)="workItemsControl.setValue('');workItemSelected(null)">
+      <mat-icon>close</mat-icon>
+    </button>
+  </mat-form-field>
+  
+  <div>
+    <button mat-raised-button [mat-dialog-close]="initValues" >Save</button>
     <button mat-raised-button (click)="dialogRef.close()">Cancel</button>
   </div>
+
+  
+</div>

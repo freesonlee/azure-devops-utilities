@@ -2,13 +2,14 @@
     "manifestVersion": 1,
     "id": "ads-var-history",
     "publisher": "FreesonLi",
-    "version": "1.0.14",
+    "version": "1.0.16",
     "name": "Variable Group History",
     "description": "History support for variable groups",
     "public": true,
     "scopes": [
         "vso.variablegroups_manage",
-        "vso.code_write"
+        "vso.code_write",
+        "vso.work_write"
     ],
     "icons": {
         "default": "images/variablehistory.png"

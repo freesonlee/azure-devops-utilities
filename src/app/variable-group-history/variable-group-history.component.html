@@ -27,6 +27,7 @@
     <button mat-raised-button (click)="newVariable()" *ngIf="variableGroup">Add Variable</button>
     <button mat-raised-button (click)="cloneGroup()" *ngIf="variableGroup">Clone group</button>
     <button mat-raised-button color="warn" (click)="deleteGroup()" *ngIf="variableGroup && false">Delete Group</button>
+    &nbsp;&nbsp;<a href="{{getVariableGroupHistoryUrl(variableGroup)}}" target="_blank" *ngIf="variableGroup">History</a>
   </div>
     <table mat-table [dataSource]="variables" multiTemplateDataRows>
 
