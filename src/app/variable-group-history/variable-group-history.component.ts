@@ -333,7 +333,7 @@ export class VariableGroupHistoryComponent {
 
       const commitUrl = new URL(commitResp.commits[0].url);
       const [, projectid, , , , repoid, , commitid] = commitUrl.pathname.split('/');
-      const gitUrl = `vstfs:///Git/Commit/${projectid}/${repoid}/${commitid}`
+      const gitUrl = `vstfs:///Git/Commit/${projectid}%2F${repoid}%2F${commitid}`
 
       const wiUpdateResp = await firstValueFrom(this.httpClient.patch(
         `${this.projectPath}/_apis/wit/workItems/${data.selectedWorkItemId}?api-version=5.0`,
