@@ -12,7 +12,7 @@
         [formControl]="workItemsControl"
         [matAutocomplete]="auto">
       <mat-autocomplete #auto="matAutocomplete" (optionSelected)="workItemSelected($event.option);">
-        <mat-option *ngFor="let wi of filteredWorkItems | async" [value]="wi.id + ' ' + wi.desc" [id]="wi.id + '/' + wi.rev" >
+        <mat-option *ngFor="let wi of filteredWorkItems | async; track wi" [value]="wi.id + ' ' + wi.desc" [id]="wi.id + '/' + wi.rev" >
           {{wi.id}} {{wi.desc}}
         </mat-option>
       </mat-autocomplete>
