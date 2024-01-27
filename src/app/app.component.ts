@@ -256,12 +256,15 @@ export class AppComponent {
         comment: '',
         requestWorkItemList: (input: string) => {
 
-          return this.httpClient.post(`${this.server!.host}/_apis/wit/wiql?api-version=6.0`, {
+          return firstValueFrom(this.httpClient.post(`${this.server!.host}/_apis/wit/wiql?api-version=6.0`, {
             query: generateQuery(input)}, this.getRequestOptions())
             .pipe(map((resp: any) => resp.workItems.map((wi: any) => ({
               id: wi.id
             }))),
               map((wi: any) => {
+                if( wi.length == 0 ) {
+                  return of({value:[]});
+                }
                 return this.httpClient.get(`${this.server!.host}/_apis/wit/workitems?ids=${wi.map((_: any) => _.id).join(',')}`, this.getRequestOptions());
               }),
               concatAll(),
@@ -275,6 +278,7 @@ export class AppComponent {
                 })
               })
             )
+          )
         }
       }
     }).afterClosed().subscribe(result => {

@@ -12,9 +12,11 @@
         [formControl]="workItemsControl"
         [matAutocomplete]="auto">
       <mat-autocomplete #auto="matAutocomplete" (optionSelected)="workItemSelected($event.option);">
-        <mat-option *ngFor="let wi of filteredWorkItems | async; track wi" [value]="wi.id + ' ' + wi.desc" [id]="wi.id + '/' + wi.rev" >
+        @for ( wi of filteredWorkItems | async; track wi) {
+        <mat-option [value]="wi.id + ' ' + wi.desc" [id]="wi.id + '/' + wi.rev" >
           {{wi.id}} {{wi.desc}}
         </mat-option>
+      }
       </mat-autocomplete>
       <button *ngIf="initValues.selectedWorkItemId" matSuffix mat-icon-button aria-label="Clear" (click)="workItemsControl.setValue('');workItemSelected(null)">
         <mat-icon>close</mat-icon>

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Inject, Output } from '@angular/core';
+import { Component, EventEmitter, Inject, OnInit, Output } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
-import { Observable, concatAll, map, startWith } from 'rxjs';
+import { Observable, concatAll, concatMap, map, startWith } from 'rxjs';
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { MatOption } from '@angular/material/core';
@@ -47,7 +47,7 @@ export type DialogData = {
         NgIf
     ]
 })
-export class CommentComponent {
+export class CommentComponent implements OnInit {
     workItemsControl = new FormControl('');
     filteredWorkItems?: Observable<WorkItem[]>;
 
@@ -56,17 +56,11 @@ export class CommentComponent {
         public initValues: DialogData) {
 
     }
-    async ngOnInit() {
+    ngOnInit() {
 
         this.filteredWorkItems = this.workItemsControl.valueChanges.pipe(
             startWith(''),
-            map((txt) => {
-                const args: RequestWorkItemListArgs = {
-                    input: txt
-                };
-                return this.initValues.requestWorkItemList(txt);
-            }),
-            concatAll()
+            concatMap( (search) => this.initValues.requestWorkItemList(search) )
         );
     }
     async workItemSelected(selectedOption: MatOption | null) {

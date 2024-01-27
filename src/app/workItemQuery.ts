@@ -1,10 +1,24 @@
 export function generateQuery(search: string): string {
-  const filter = search
-    ? ` AND ([System.Id] = ${search} OR [System.Title] CONTAINS WORDS '${search.replaceAll(
-        "'",
-        "''"
-      )}')`
-    : '';
+    let filter = '';
+    if(search) {
+        try {
+            const searchID = parseInt(search);
+            if( searchID) {
+                filter = `[System.Id] = ${searchID}`; 
+            }
+        } finally {
+            if( filter ) {
+                filter += ' OR ';
+            }
+
+            filter += `[System.Title] CONTAINS '${search.replaceAll(
+                "'",
+                "''"
+              )}'`
+        }
+        
+        filter = ` AND (${filter})`;
+    }
 
   return `SELECT [System.Id] FROM WorkItems 
         WHERE (
