@@ -61,10 +61,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "azure-devops-variable-group-editor:build:production"
+              "buildTarget": "azure-devops-variable-group-editor:build:production"
             },
             "development": {
-              "browserTarget": "azure-devops-variable-group-editor:build:development"
+              "buildTarget": "azure-devops-variable-group-editor:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -72,7 +72,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "azure-devops-variable-group-editor:build"
+            "buildTarget": "azure-devops-variable-group-editor:build"
           }
         },
         "test": {
@@ -154,10 +154,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "azure-devops-pipeline-profiles:build:production"
+              "buildTarget": "azure-devops-pipeline-profiles:build:production"
             },
             "development": {
-              "browserTarget": "azure-devops-pipeline-profiles:build:development"
+              "buildTarget": "azure-devops-pipeline-profiles:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -165,7 +165,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "azure-devops-pipeline-profiles:build"
+            "buildTarget": "azure-devops-pipeline-profiles:build"
           }
         },
         "test": {
