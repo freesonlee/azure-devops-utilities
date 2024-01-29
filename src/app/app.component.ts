@@ -336,9 +336,7 @@ export class AppComponent {
 
     if (data.selectedWorkItemId) {
 
-      const commitUrl = new URL(commitResp.commits[0].url);
-      const [, projectid, , , , repoid, , commitid] = commitUrl.pathname.split('/');
-      const gitUrl = `vstfs:///Git/Commit/${projectid}%2F${repoid}%2F${commitid}`
+      const gitUrl = `vstfs:///Git/Commit/${commitResp.repository.project.id}%2F${commitResp.repository.id}%2F${commitResp.commmits[0].commitId}`
 
       const wiUpdateResp = await firstValueFrom(this.httpClient.patch(
         `${this.server!.host}/_apis/wit/workItems/${data.selectedWorkItemId}?api-version=5.0`,
