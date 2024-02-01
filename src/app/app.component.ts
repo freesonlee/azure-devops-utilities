@@ -254,16 +254,17 @@ export class AppComponent {
     this.dialog.open(CommentComponent, {
       data: {
         comment: '',
-        requestWorkItemList: (input: string) => {
+        requestWorkItemList: (workItemId?: number) => {
 
-          return firstValueFrom(this.httpClient.post(`${this.server!.host}/_apis/wit/wiql?api-version=6.0`, {
-            query: generateQuery(input)}, this.getRequestOptions())
+          return this.httpClient.post(`${this.server!.host}/_apis/wit/wiql?api-version=6.0`, {
+            query: generateQuery(workItemId)
+          }, this.getRequestOptions())
             .pipe(map((resp: any) => resp.workItems.map((wi: any) => ({
               id: wi.id
             }))),
               map((wi: any) => {
-                if( wi.length == 0 ) {
-                  return of({value:[]});
+                if (wi.length == 0) {
+                  return of({ value: [] });
                 }
                 return this.httpClient.get(`${this.server!.host}/_apis/wit/workitems?ids=${wi.map((_: any) => _.id).join(',')}`, this.getRequestOptions());
               }),
@@ -278,7 +279,6 @@ export class AppComponent {
                 })
               })
             )
-          )
         }
       }
     }).afterClosed().subscribe(result => {
