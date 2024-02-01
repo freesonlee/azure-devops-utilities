@@ -5,6 +5,7 @@ An alternative UI to update values in Azure DevOps variable groups, which saves 
 The tool saves variable groups value snapshots as json file into a repository. Each variable group will have one json file and you can compare the change history.
 It also let you put short description and long description to variable. They are persisted in the JSON file as well.
 You can also put multi lines value for variable.
+When save changes to variable groups, you can associate commits to a work item.
 
 > Note: The tool doesn't save value of secret variables.
 
