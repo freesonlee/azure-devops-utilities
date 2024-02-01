@@ -35,10 +35,10 @@ jobs:
           container_name: "$web"
           source_dir: dist/azure-devops-variable-group-editor/
           sync: true
-      - name: Azure service principal login
+      - name: Azure service principal login ${{vars.TEST}}
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ vars.TEST }}
       - name: Purge Azure CDN
         uses: svanboxel/azure-purge-cdn@main
         with:
