@@ -1,23 +1,6 @@
-export function generateQuery(search: string): string {
-    let filter = '';
-    if(search) {
-        try {
-            const searchID = parseInt(search);
-            if( searchID) {
-                filter = `[System.Id] = ${searchID}`; 
-            }
-        } finally {
-            if( filter ) {
-                filter += ' OR ';
-            }
-
-            filter += `[System.Title] CONTAINS '${search.replaceAll(
-                "'",
-                "''"
-              )}'`
-        }
-        
-        filter = ` AND (${filter})`;
+export function generateQuery(workItemId?: number): string {
+    if(workItemId) {
+        return `SELECT [System.Id] FROM WorkItems WHERE [System.Id] = ${workItemId}`
     }
 
   return `SELECT [System.Id] FROM WorkItems 
@@ -44,7 +27,6 @@ export function generateQuery(search: string): string {
         AND NOT ([System.WorkItemType] = 'Tech Task' AND [System.State] IN ('Closed','Rejected')) 
         AND NOT ([System.WorkItemType] = 'Root Cause Analysis' AND [System.State] IN ('Closed')) 
         AND NOT ([System.WorkItemType] = 'Service Request' AND [System.State] IN ('Closed')) 
-        ${filter}
         ORDER BY [System.AuthorizedDate] DESC`
     .replaceAll('\n', '')
     .replaceAll('\r', '');
