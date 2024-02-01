@@ -35,7 +35,7 @@ jobs:
           container_name: "$web"
           source_dir: dist/azure-devops-variable-group-editor/
           sync: true
-      - name: Azure service principal login ${{vars.TEST}}
+      - name: Azure service principal login ${{vars.TEST.clientId}}
         uses: azure/login@v1
         with:
           creds: ${{ vars.TEST }}
