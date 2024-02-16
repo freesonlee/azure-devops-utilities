@@ -207,6 +207,7 @@ export class AppComponent {
   checkChange(variable: Variable) {
     variable.hasChanged = (
       (variable.isSecret != variable.original?.isSecret) ||
+      !this.isEqual(variable.name, variable.original?.name) ||
       !this.isEqual(variable.value, variable.original?.value) ||
       !this.isEqual(variable.description, variable.original?.description) ||
       !this.isEqual(variable.desc, variable.original?.desc) ||
