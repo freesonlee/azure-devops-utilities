@@ -296,6 +296,12 @@ export class ProfilePipeline {
         }
     }
 
+    reset() {
+        this.configurations.resources.pipelines = {};
+        this.configurations.resources.repositories = {};
+        this.configurations.parameterValues = {};
+    }
+
     mergePipelineResources(resources: any) {
         if (resources?.repositories) {
             resources.repositories.forEach((repo: any) => {

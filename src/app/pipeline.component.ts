@@ -122,7 +122,7 @@ export class PipelineComponent {
     this.stages = [];
     this.parameters = [];
     this.selectedPipeline!.configurations.branch = event.option.value;
-    this.loadParameterAndResources(true);
+    this.loadParameterAndResources();
   }
 
   async loadBranches() {
@@ -169,13 +169,20 @@ export class PipelineComponent {
     const pipelineDef = await this.loadBranches();
     this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
     this.stages = [];
-    await this.loadParameterAndResources(true);
+    await this.loadParameterAndResources();
     //this.selectedPipeline!.setParameterSelection(this.parameters);
   }
 
-  async loadParameterAndResources(defaultResources: boolean) {
+  async loadParameterAndResources() {
 
-    const plan = await this.loadStages(defaultResources);
+    let plan = await this.loadStages(false);
+
+    if (!plan) {
+      this._snackBar.open('Reset resources and parameter');
+      this.selectedPipeline?.reset();
+      plan = await this.loadStages(true);
+    }
+
     if (!plan) {
       return;
     }
@@ -330,7 +337,7 @@ export class PipelineComponent {
     this.parameters = [];
     this.isStagePanelOpen = this.isVariablePanelOpen = false;
     const pipelineDef = await this.loadBranches();
-    await this.loadParameterAndResources(true);
+    await this.loadParameterAndResources();
 
     pipeline.loadVariables(pipelineDef.variables!);
     //this.selectedPipeline.setParameterSelection(this.parameters);
