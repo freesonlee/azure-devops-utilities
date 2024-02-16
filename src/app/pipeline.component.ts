@@ -178,7 +178,9 @@ export class PipelineComponent {
     let plan = await this.loadStages(false);
 
     if (!plan) {
-      this._snackBar.open('Reset resources and parameter');
+      this._snackBar.open('Resources and parameters has been reset', undefined, {
+        duration: 5000
+      })
       this.selectedPipeline?.reset();
       plan = await this.loadStages(true);
     }
