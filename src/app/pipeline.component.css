@@ -9,7 +9,7 @@
     width: 100%
   }
   .variableValueCell {
-    width: 80%;
+    width: 100%;
 
     > .mat-mdc-form-field-subscript-wrapper {
       height: 30px;
@@ -35,4 +35,21 @@
       position: absolute;
       left: -3px;
     }
+  }
+  tr.example-detail-row {
+    height: 0;
+  }
+  .example-element-detail {
+    overflow: hidden;
+  }
+  .mloption {
+    width: 250px;
+  
+  }
+  .mloption-item {
+    padding-left: 5px;
+    padding-right: 5px;
+   }
+   .value-multiline-input { 
+    width: 100%
   }

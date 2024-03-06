@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
 import { Observable, first, firstValueFrom, from, map, pipe, startWith } from 'rxjs';
-import { ListResponse, Parameter, Pipeline, Server, Variable, VariableData, VariableGroup } from './Models';
+import { ListResponse, Parameter, Pipeline, PipelineVariable, Server, Variable, VariableData, VariableGroup } from './Models';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatTable, MatTableModule } from '@angular/material/table';
@@ -27,12 +27,21 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ClipboardModule } from '@angular/cdk/clipboard';
 import { Clipboard } from '@angular/cdk/clipboard';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { state, style, trigger } from '@angular/animations';
 
 @Component({
   selector: 'pipeline-list',
   templateUrl: './pipeline.component.html',
   styleUrls: ['./pipeline.component.css'],
   standalone: true,
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed', style({ height: '0px', minHeight: '0' })),
+      state('expanded', style({ height: '*' })),
+
+    ]),
+  ],
   imports: [
     MatButtonModule,
     MatFormFieldModule,
@@ -54,7 +63,8 @@ import { Clipboard } from '@angular/cdk/clipboard';
     MatSnackBarModule,
     MatProgressBarModule,
     MatTooltipModule,
-    ClipboardModule
+    ClipboardModule,
+    BrowserAnimationsModule
   ]
 })
 export class PipelineComponent {
@@ -74,6 +84,7 @@ export class PipelineComponent {
   loadingStages = false;
   resolvedFailure: { [key: string]: string } = {};
   stringParaControl: { [key: string]: FormControl } = {};
+  expandedVariable?: PipelineVariable;
 
   @Input() server!: Server;
 
@@ -439,5 +450,22 @@ export class PipelineComponent {
 
   copyBuildId(buildId: number) {
     this.clipboard.copy(buildId.toString());
+  }
+
+  onMultiLineValueChange(variable: Variable, $event: Event) {
+
+    let newValue = ($event.target as HTMLTextAreaElement).value;
+    variable.mlSource = newValue
+    newValue = this.evaluateVariable(variable.mlType, newValue);
+
+    variable.value = newValue;
+  }
+  evaluateVariable(multilineType: string, mlSource: string): any {
+
+    if (multilineType == '>') {
+      return mlSource.replace(/\n/g, ' ');
+    }
+
+    return mlSource;
   }
 }

@@ -104,7 +104,7 @@ export class AppComponent {
 
     }
     this.variableGroups.push((this.variableGroup = {
-      id: 0,
+      id: undefined,
       name: 'New variable group',
       description: '',
       variablesForView: [],
@@ -113,7 +113,7 @@ export class AppComponent {
       desc: '',
       variables: {}
     }));
-    this.variables = [{
+    this.variables = this.variableGroup.variablesForView = [{
       name: "",
       value: "",
       mlType: "|",
@@ -369,10 +369,20 @@ export class AppComponent {
 
     const requests = payloads.map(payload => {
 
-      return firstValueFrom(this.httpClient.put(
-        `${this.server!.host}/_apis/distributedtask/variablegroups/${payload.id}?api-version=5.0-preview.1`,
-        payload,
-        this.getRequestOptions()));
+      if (payload.id) {
+        return firstValueFrom(this.httpClient.put(
+          `${this.server!.host}/_apis/distributedtask/variablegroups/${payload.id}?api-version=5.0-preview.1`,
+          payload,
+          this.getRequestOptions()));
+      } else {
+        return firstValueFrom(this.httpClient.post(
+          `${this.server!.host}/_apis/distributedtask/variablegroups?api-version=5.0-preview.1`,
+          payload,
+          this.getRequestOptions())).then((resp: any) => {
+            this.variableGroups.find(g => g.name == resp.name)!.id = resp.id;
+            return resp;
+          });
+      }
     });
 
     await Promise.all(requests);

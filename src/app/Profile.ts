@@ -66,6 +66,8 @@ export class ProfilePipeline {
         variables: (PipelineVariable & {
             nameExists?: boolean
             factoryValue?: string
+            mlType?: string
+            mlSource?: string
         })[]
         stagesToSkip: {
             [stage: string]: boolean
@@ -173,7 +175,9 @@ export class ProfilePipeline {
         this.configurations.variables.push({
             allowOverride: true,
             name: '',
-            value: ''
+            value: '',
+            mlSource: '',
+            mlType: '>'
         })
     }
 

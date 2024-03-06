@@ -8,7 +8,7 @@ export type VariableGroup = VariableGroupData & {
 }
 
 export type VariableGroupData = {
-    id: number
+    id?: number
     name: string
     description: string
     desc: string
