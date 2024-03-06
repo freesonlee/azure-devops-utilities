@@ -190,11 +190,10 @@ export class VariableGroupHistoryComponent {
   }
 
   getVariableGroupHistoryUrl(grp: VariableGroup) {
-    return `${this.projectPath}/_git/${
-      this.settings.repository
-    }?path=${encodeURIComponent(this.settings!.path)}${encodeURIComponent(
-      grp.name
-    )}.json&version=GB${this.settings?.branch}&_a=history`;
+    return `${this.projectPath}/_git/${this.settings.repository
+      }?path=${encodeURIComponent(this.settings!.path)}${encodeURIComponent(
+        grp.name
+      )}.json&version=GB${this.settings?.branch}&_a=history`;
   }
 
   async loadVariable(grp: VariableGroup) {
@@ -229,7 +228,7 @@ export class VariableGroupHistoryComponent {
           snapshot.variables[v.name]?.description ?? '';
         v.desc = v.original!.desc = snapshot.variables[v.name]?.desc ?? '';
       });
-    } catch (e) {}
+    } catch (e) { }
   }
 
   isEqual(
@@ -243,6 +242,7 @@ export class VariableGroupHistoryComponent {
   checkChange(variable: Variable) {
     variable.hasChanged =
       variable.isSecret != variable.original?.isSecret ||
+      !this.isEqual(variable.name, variable.original?.name) ||
       !this.isEqual(variable.value, variable.original?.value) ||
       !this.isEqual(variable.description, variable.original?.description) ||
       !this.isEqual(variable.desc, variable.original?.desc) ||
@@ -347,8 +347,7 @@ export class VariableGroupHistoryComponent {
 
     const currentLastCommit: any = await firstValueFrom(
       this.httpClient.get(
-        `${this.projectPath}/_apis/git/repositories/${
-          this.settings!.repository
+        `${this.projectPath}/_apis/git/repositories/${this.settings!.repository
         }/items?versionDescriptor.version=${this.settings!.branch}`,
         this.getRequestOptions()
       )
@@ -361,8 +360,7 @@ export class VariableGroupHistoryComponent {
 
     const fileItems: any = await firstValueFrom(
       this.httpClient.get(
-        `${this.projectPath}/_apis/git/repositories/${
-          this.settings!.repository
+        `${this.projectPath}/_apis/git/repositories/${this.settings!.repository
         }/trees/${currentLastCommit.value[0].objectId}?recursive=true`,
         this.getRequestOptions()
       )
@@ -399,8 +397,7 @@ export class VariableGroupHistoryComponent {
 
     const commitResp: any = await firstValueFrom(
       this.httpClient.post(
-        `${this.projectPath}/_apis/git/repositories/${
-          this.settings!.repository
+        `${this.projectPath}/_apis/git/repositories/${this.settings!.repository
         }/pushes?api-version=5.0`,
         commitPayload,
         this.getRequestOptions()
@@ -516,7 +513,7 @@ export class VariableGroupHistoryComponent {
     this.table.renderRows();
   }
 
-  async deleteGroup() {}
+  async deleteGroup() { }
 
   deleteVariable(variable: Variable) {
     if (variable.original) {
