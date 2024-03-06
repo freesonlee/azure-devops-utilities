@@ -25,13 +25,22 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import * as SDK from 'azure-devops-extension-sdk';
 import { IProjectPageService, CommonServiceIds, getClient, ILocationService, IProjectInfo, IExtensionDataService, IExtensionDataManager } from 'azure-devops-extension-api';
 import { TaskAgentRestClient } from 'azure-devops-extension-api/TaskAgent';
-import { ListResponse, Variable } from '../variable-group-history/Models';
+import { ListResponse, Variable, PipelineVariable, Server } from '../variable-group-history/Models';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { state, style, trigger } from '@angular/animations';
 
 @Component({
   selector: 'pipeline-list',
   templateUrl: './pipeline.component.html',
   styleUrls: ['./pipeline.component.css'],
   standalone: true,
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed', style({ height: '0px', minHeight: '0' })),
+      state('expanded', style({ height: '*' })),
+
+    ]),
+  ],
   imports: [
     MatButtonModule,
     MatFormFieldModule,
@@ -53,7 +62,8 @@ import { ListResponse, Variable } from '../variable-group-history/Models';
     MatSnackBarModule,
     MatProgressBarModule,
     MatTooltipModule,
-    ClipboardModule
+    ClipboardModule,
+    BrowserAnimationsModule
   ]
 })
 export class PipelineComponent {
@@ -74,6 +84,7 @@ export class PipelineComponent {
   project: IProjectInfo | undefined;
   taskAgentClient!: TaskAgentRestClient;
   stringParaControl: { [key: string]: FormControl } = {};
+  expandedVariable?: PipelineVariable;
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
   @ViewChild(MatExpansionPanel) branchSelect!: MatExpansionPanel;
@@ -455,5 +466,22 @@ export class PipelineComponent {
 
   copyBuildId(buildId: number) {
     this.clipboard.copy(buildId.toString());
+  }
+
+  onMultiLineValueChange(variable: Variable, $event: Event) {
+
+    let newValue = ($event.target as HTMLTextAreaElement).value;
+    variable.mlSource = newValue
+    newValue = this.evaluateVariable(variable.mlType, newValue);
+
+    variable.value = newValue;
+  }
+  evaluateVariable(multilineType: string, mlSource: string): any {
+
+    if (multilineType == '>') {
+      return mlSource.replace(/\n/g, ' ');
+    }
+
+    return mlSource;
   }
 }

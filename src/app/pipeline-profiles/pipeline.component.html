@@ -109,11 +109,11 @@
               No variable defined for this pipeline
             </mat-label>
 
-            <table mat-table [dataSource]="this.selectedPipeline!.configurations.variables" #variableTable>
+            <table mat-table [dataSource]="this.selectedPipeline!.configurations.variables" #variableTable multiTemplateDataRows>
 
               <ng-container matColumnDef="name">
                 <td mat-cell *matCellDef="let variable" width="30%">
-                  <mat-form-field class="variableNameInput" class="variableNameCell">
+                  <mat-form-field class="variableNameInput variableNameCell">
                     <input type="text" matInput  [(ngModel)]="variable.name" spellcheck="false" (change)="variable.nameExists=this.selectedPipeline!.checkVariableName(variable)">
                   </mat-form-field>
                   <mat-error *ngIf="variable.nameExists">
@@ -136,13 +136,40 @@
         
               <ng-container matColumnDef="value">
                 <td mat-cell *matCellDef="let variable" width="60%">
-                  <mat-form-field class="variableValueInput" class="variableValueCell">
+                  <mat-form-field class="variableValueInput variableValueCell">
                     <input type="text" matInput  [(ngModel)]="variable.value" spellcheck="false">
                   </mat-form-field>
                 </td>
               </ng-container>
+
+              <ng-container matColumnDef="expand">
+                <td mat-cell *matCellDef="let variable" width="10px">
+                  <button mat-icon-button aria-label="multiple line" (click)="(expandedVariable = expandedVariable === variable ? null : variable); $event.stopPropagation()">
+                    <mat-icon *ngIf="expandedVariable !== variable">keyboard_arrow_down</mat-icon>
+                    <mat-icon *ngIf="expandedVariable === variable">keyboard_arrow_up</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="multilineValue">
+                <td mat-cell *matCellDef="let variable" [attr.colspan]="3">
+                  <div class="example-element-detail"
+                       [@detailExpand]="variable == expandedVariable ? 'expanded' : 'collapsed'">
         
-            <tr mat-row *matRowDef="let row; columns: ['name','value','action'];" ></tr>
+                      <mat-select hideSingleSelectionIndicator="true" class="mloption" [(value)]="variable.mlType" (valueChange)="variable.value=evaluateVariable(variable.mlType, mlinput.value);">
+                        <mat-option value="|" class="mloption-item">Keep newlines</mat-option>
+                        <mat-option value=">" class="mloption-item">Replace newlines with spaces</mat-option>
+                      </mat-select>
+        
+                    <mat-form-field class="value-multiline-input">
+                      <textarea class="ta-ml-input" matInput cdkTextareaAutosize #mlinput [value]="variable.mlSource" cdkAutosizeMaxRows="5" (input)="onMultiLineValueChange(variable, $event)"></textarea>
+                    </mat-form-field>
+                  </div>
+                </td>
+              </ng-container>
+        
+              <tr mat-row *matRowDef="let row; columns: ['name','value', 'expand', 'action'];" ></tr>
+              <tr mat-row *matRowDef="let row; columns: ['multilineValue']" class="example-detail-row"></tr>
             </table>
           </mat-expansion-panel>
 

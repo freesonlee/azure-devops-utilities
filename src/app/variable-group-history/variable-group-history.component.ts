@@ -151,7 +151,7 @@ export class VariableGroupHistoryComponent {
     }
     this.variableGroups.push(
       (this.variableGroup = {
-        id: 0,
+        id: undefined,
         name: 'New variable group',
         description: '',
         variablesForView: [],
@@ -159,7 +159,7 @@ export class VariableGroupHistoryComponent {
         hasChange: true,
       })
     );
-    this.variables = [
+    this.variables = this.variableGroup.variablesForView = [
       {
         name: '',
         value: '',
