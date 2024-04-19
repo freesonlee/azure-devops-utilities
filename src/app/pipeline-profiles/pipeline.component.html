@@ -73,6 +73,7 @@
             <mat-form-field *ngIf="para.type=='string'&&!para.values">
               <mat-label>{{para.displayName || para.name}}</mat-label>
               <input type="text" matInput [(ngModel)]="selectedPipeline!.configurations.parameterValues[para.name]">
+              <mat-error *ngIf="stringParaControl[para.name].hasError('required')">This is <strong>required</strong></mat-error>
             </mat-form-field>
 
             <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
@@ -89,7 +90,7 @@
 
             <mat-form-field *ngIf="para.type=='string'&&para.values&&para.values.length>5">
               <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-select [value]="para.default||para.values[0]" (selectionChange)="stagePanel.close();stages=[]">
+              <mat-select [value]="selectedPipeline!.configurations.parameterValues[para.name]||para.default||para.values[0]" (valueChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event;stagePanel.close();stages=[]">
                 <mat-option *ngFor="let option of para.values" [value]="option">
                   {{option}}
                 </mat-option>                
@@ -97,6 +98,13 @@
             </mat-form-field>
 
             <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close();stages=[]">{{para.displayName || para.name}}</mat-checkbox>
+
+            @if (para.type == 'object') {
+              <mat-form-field>
+                <mat-label>{{para.displayName || para.name}}</mat-label>
+                <textarea class="ta-ml-input" matInput #objectParameters cdkTextareaAutosize [value]="selectedPipeline!.configurations.parameterValues[para.name]" cdkAutosizeMaxRows="8"></textarea>
+              </mat-form-field>
+            }
 
           </div>
 

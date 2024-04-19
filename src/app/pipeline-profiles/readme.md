@@ -2,6 +2,11 @@
 
 A pipeline profile that you can save pipeline start up variables, parameters, resources into it. Then you can just run from the profile without selecting pipeline variables, parameters, resources every time.
 
+### Recent updates
+
+- Support `object` type parameter value in Pipeline profile
+- Fix value not saved on paramters that has over 5 values, which rendered as a dropdownlist.
+
 ### Set parameters
 
 ![Parameters](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/parameters.png?raw=true)
@@ -15,6 +20,7 @@ A pipeline profile that you can save pipeline start up variables, parameters, re
 ![Stages](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/stages.png?raw=true)
 
 ### Select Resources
+
 ![Resources](https://github.com/freesonlee/azure-devops-utilities/blob/vs-extension/images/pipeline-resources.png?raw=true)
 
 Use these below format to have pipeline run using build that you want:
