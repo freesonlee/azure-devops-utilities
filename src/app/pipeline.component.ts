@@ -16,7 +16,7 @@ import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansi
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
-import { load as yamlLoad } from 'js-yaml';
+import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxChange, MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
@@ -399,6 +399,7 @@ export class PipelineComponent {
     this.loadingStages = false;
     const plan: any = yamlLoad(response.finalYaml);
     this.stages = plan.stages.map((g: any) => ({ stage: g.stage, displayName: g.displayName }));
+    (<any[]>plan.parameters).filter(p => p.type == 'object').forEach(p => p.default = yamlDump(p.default));
     this.selectedPipeline.sanitizeStages(this.stages.map(s => s.stage));
 
     return plan;
