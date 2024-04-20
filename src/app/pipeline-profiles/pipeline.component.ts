@@ -185,7 +185,7 @@ export class PipelineComponent {
         return pipelineDef;
       }
 
-      const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.projectPath}/../${pipelineDef.repositoryProject}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
+      const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.projectPath}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
       pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
 
     }
