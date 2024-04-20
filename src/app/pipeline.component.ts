@@ -469,4 +469,9 @@ export class PipelineComponent {
 
     return mlSource;
   }
+
+  updateObjectParaValue(paraName: string, $event: Event) {
+    let newValue = ($event.target as HTMLTextAreaElement).value;
+    this.selectedPipeline!.configurations.parameterValues[paraName] = newValue;
+  }
 }
