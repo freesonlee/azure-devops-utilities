@@ -2,6 +2,9 @@
   mat-drawer-container {
     height: 95%;
   }
+  mat-form-field {
+    width: 300px;
+  }
   .pipelineList {
     width: 600px
   }
