@@ -102,7 +102,7 @@
             @if (para.type == 'object') {
               <mat-form-field>
                 <mat-label>{{para.displayName || para.name}}</mat-label>
-                <textarea class="ta-ml-input" matInput #objectParameters cdkTextareaAutosize [value]="selectedPipeline!.configurations.parameterValues[para.name]" (input)="updateObjectParaValue(para.name, $event)" cdkAutosizeMaxRows="8"></textarea>
+                <textarea class="ta-ml-input" matInput #objectParameters cdkTextareaAutosize [value]="selectedPipeline!.configurations.parameterValues[para.name]" (input)="updateObjectParaValue(para.name, $event)"></textarea>
               </mat-form-field>
             }
 
