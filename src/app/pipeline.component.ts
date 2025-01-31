@@ -399,7 +399,7 @@ export class PipelineComponent {
     this.loadingStages = false;
     const plan: any = yamlLoad(response.finalYaml);
     this.stages = plan.stages.map((g: any) => ({ stage: g.stage, displayName: g.displayName }));
-    (<any[]>plan.parameters).filter(p => p.type == 'object').forEach(p => p.default = yamlDump(p.default));
+    (<any[]>plan.parameters)?.filter(p => p.type == 'object').forEach(p => p.default = yamlDump(p.default));
     this.selectedPipeline.sanitizeStages(this.stages.map(s => s.stage));
 
     return plan;
