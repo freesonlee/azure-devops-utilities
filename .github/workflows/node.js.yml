@@ -35,7 +35,6 @@ jobs:
           container_name: "$web"
           source_dir: dist/azure-devops-variable-group-editor/
           sync: true
-          overwrite: true
       - name: Azure service principal login
         uses: azure/login@v1
         with:
