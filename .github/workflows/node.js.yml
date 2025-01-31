@@ -28,13 +28,14 @@ jobs:
       - run: npm ci
       - run: npm run build --if-present
       - name: Azure Blob Storage Upload
-        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        uses: bacongobbler/azure-blob-storage-upload@main
         with:
           sas_token: "sp=racwdl&st=2023-09-07T18:20:02Z&se=2025-09-08T02:20:02Z&spr=https&sv=2022-11-02&sr=c&sig=${{secrets.SAS}}"
           account_name: asdfaefasfafasflkj
           container_name: "$web"
           source_dir: dist/azure-devops-variable-group-editor/
           sync: true
+          overwrite: true
       - name: Azure service principal login
         uses: azure/login@v1
         with:
