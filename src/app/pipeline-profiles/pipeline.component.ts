@@ -195,7 +195,7 @@ export class PipelineComponent {
         const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.projectPath}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
         pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
       } else {
-        this._snackBar.open(`Pipeline repository on ${response.repository.type} is not supported yet.`, 'OK');
+        this._snackBar.open(`Pipeline repository on ${response.repository.type} does not supported drop down selection. Please type branch name.`, 'OK');
         this.filteredBranches = from([]);
         return pipelineDef;
       }
