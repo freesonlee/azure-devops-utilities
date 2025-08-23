@@ -152,6 +152,17 @@ export class PipelineComponent {
     this.stages = [];
   }
 
+  branchBlur() {
+    this.branchSelect.close();
+    if (this.selectedPipeline!.configurations.branch != this.branchControl.value) {
+      this.selectedPipeline!.configurations.branch = this.branchControl.value ?? "";
+      this.parameters = [];
+      if (this.selectedPipeline!.configurations.branch) {
+        this.loadParameterAndResources();
+      }
+    }
+  }
+
   branchSelected(event: MatAutocompleteSelectedEvent) {
     //this.profile!.branch = event.option.value;
     this.branchSelect.close();
@@ -179,37 +190,7 @@ export class PipelineComponent {
         pipelineDef.variables = [];
       }
 
-      if (response.repository.type === 'GitHub') {
-
-        let bodyContent = {
-          "contributionIds": [
-            "ms.vss-build-web.git-branch-data-provider"
-          ],
-          "dataProviderContext": {
-            "properties": {
-              "connectionId": response.repository.properties.connectedServiceId,
-              "sourceProvider": "GitHub",
-              "repository": "freesonlee/ts-transform-graphql",
-              "sourcePage": {
-                "url": response.url,
-                "routeId": "ms.vss-build-web.pipeline-details-route",
-                "routeValues": {
-                  "project": response.project.name,
-                  "viewname": "details",
-                  "controller": "ContributedPage",
-                  "action": "Execute"
-                }
-              }
-            }
-          }
-        };
-
-        let branchResponse: any = await firstValueFrom(this.httpClient.post(`https://dev.azure.com/FreesonLee/_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`,
-          bodyContent, this.getRequestOptions()));
-
-        pipelineDef.branches = branchResponse["dataProviders"]["ms.vss-build-web.git-branch-data-provider"]["branches"];
-
-      } else if (response.repository.type === 'TfsGit') {
+      if (response.repository.type === 'TfsGit') {
 
         const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.projectPath}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
         pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
