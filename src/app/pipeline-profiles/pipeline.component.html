@@ -57,6 +57,7 @@
             <input type="text"
                    matInput
                    [formControl]="branchControl"
+                   (blur)="branchBlur()"
                    [matAutocomplete]="auto">
             <mat-autocomplete #auto="matAutocomplete" (optionSelected)="branchSelected($event)">
               <mat-option *ngFor="let option of filteredBranches | async" [value]="option">
