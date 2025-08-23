@@ -155,14 +155,46 @@ export class PipelineComponent {
         pipelineDef.variables = [];
       }
 
-      if (response.repository.type !== 'TfsGit') {
+      if (response.repository.type === 'GitHub') {
+
+        let bodyContent = {
+          "contributionIds": [
+            "ms.vss-build-web.git-branch-data-provider"
+          ],
+          "dataProviderContext": {
+            "properties": {
+              "connectionId": response.repository.properties.connectedServiceId,
+              "sourceProvider": "GitHub",
+              "repository": "freesonlee/ts-transform-graphql",
+              "sourcePage": {
+                "url": response.url,
+                "routeId": "ms.vss-build-web.pipeline-details-route",
+                "routeValues": {
+                  "project": response.project.name,
+                  "viewname": "details",
+                  "controller": "ContributedPage",
+                  "action": "Execute"
+                }
+              }
+            }
+          }
+        };
+
+        let branchResponse: any = await firstValueFrom(this.httpClient.post(`https://dev.azure.com/FreesonLee/_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`, bodyContent, {
+          headers: { Authorization: "Bearer " + this.server.pat, Accept: "application/json" }
+        }));
+
+        pipelineDef.branches = branchResponse["dataProviders"]["ms.vss-build-web.git-branch-data-provider"]["branches"];
+
+      } else if (response.repository.type === 'TfsGit') {
+
+        const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
+        pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
+      } else {
         this._snackBar.open(`Pipeline repository on ${response.repository.type} is not supported yet.`, 'OK');
         this.filteredBranches = from([]);
         return pipelineDef;
       }
-
-      const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
-      pipelineDef.branches = refsResponse.value.map((b: any) => b.name.replace('refs/heads/', ''));
 
     }
 

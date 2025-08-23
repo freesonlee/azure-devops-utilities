@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "deploy": "scp -r ./dist/azure-devops-variable-group-editor freeson@10.0.0.97:~/azure-devops-utilities"
   },
   "private": true,
   "dependencies": {
