@@ -165,7 +165,7 @@ export class PipelineComponent {
             "properties": {
               "connectionId": response.repository.properties.connectedServiceId,
               "sourceProvider": "GitHub",
-              "repository": "freesonlee/ts-transform-graphql",
+              "repository": response.repository.id,
               "sourcePage": {
                 "url": response.url,
                 "routeId": "ms.vss-build-web.pipeline-details-route",
@@ -180,9 +180,8 @@ export class PipelineComponent {
           }
         };
 
-        let branchResponse: any = await firstValueFrom(this.httpClient.post(`https://dev.azure.com/FreesonLee/_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`, bodyContent, {
-          headers: { Authorization: "Bearer " + this.server.pat, Accept: "application/json" }
-        }));
+        let branchResponse: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/../_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`,
+          bodyContent, this.getRequestOptions()));
 
         pipelineDef.branches = branchResponse["dataProviders"]["ms.vss-build-web.git-branch-data-provider"]["branches"];
 
