@@ -128,12 +128,10 @@ export class PipelineComponent {
   }
   branchBlur() {
     this.branchSelect.close();
-    if (this.selectedPipeline!.configurations.branch != this.branchControl.value) {
-      this.selectedPipeline!.configurations.branch = this.branchControl.value ?? "";
+    if (this.branchControl.value && this.selectedPipeline!.configurations.branch != this.branchControl.value) {
+      this.selectedPipeline!.configurations.branch = this.branchControl.value;
       this.parameters = [];
-      if (this.selectedPipeline!.configurations.branch) {
-        this.loadParameterAndResources();
-      }
+      this.loadParameterAndResources();
     }
   }
   branchSelected(event: MatAutocompleteSelectedEvent) {
