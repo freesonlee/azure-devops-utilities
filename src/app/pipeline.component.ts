@@ -126,7 +126,16 @@ export class PipelineComponent {
     }
     this.stages = [];
   }
-
+  branchBlur() {
+    this.branchSelect.close();
+    if (this.selectedPipeline!.configurations.branch != this.branchControl.value) {
+      this.selectedPipeline!.configurations.branch = this.branchControl.value ?? "";
+      this.parameters = [];
+      if (this.selectedPipeline!.configurations.branch) {
+        this.loadParameterAndResources();
+      }
+    }
+  }
   branchSelected(event: MatAutocompleteSelectedEvent) {
     //this.profile!.branch = event.option.value;
     this.branchSelect.close();
