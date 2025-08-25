@@ -222,6 +222,39 @@ export class PipelineComponent {
     //this.selectedPipeline!.setParameterSelection(this.parameters);
   }
 
+  async loadParameters() {
+    let bodyContent = {
+        "contributionIds": [
+            "ms.vss-build-web.pipeline-run-parameters-data-provider"
+        ],
+        "dataProviderContext": {
+            "properties": {
+                "pipelineId": this.selectedPipeline.pipelineId,
+                "sourceBranch": "refs/heads/" + this.selectedPipeline!.configurations.branch,
+                "sourceVersion": "",
+                "onlyFetchTemplateParameters": true,
+                "retrieveOptions": 1,
+                "templateParameters": {},
+                "sourcePage": {
+                    "url": `${this.server.host}/_build?definitionId=${this.selectedPipeline.pipelineId}`,
+                    "routeId": "ms.vss-build-web.pipeline-details-route",
+                    "routeValues": {
+                        "project": pipelineDef.projectId,
+                        "viewname": "details",
+                        "controller": "ContributedPage",
+                        "action": "Execute"
+                    }
+                }
+            }
+        }
+    };
+
+    let parametersResponse: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/../_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`,
+      bodyContent, this.getRequestOptions()));
+
+    return parametersResponse["dataProviders"]["ms.vss-build-web.pipeline-run-parameters-data-provider"]["templateParameters"];
+  }
+
   async loadParameterAndResources() {
 
     let plan = await this.loadStages(false);
@@ -231,7 +264,12 @@ export class PipelineComponent {
         duration: 5000
       })
       this.selectedPipeline?.reset();
-      plan = await this.loadStages(true);
+      const defaultParameters = await this.loadParameters();
+      plan = {
+        parameteres: defaultParameters,
+        resources: {}
+      }
+      //plan = await this.loadStages(true);
     }
 
     if (!plan) {
