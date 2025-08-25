@@ -100,6 +100,11 @@
               </mat-select>
             </mat-form-field>
 
+             <mat-form-field *ngIf="para.type=='number'">
+              <mat-label>{{para.displayName || para.name}}</mat-label>
+              <input type="text" matInput [formControl]="stringParaControl[para.name]" type="number">
+            </mat-form-field>
+
             <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close();stages=[]">{{para.displayName || para.name}}</mat-checkbox>
 
             @if (para.type == 'object') {

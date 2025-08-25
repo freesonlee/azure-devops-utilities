@@ -89,7 +89,7 @@ export type PipelineVariable = {
 export type Parameter = {
     name: string
     displayName: string
-    type: 'string' | 'boolean' | 'object'
+    type: 'string' | 'boolean' | 'object' | 'number'
     values?: string[]
     default: boolean | string
 }

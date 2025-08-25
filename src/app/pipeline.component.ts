@@ -229,17 +229,17 @@ export class PipelineComponent {
         ],
         "dataProviderContext": {
             "properties": {
-                "pipelineId": this.selectedPipeline.pipelineId,
+                "pipelineId": this.selectedPipeline!.pipelineId,
                 "sourceBranch": "refs/heads/" + this.selectedPipeline!.configurations.branch,
                 "sourceVersion": "",
                 "onlyFetchTemplateParameters": true,
                 "retrieveOptions": 1,
                 "templateParameters": {},
                 "sourcePage": {
-                    "url": `${this.server.host}/_build?definitionId=${this.selectedPipeline.pipelineId}`,
+                    "url": `${this.server.host}/_build?definitionId=${this.selectedPipeline!.pipelineId}`,
                     "routeId": "ms.vss-build-web.pipeline-details-route",
                     "routeValues": {
-                        "project": pipelineDef.projectId,
+                        "project": this.selectedPipeline?.pipelineDef?.projectId,
                         "viewname": "details",
                         "controller": "ContributedPage",
                         "action": "Execute"
@@ -249,10 +249,22 @@ export class PipelineComponent {
         }
     };
 
-    let parametersResponse: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/../_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`,
+    let parametersResponse: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/../_apis/Contribution/HierarchyQuery/project/${this.selectedPipeline?.pipelineDef?.projectId}?api-version=5.0-preview.1`,
       bodyContent, this.getRequestOptions()));
 
-    return parametersResponse["dataProviders"]["ms.vss-build-web.pipeline-run-parameters-data-provider"]["templateParameters"];
+    const parameters = parametersResponse["dataProviders"]["ms.vss-build-web.pipeline-run-parameters-data-provider"]["templateParameters"] as any[];
+    parameters.forEach( p => {
+      switch(p.type) {
+        case 3: p.type = 'boolean';break;
+        case 4: 
+        case 0:
+        case 5: p.type = 'string'; break;
+        case 2: p.type = 'number'; break;
+        default: console.log(`unknown parameter type ${p.type} for ${p.name}`) ;
+      }
+    });
+
+    return parameters;
   }
 
   async loadParameterAndResources() {
@@ -266,7 +278,7 @@ export class PipelineComponent {
       this.selectedPipeline?.reset();
       const defaultParameters = await this.loadParameters();
       plan = {
-        parameteres: defaultParameters,
+        parameters: defaultParameters,
         resources: {}
       }
       //plan = await this.loadStages(true);
@@ -296,7 +308,7 @@ export class PipelineComponent {
     this.stringParaControl = {};
     this.parameters?.forEach(p => {
 
-      if (p.type == 'string') {
+      if (p.type == 'string' || p.type == 'number') {
         this.stringParaControl[p.name] = new FormControl(this.selectedPipeline!.configurations.parameterValues[p.name] ?? p.default, [Validators.required]);
       }
 
@@ -348,6 +360,7 @@ export class PipelineComponent {
           case 'boolean': return false;
           case 'string': return !p.values && !this.selectedPipeline?.configurations.parameterValues[p.name];
           case 'object': return false;
+          case 'number': return false;
         }
       });
   }
