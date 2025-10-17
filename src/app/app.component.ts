@@ -11,7 +11,7 @@ import { PipelineComponent } from './pipeline.component';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { generateQuery } from './workItemQuery';
 
-type Mode = 'variables' | 'pipelines';
+type Mode = 'variables' | 'pipelines' | 'terraform';
 
 @Component({
   selector: 'app-root',

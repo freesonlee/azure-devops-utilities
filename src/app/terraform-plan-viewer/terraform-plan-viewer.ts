@@ -16,11 +16,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTableDataSource } from '@angular/material/table';
 import { TerraformPlanService } from '../../services/terraform-plan.service';
-import { TerraformPlan, ResourceSummary, ResourceChange } from '../../interfaces/terraform-plan.interface';
+import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
 import * as Diff from 'diff';
 
 @Component({
-  selector: 'app-dashboard',
+  selector: 'app-terraform-plan-viewer',
   standalone: true,
   imports: [
     CommonModule,
@@ -39,15 +39,19 @@ import * as Diff from 'diff';
     MatSidenavModule
   ],
   providers: [TerraformPlanService],
-  templateUrl: './dashboard.html',
-  styleUrl: './dashboard.scss'
+  templateUrl: './terraform-plan-viewer.html',
+  styleUrl: './terraform-plan-viewer.scss'
 })
-export class DashboardComponent implements OnInit {
+export class TerraformPlanViewerComponent implements OnInit {
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
 
   plan: TerraformPlan | null = null;
   resourceSummary: ResourceSummary = { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
   resourcesByType: Map<string, ResourceChange[]> = new Map();
+  resourceTypeGroups: Map<string, ResourceTypeGroup> = new Map();
+  moduleGroups: ModuleGroup[] = [];
+  resourcesByModule: Map<string, Map<string, ResourceChange[]>> = new Map();
+  resourcesByModuleWithIterators: Map<string, Map<string, ResourceTypeGroup>> = new Map();
   allVariables: any[] = [];
   filteredVariables = new MatTableDataSource<any>([]);
   allOutputs: any[] = [];
@@ -118,6 +122,10 @@ export class DashboardComponent implements OnInit {
   private loadPlanData(): void {
     this.resourceSummary = this.terraformService.getResourceSummary();
     this.resourcesByType = this.terraformService.getResourcesByType();
+    this.resourceTypeGroups = this.terraformService.getResourceTypeGroups();
+    this.moduleGroups = this.terraformService.getModuleGroups();
+    this.resourcesByModule = this.terraformService.getResourcesByModule();
+    this.resourcesByModuleWithIterators = this.terraformService.getResourcesByModuleWithIterators();
     this.allVariables = this.terraformService.getAllVariables();
     this.filteredVariables.data = this.allVariables;
     this.allOutputs = this.terraformService.getAllOutputs();
@@ -130,6 +138,8 @@ export class DashboardComponent implements OnInit {
     // Debug logging
     console.log('Resource Summary:', this.resourceSummary);
     console.log('Resources by Type:', this.resourcesByType);
+    console.log('Module Groups:', this.moduleGroups);
+    console.log('Resources by Module:', this.resourcesByModule);
     console.log('Plan loaded:', this.plan);
   }
 
@@ -350,6 +360,22 @@ export class DashboardComponent implements OnInit {
   }
 
   trackByResourceType(index: number, item: any): string {
+    return item.key;
+  }
+
+  trackByResource(index: number, item: ResourceChange): string {
+    return item.address;
+  }
+
+  trackByModuleGroup(index: number, item: ModuleGroup): string {
+    return item.name;
+  }
+
+  trackByIteratorGroup(index: number, item: IteratorGroup): string {
+    return item.base_address;
+  }
+
+  trackByResourceTypeGroup(index: number, item: any): string {
     return item.key;
   }
 
@@ -913,5 +939,101 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  /**
+   * Get filtered module groups based on active resource filter
+   */
+  getFilteredModuleGroups(): any[] {
+    if (!this.activeResourceFilter) {
+      return this.moduleGroups;
+    }
+
+    return this.moduleGroups
+      .map(moduleGroup => {
+        const filteredResources = moduleGroup.resources.filter((resource: ResourceChange) =>
+          this.resourceMatchesAction(resource, this.activeResourceFilter!)
+        );
+
+        return {
+          ...moduleGroup,
+          resources: filteredResources,
+          resource_count: filteredResources.length
+        };
+      })
+      .filter(moduleGroup => moduleGroup.resource_count > 0);
+  }
+
+  /**
+   * Get filtered resources by module with iterator support
+   */
+  getFilteredResourcesByModuleWithIterators(): Map<string, Map<string, any>> {
+    if (!this.activeResourceFilter) {
+      return this.resourcesByModuleWithIterators;
+    }
+
+    const filteredMap = new Map<string, Map<string, any>>();
+
+    for (const [moduleAddress, resourceTypes] of this.resourcesByModuleWithIterators.entries()) {
+      const filteredResourceTypes = new Map<string, any>();
+
+      for (const [type, typeGroup] of resourceTypes.entries()) {
+        // Filter regular resources
+        const filteredRegularResources = typeGroup.resources.filter((resource: ResourceChange) =>
+          this.resourceMatchesAction(resource, this.activeResourceFilter!)
+        );
+
+        // Filter iterator groups
+        const filteredIteratorGroups: IteratorGroup[] = [];
+        if (typeGroup.iterator_groups) {
+          for (const iteratorGroup of typeGroup.iterator_groups) {
+            const filteredIteratorResources = iteratorGroup.resources.filter((resource: ResourceChange) =>
+              this.resourceMatchesAction(resource, this.activeResourceFilter!)
+            );
+
+            if (filteredIteratorResources.length > 0) {
+              filteredIteratorGroups.push({
+                ...iteratorGroup,
+                resources: filteredIteratorResources
+              });
+            }
+          }
+        }
+
+        // If there are filtered resources or iterator groups, include this type
+        if (filteredRegularResources.length > 0 || filteredIteratorGroups.length > 0) {
+          const totalCount = filteredRegularResources.length +
+            filteredIteratorGroups.reduce((sum: number, group: any) => sum + group.resources.length, 0);
+
+          filteredResourceTypes.set(type, {
+            ...typeGroup,
+            display_name: this.getResourceTypeDisplayName(type),
+            resources: filteredRegularResources,
+            iterator_groups: filteredIteratorGroups,
+            total_count: totalCount
+          });
+        }
+      }
+
+      if (filteredResourceTypes.size > 0) {
+        filteredMap.set(moduleAddress, filteredResourceTypes);
+      }
+    }
+
+    return filteredMap;
+  }
+
+  private getModuleDisplayName(modulePath: string): string {
+    if (modulePath === 'root') {
+      return 'Root Module';
+    }
+    return modulePath;
+  }
+
+  private getIteratorBaseAddress(iteratorGroup: IteratorGroup): string {
+    return iteratorGroup.base_address;
+  }
+
+  private getIteratorType(iteratorGroup: IteratorGroup): string {
+    return iteratorGroup.iterator_type;
+  }
 
 }
