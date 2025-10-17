@@ -566,6 +566,67 @@
   }
 }
 
+// Unchanged resource details styling
+.unchanged-resource-details {
+  padding: 20px;
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e0e0e0;
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+
+    h4 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 500;
+    }
+  }
+
+  .info-message {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+
+  .property-list {
+    .property-panel {
+      margin-bottom: 8px;
+
+      .property-title {
+        code {
+          font-family: 'Courier New', monospace;
+          font-size: 13px;
+          color: #1976d2;
+        }
+      }
+
+      .property-description {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .type-badge {
+          font-size: 11px;
+          padding: 2px 8px;
+          border-radius: 12px;
+          background-color: #e3f2fd;
+          color: #1976d2;
+          font-weight: 500;
+        }
+      }
+    }
+  }
+}
+
 // Advanced object diff styles
 .object-diff-container,
 .simple-diff-container {

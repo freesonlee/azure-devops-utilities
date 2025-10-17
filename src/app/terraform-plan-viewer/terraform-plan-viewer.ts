@@ -383,6 +383,10 @@ export class TerraformPlanViewerComponent implements OnInit {
     return item.key;
   }
 
+  trackByFieldKey(index: number, item: any): string {
+    return item.key;
+  }
+
   trackByDiffLine(index: number, item: any): string {
     return `${item.type}-${item.lineNumber}-${item.line}`;
   }
@@ -524,6 +528,25 @@ export class TerraformPlanViewerComponent implements OnInit {
 
   isComplexValue(value: any): boolean {
     return Array.isArray(value) || (typeof value === 'object' && value !== null);
+  }
+
+  getValueType(value: any): string {
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+    if (Array.isArray(value)) {
+      return 'array';
+    }
+    if (typeof value === 'object') {
+      return 'object';
+    }
+    if (typeof value === 'boolean') {
+      return 'boolean';
+    }
+    if (typeof value === 'number') {
+      return 'number';
+    }
+    return 'string';
   }
 
   /**

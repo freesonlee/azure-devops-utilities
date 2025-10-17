@@ -171,50 +171,78 @@
 
                     <!-- Iterator groups -->
                     <div *ngIf="entry.value.iterator_groups.length > 0" class="iterator-groups">
-                      <mat-accordion
-                        *ngFor="let iteratorGroup of entry.value.iterator_groups; trackBy: trackByIteratorGroup"
-                        class="iterator-group-accordion">
-                        <mat-expansion-panel class="iterator-group-panel">
-                          <mat-expansion-panel-header>
-                            <mat-panel-title class="iterator-group-title">
-                              <mat-icon class="iterator-icon">
-                                {{ iteratorGroup.iterator_type === 'count' ? 'format_list_numbered' : 'view_list' }}
-                              </mat-icon>
-                              <code>{{ iteratorGroup.base_address }}</code>
-                            </mat-panel-title>
-                            <mat-panel-description class="iterator-group-description">
-                              {{ iteratorGroup.resources.length }} instances
-                              ({{ iteratorGroup.iterator_type }})
-                            </mat-panel-description>
-                          </mat-expansion-panel-header>
-
-                          <div class="resource-list iterator-resource-list">
-                            <div *ngFor="let resource of iteratorGroup.resources"
-                              class="resource-item iterator-resource-item"
-                              [class.selected]="isResourceSelected(resource)" (click)="selectResource(resource)">
-                              <div class="resource-header">
-                                <div class="resource-address">
-                                  <code>{{ resource.address }}</code>
-                                </div>
-                                <div class="resource-actions">
-                                  <mat-chip *ngFor="let action of resource.change.actions"
-                                    [style.background-color]="getActionColor([action])" [style.color]="'white'"
-                                    class="action-chip">
-                                    <mat-icon [style.font-size]="'14px'">{{
-                                      getActionIcon([action])
-                                    }}</mat-icon>
-                                    {{ action }}
-                                  </mat-chip>
-                                </div>
+                      <ng-container *ngFor="let iteratorGroup of entry.value.iterator_groups; trackBy: trackByIteratorGroup">
+                        <!-- Single instance: show directly without expansion panel -->
+                        <div *ngIf="iteratorGroup.resources.length === 1" class="resource-list">
+                          <div *ngFor="let resource of iteratorGroup.resources"
+                            class="resource-item"
+                            [class.selected]="isResourceSelected(resource)" (click)="selectResource(resource)">
+                            <div class="resource-header">
+                              <div class="resource-address">
+                                <code>{{ resource.address }}</code>
                               </div>
-                              <div class="resource-meta">
-                                <span class="resource-type">{{ resource.type }}</span>
-                                <span class="resource-provider">{{ resource.provider_name }}</span>
+                              <div class="resource-actions">
+                                <mat-chip *ngFor="let action of resource.change.actions"
+                                  [style.background-color]="getActionColor([action])" [style.color]="'white'"
+                                  class="action-chip">
+                                  <mat-icon [style.font-size]="'14px'">{{
+                                    getActionIcon([action])
+                                  }}</mat-icon>
+                                  {{ action }}
+                                </mat-chip>
                               </div>
                             </div>
+                            <div class="resource-meta">
+                              <span class="resource-type">{{ resource.type }}</span>
+                              <span class="resource-provider">{{ resource.provider_name }}</span>
+                            </div>
                           </div>
-                        </mat-expansion-panel>
-                      </mat-accordion>
+                        </div>
+
+                        <!-- Multiple instances: show with expansion panel -->
+                        <mat-accordion *ngIf="iteratorGroup.resources.length > 1" class="iterator-group-accordion">
+                          <mat-expansion-panel class="iterator-group-panel">
+                            <mat-expansion-panel-header>
+                              <mat-panel-title class="iterator-group-title">
+                                <mat-icon class="iterator-icon">
+                                  {{ iteratorGroup.iterator_type === 'count' ? 'format_list_numbered' : 'view_list' }}
+                                </mat-icon>
+                                <code>{{ iteratorGroup.base_address }}</code>
+                              </mat-panel-title>
+                              <mat-panel-description class="iterator-group-description">
+                                {{ iteratorGroup.resources.length }} instances
+                                ({{ iteratorGroup.iterator_type }})
+                              </mat-panel-description>
+                            </mat-expansion-panel-header>
+
+                            <div class="resource-list iterator-resource-list">
+                              <div *ngFor="let resource of iteratorGroup.resources"
+                                class="resource-item iterator-resource-item"
+                                [class.selected]="isResourceSelected(resource)" (click)="selectResource(resource)">
+                                <div class="resource-header">
+                                  <div class="resource-address">
+                                    <code>{{ resource.address }}</code>
+                                  </div>
+                                  <div class="resource-actions">
+                                    <mat-chip *ngFor="let action of resource.change.actions"
+                                      [style.background-color]="getActionColor([action])" [style.color]="'white'"
+                                      class="action-chip">
+                                      <mat-icon [style.font-size]="'14px'">{{
+                                        getActionIcon([action])
+                                      }}</mat-icon>
+                                      {{ action }}
+                                    </mat-chip>
+                                  </div>
+                                </div>
+                                <div class="resource-meta">
+                                  <span class="resource-type">{{ resource.type }}</span>
+                                  <span class="resource-provider">{{ resource.provider_name }}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </mat-expansion-panel>
+                        </mat-accordion>
+                      </ng-container>
                     </div>
                   </mat-expansion-panel>
                 </mat-accordion>
@@ -452,10 +480,40 @@
                   </div>
                 </div>
 
-                <!-- No Changes Message -->
-                <div *ngIf="!hasChanges(selectedResource)" class="no-changes">
-                  <mat-icon>check_circle</mat-icon>
-                  <p>This resource has no changes.</p>
+                <!-- No Changes - Show Current Property Values -->
+                <div *ngIf="!hasChanges(selectedResource)" class="unchanged-resource-details">
+                  <div class="section-header">
+                    <mat-icon color="primary">check_circle</mat-icon>
+                    <h4>Current Resource Properties</h4>
+                  </div>
+                  <p class="info-message">This resource has no planned changes. Showing current state:</p>
+                  
+                  <div class="property-list">
+                    <mat-accordion multi>
+                      <mat-expansion-panel *ngFor="let change of getSortedChangedFields(selectedResource); trackBy: trackByFieldKey"
+                        class="property-panel">
+                        <mat-expansion-panel-header>
+                          <mat-panel-title class="property-title">
+                            <code>{{ change.key }}</code>
+                          </mat-panel-title>
+                          <mat-panel-description class="property-description">
+                            <span class="type-badge">{{ getValueType(change.value.after) }}</span>
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
+
+                        <div class="current-value">
+                          <div class="value-container">
+                            <pre *ngIf="isComplexValue(change.value.after)" class="json-content">{{
+                              formatChangeValue(change.value.after)
+                            }}</pre>
+                            <code *ngIf="!isComplexValue(change.value.after)" class="simple-value">{{
+                              formatChangeValue(change.value.after)
+                            }}</code>
+                          </div>
+                        </div>
+                      </mat-expansion-panel>
+                    </mat-accordion>
+                  </div>
                 </div>
               </div>
             </div>
