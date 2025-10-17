@@ -7,6 +7,7 @@ export interface TerraformPlan {
     root_module?: any;
   };
   resource_changes?: ResourceChange[];
+  resource_drift?: ResourceDrift[];
   output_changes?: { [key: string]: any };
   prior_state?: any;
   configuration?: any;
@@ -31,6 +32,23 @@ export interface ResourceChange {
     before_sensitive?: any;
     after_sensitive?: any;
     replace_paths?: string[][] | null;
+  };
+}
+
+export interface ResourceDrift {
+  address: string;
+  mode: string;
+  type: string;
+  name: string;
+  index?: any;
+  provider_name: string;
+  change: {
+    actions: string[];
+    before: any;
+    after: any;
+    after_unknown?: any;
+    before_sensitive?: any;
+    after_sensitive?: any;
   };
 }
 

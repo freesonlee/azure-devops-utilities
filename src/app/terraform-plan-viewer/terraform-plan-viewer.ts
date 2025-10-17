@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableDataSource } from '@angular/material/table';
 import { TerraformPlanService } from '../../services/terraform-plan.service';
 import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
@@ -38,7 +39,8 @@ import * as Diff from 'diff';
     MatFormFieldModule,
     MatProgressBarModule,
     MatSidenavModule,
-    MatDividerModule
+    MatDividerModule,
+    MatTooltipModule
   ],
   providers: [TerraformPlanService],
   templateUrl: './terraform-plan-viewer.html',
@@ -72,9 +74,15 @@ export class TerraformPlanViewerComponent implements OnInit {
 
   // Cache for change calculations to prevent recalculation during change detection
   private changeFieldsCache = new Map<string, { [key: string]: { before: any, after: any, changed: boolean } }>();
+  private changeFieldsWithDriftCache = new Map<string, { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } }>();
 
   // Selected resource for right panel display
   selectedResource: ResourceChange | null = null;
+
+  // Drag and drop state
+  isDragOver: boolean = false;
+  isToolbarDragOver: boolean = false;
+  isDownloading: boolean = false;
 
   displayedColumnsVariables: string[] = ['key', 'type', 'value'];
   displayedColumnsOutputs: string[] = ['key', 'type', 'sensitive', 'value'];
@@ -82,7 +90,8 @@ export class TerraformPlanViewerComponent implements OnInit {
 
   constructor(
     private terraformService: TerraformPlanService,
-    private http: HttpClient
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
@@ -92,9 +101,6 @@ export class TerraformPlanViewerComponent implements OnInit {
         this.loadPlanData();
       }
     });
-
-    // Load sample data automatically
-    this.loadSampleData();
 
     // Expose test method for debugging (development only)
     if (typeof window !== 'undefined') {
@@ -203,17 +209,266 @@ export class TerraformPlanViewerComponent implements OnInit {
   onFileSelected(event: any): void {
     const file = event.target.files[0];
     if (file) {
+      this.processFile(file).catch(error => {
+        console.error('Error processing file:', error);
+        alert(error instanceof Error ? error.message : 'Failed to process the file.');
+      });
+    }
+  }
+
+  // Drag and Drop Event Handlers
+  onDragEnter(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = true;
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Only set isDragOver to false if we're actually leaving the drop zone
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top || event.clientY > rect.bottom) {
+      this.isDragOver = false;
+    }
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+
+    const items = event.dataTransfer?.items;
+    if (items) {
+      // Check for text/URL first
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (item.kind === 'string' && (item.type === 'text/plain' || item.type === 'text/uri-list')) {
+          item.getAsString((text: string) => {
+            const trimmedText = text.trim();
+            if (this.isValidUrl(trimmedText)) {
+              this.handleUrlDrop(trimmedText);
+            } else {
+              alert('Invalid URL. Please drop a valid HTTP/HTTPS link to a JSON file.');
+            }
+          });
+          return;
+        }
+      }
+    }
+
+    // Fall back to file handling
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      this.processFile(file).catch(error => {
+        console.error('Error processing file:', error);
+        alert(error instanceof Error ? error.message : 'Failed to process the file.');
+      });
+    }
+  }
+
+  // Toolbar Drag and Drop Event Handlers
+  onToolbarDragEnter(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isToolbarDragOver = true;
+  }
+
+  onToolbarDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isToolbarDragOver = true;
+  }
+
+  onToolbarDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Only set isToolbarDragOver to false if we're actually leaving the drop zone
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top || event.clientY > rect.bottom) {
+      this.isToolbarDragOver = false;
+    }
+  }
+
+  onToolbarDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isToolbarDragOver = false;
+
+    const items = event.dataTransfer?.items;
+    if (items) {
+      // Check for text/URL first
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (item.kind === 'string' && (item.type === 'text/plain' || item.type === 'text/uri-list')) {
+          item.getAsString((text: string) => {
+            const trimmedText = text.trim();
+            if (this.isValidUrl(trimmedText)) {
+              this.handleUrlDrop(trimmedText);
+            } else {
+              alert('Invalid URL. Please drop a valid HTTP/HTTPS link to a JSON file.');
+            }
+          });
+          return;
+        }
+      }
+    }
+
+    // Fall back to file handling
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      this.processFile(file).catch(error => {
+        console.error('Error processing file:', error);
+        alert(error instanceof Error ? error.message : 'Failed to process the file.');
+      });
+    }
+  }
+
+  // Common file processing method
+  private async processFile(file: File): Promise<void> {
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      throw new Error('Please select a JSON file.');
+    }
+
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      throw new Error('File size is too large. Please select a file smaller than 50MB.');
+    }
+
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
+
       reader.onload = (e) => {
         try {
           const planData = JSON.parse(e.target?.result as string);
+
+          // Basic validation to ensure it's a Terraform plan
+          if (!planData.format_version && !planData.terraform_version && !planData.resource_changes) {
+            reject(new Error('This doesn\'t appear to be a valid Terraform plan JSON file.'));
+            return;
+          }
+
           this.terraformService.loadPlan(planData);
+          this.cdr.detectChanges(); // Trigger change detection
+          resolve();
         } catch (error) {
           console.error('Error parsing JSON file:', error);
-          alert('Error parsing JSON file. Please check the file format.');
+          reject(new Error('Error parsing JSON file. Please check the file format.'));
         }
       };
+
+      reader.onerror = () => {
+        reject(new Error('Error reading file. Please try again.'));
+      };
+
       reader.readAsText(file);
+    });
+  }
+
+  // URL Detection and Download Methods
+  private isValidUrl(text: string): boolean {
+    try {
+      const url = new URL(text);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  private async downloadFileFromUrl(url: string): Promise<File> {
+    try {
+      // Add CORS handling and timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        mode: 'cors', // Enable CORS
+        headers: {
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+      }
+
+      // Check content length
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) {
+        const sizeInMB = parseInt(contentLength) / (1024 * 1024);
+        if (sizeInMB > 50) {
+          throw new Error(`File too large (${sizeInMB.toFixed(1)}MB). Maximum size is 50MB.`);
+        }
+      }
+
+      const blob = await response.blob();
+
+      // Validate file size after download
+      if (blob.size > 50 * 1024 * 1024) {
+        throw new Error(`File too large (${(blob.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 50MB.`);
+      }
+
+      // Extract filename from URL or use default
+      let filename = 'terraform-plan.json';
+      try {
+        const urlPath = new URL(url).pathname;
+        const extractedFilename = urlPath.split('/').pop();
+        if (extractedFilename && extractedFilename.includes('.')) {
+          filename = extractedFilename;
+        }
+      } catch {
+        // Use default filename if extraction fails
+      }
+
+      // Ensure .json extension
+      if (!filename.endsWith('.json')) {
+        filename += '.json';
+      }
+
+      return new File([blob], filename, { type: 'application/json' });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Download timed out. Please try again or check the URL.');
+      }
+      throw new Error(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleUrlDrop(url: string): Promise<void> {
+    try {
+      // Show loading state
+      this.isDownloading = true;
+      this.cdr.detectChanges(); // Trigger change detection
+      console.log('Downloading file from URL:', url);
+
+      const file = await this.downloadFileFromUrl(url);
+      await this.processFile(file);
+
+    } catch (error) {
+      console.error('Error processing URL:', error);
+      alert(error instanceof Error ? error.message : 'Failed to download and process the file from the URL.');
+    } finally {
+      this.isDownloading = false;
+      this.cdr.detectChanges(); // Trigger change detection
     }
   }
 
@@ -419,6 +674,7 @@ export class TerraformPlanViewerComponent implements OnInit {
   clearExpandedResources(): void {
     // Clear all expanded states and cache when switching data
     this.changeFieldsCache.clear();
+    this.changeFieldsWithDriftCache.clear();
     this.selectedResource = null;
     for (const [type, resources] of this.resourcesByType.entries()) {
       resources.forEach(resource => {
@@ -619,6 +875,182 @@ export class TerraformPlanViewerComponent implements OnInit {
    */
   isObjectValue(value: any): boolean {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  /**
+   * Get object property differences for side-by-side comparison with drift support (Before, Current, After)
+   */
+  getObjectPropertyDifferencesWithDrift(beforeValue: any, currentValue: any, afterValue: any, path: string = ''): Array<{
+    key: string,
+    before: any,
+    current: any,
+    after: any,
+    changed: boolean,
+    hasDrift: boolean,
+    isNested: boolean,
+    depth: number,
+    path: string
+  }> {
+    const differences: Array<{
+      key: string,
+      before: any,
+      current: any,
+      after: any,
+      changed: boolean,
+      hasDrift: boolean,
+      isNested: boolean,
+      depth: number,
+      path: string
+    }> = [];
+
+    // Handle arrays
+    if (Array.isArray(beforeValue) || Array.isArray(currentValue) || Array.isArray(afterValue)) {
+      const beforeArr = Array.isArray(beforeValue) ? beforeValue : [];
+      const currentArr = Array.isArray(currentValue) ? currentValue : [];
+      const afterArr = Array.isArray(afterValue) ? afterValue : [];
+      const maxLength = Math.max(beforeArr.length, currentArr.length, afterArr.length);
+
+      for (let i = 0; i < maxLength; i++) {
+        const beforeItem = beforeArr[i];
+        const currentItem = currentArr[i];
+        const afterItem = afterArr[i];
+        const currentPath = path ? `${path}.${i}` : `${i}`;
+        const depth = path ? path.split('.').length + 1 : 0;
+
+        // Check changes and drift
+        const changed = !this.deepEqual(beforeItem, afterItem);
+        const hasDrift = !this.deepEqual(beforeItem, currentItem);
+
+        // Add the array item difference
+        differences.push({
+          key: `[${i}]`,
+          before: beforeItem,
+          current: currentItem,
+          after: afterItem,
+          changed: changed,
+          hasDrift: hasDrift,
+          isNested: this.isObjectValue(beforeItem) || this.isObjectValue(currentItem) || this.isObjectValue(afterItem) ||
+            Array.isArray(beforeItem) || Array.isArray(currentItem) || Array.isArray(afterItem),
+          depth: depth,
+          path: currentPath
+        });
+
+        // Recursively process nested objects/arrays if they have differences or drift
+        if ((changed || hasDrift) && (this.isObjectValue(beforeItem) || this.isObjectValue(currentItem) || this.isObjectValue(afterItem) ||
+          Array.isArray(beforeItem) || Array.isArray(currentItem) || Array.isArray(afterItem))) {
+          const nestedDifferences = this.getObjectPropertyDifferencesWithDrift(beforeItem, currentItem, afterItem, currentPath);
+          differences.push(...nestedDifferences);
+        }
+      }
+    }
+    // Handle objects
+    else if (this.isObjectValue(beforeValue) || this.isObjectValue(currentValue) || this.isObjectValue(afterValue)) {
+      const beforeObj = this.isObjectValue(beforeValue) ? beforeValue : {};
+      const currentObj = this.isObjectValue(currentValue) ? currentValue : {};
+      const afterObj = this.isObjectValue(afterValue) ? afterValue : {};
+
+      // Get all unique keys from all three objects
+      const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(currentObj), ...Object.keys(afterObj)]);
+
+      allKeys.forEach(key => {
+        const beforeVal = beforeObj[key];
+        const currentVal = currentObj[key];
+        const afterVal = afterObj[key];
+        const currentPath = path ? `${path}.${key}` : key;
+        const depth = path ? path.split('.').length + 1 : 0;
+
+        // Check changes and drift
+        const changed = !this.deepEqual(beforeVal, afterVal);
+        const hasDrift = !this.deepEqual(beforeVal, currentVal);
+
+        // Add the property difference
+        differences.push({
+          key,
+          before: beforeVal,
+          current: currentVal,
+          after: afterVal,
+          changed: changed,
+          hasDrift: hasDrift,
+          isNested: this.isObjectValue(beforeVal) || this.isObjectValue(currentVal) || this.isObjectValue(afterVal) ||
+            Array.isArray(beforeVal) || Array.isArray(currentVal) || Array.isArray(afterVal),
+          depth: depth,
+          path: currentPath
+        });
+
+        // Recursively process nested objects/arrays if they have differences or drift
+        if ((changed || hasDrift) && (this.isObjectValue(beforeVal) || this.isObjectValue(currentVal) || this.isObjectValue(afterVal) ||
+          Array.isArray(beforeVal) || Array.isArray(currentVal) || Array.isArray(afterVal))) {
+          const nestedDifferences = this.getObjectPropertyDifferencesWithDrift(beforeVal, currentVal, afterVal, currentPath);
+          differences.push(...nestedDifferences);
+        }
+      });
+    }
+
+    // Sort by path for hierarchical display
+    differences.sort((a, b) => {
+      // First sort by depth (parent properties first)
+      if (a.depth !== b.depth) {
+        return a.depth - b.depth;
+      }
+      // Then sort by path name for consistent display
+      return a.path.localeCompare(b.path);
+    });
+
+    return differences;
+  }
+
+  /**
+   * Get flattened property differences with drift support (only changed or drifted properties)
+   */
+  getChangedPropertiesFlatWithDrift(beforeValue: any, currentValue: any, afterValue: any): Array<{
+    key: string,
+    before: any,
+    current: any,
+    after: any,
+    changed: boolean,
+    hasDrift: boolean,
+    isNested: boolean,
+    depth: number,
+    path: string
+  }> {
+    const allDifferences = this.getObjectPropertyDifferencesWithDrift(beforeValue, currentValue, afterValue);
+
+    // Filter to only show properties with changes or drift
+    return allDifferences.filter(diff => {
+      if (!diff.changed && !diff.hasDrift) return false;
+
+      // If this is a nested object/array, check if it has any changed or drifted children
+      if (diff.isNested) {
+        const hasChangedOrDriftedChildren = allDifferences.some(childDiff =>
+          (childDiff.changed || childDiff.hasDrift) &&
+          childDiff.path.startsWith(diff.path + '.') &&
+          !childDiff.isNested // Only count leaf nodes as children
+        );
+
+        // Only include nested objects/arrays if they don't have changed/drifted leaf children
+        // (to avoid duplicate display)
+        return !hasChangedOrDriftedChildren;
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Check if we should show object diff with drift (values are objects/arrays and have property differences or drift)
+   */
+  shouldShowObjectDiffWithDrift(beforeValue: any, currentValue: any, afterValue: any): boolean {
+    // Check if any value is an object or array that can be decomposed
+    const beforeIsComplex = this.isObjectValue(beforeValue) || Array.isArray(beforeValue);
+    const currentIsComplex = this.isObjectValue(currentValue) || Array.isArray(currentValue);
+    const afterIsComplex = this.isObjectValue(afterValue) || Array.isArray(afterValue);
+
+    if (!beforeIsComplex && !currentIsComplex && !afterIsComplex) {
+      return false;
+    }
+
+    const differences = this.getObjectPropertyDifferencesWithDrift(beforeValue, currentValue, afterValue);
+    return differences.length > 0;
   }
 
   /**
@@ -832,6 +1264,83 @@ export class TerraformPlanViewerComponent implements OnInit {
   }
 
   // Test method for debugging - can be called from browser console
+  /**
+   * Get the current state (from resource_drift) for a resource if it exists
+   */
+  getResourceDriftState(resourceAddress: string): any | null {
+    return this.terraformService.getResourceDriftState(resourceAddress);
+  }
+
+  /**
+   * Check if a resource has drift data available
+   */
+  hasResourceDrift(resourceAddress: string): boolean {
+    return this.terraformService.hasResourceDrift(resourceAddress);
+  }
+
+  /**
+   * Get changed fields with drift support (Before, Current, After)
+   */
+  getChangedFieldsWithDrift(resource: ResourceChange): { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } } {
+    // Use resource address as cache key
+    const cacheKey = `${resource.address}_with_drift`;
+
+    // Return cached result if available
+    if (this.changeFieldsWithDriftCache.has(cacheKey)) {
+      return this.changeFieldsWithDriftCache.get(cacheKey)!;
+    }
+
+    const changes: { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } } = {};
+    const before = resource.change.before || {};
+    const after = resource.change.after || {};
+    const current = this.getResourceDriftState(resource.address) || before;
+
+    // Get all unique keys from before, current, and after
+    const allKeys = new Set([...Object.keys(before), ...Object.keys(current), ...Object.keys(after)]);
+
+    allKeys.forEach(key => {
+      const beforeValue = before[key];
+      const currentValue = current[key];
+      const afterValue = after[key];
+      const changed = JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
+      const hasDrift = JSON.stringify(beforeValue) !== JSON.stringify(currentValue);
+
+      changes[key] = {
+        before: beforeValue,
+        current: currentValue,
+        after: afterValue,
+        changed: changed,
+        hasDrift: hasDrift
+      };
+    });
+
+    // Cache the result
+    this.changeFieldsWithDriftCache.set(cacheKey, changes);
+    return changes;
+  }
+
+  /**
+   * Get sorted changed fields with drift support
+   */
+  getSortedChangedFieldsWithDrift(resource: ResourceChange): Array<{ key: string, value: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } }> {
+    const changes = this.getChangedFieldsWithDrift(resource);
+
+    // Convert object to array for sorting
+    const changeEntries = Object.entries(changes).map(([key, value]) => ({ key, value }));
+
+    // Sort entries: changed properties first, then drift properties, then unchanged properties
+    changeEntries.sort((a, b) => {
+      if (a.value.changed && !b.value.changed) return -1;
+      if (!a.value.changed && b.value.changed) return 1;
+      if (a.value.hasDrift && !b.value.hasDrift) return -1;
+      if (!a.value.hasDrift && b.value.hasDrift) return 1;
+      // If both have same change/drift status, sort alphabetically by key
+      return a.key.localeCompare(b.key);
+    });
+
+    return changeEntries;
+  }
+
   testRecursiveComparison() {
     const beforeNetworkRules = [
       {

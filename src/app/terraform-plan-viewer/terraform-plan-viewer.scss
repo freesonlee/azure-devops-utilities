@@ -1,5 +1,20 @@
 // Dashboard Component Styles
 
+// Global mat-chip alignment fixes
+::ng-deep {
+  .mat-mdc-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    
+    .mat-icon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      vertical-align: middle !important;
+    }
+  }
+}
+
 .container {
   padding: 20px;
   max-width: 100%;
@@ -60,6 +75,11 @@
   &.delete {
     background-color: #ffebee;
     color: #c62828;
+  }
+
+  &.replace {
+    background-color: #f3e5f5;
+    color: #8e24aa;
   }
 
   &.no-op {
@@ -185,9 +205,16 @@
         height: 20px;
         padding: 0 6px;
         border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
 
         mat-icon {
+          font-size: 11px;
+          width: 11px;
+          height: 11px;
           margin-right: 2px;
+          vertical-align: middle;
         }
       }
     }
@@ -403,6 +430,207 @@
   padding: 20px;
 }
 
+// Drag and Drop Zone Styles
+.drop-zone {
+  border: 2px dashed #e0e0e0;
+  border-radius: 12px;
+  padding: 40px 20px;
+  margin: 24px 0;
+  background-color: #fafafa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  
+  &:hover {
+    border-color: #2196f3;
+    background-color: #f3f8ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+  }
+
+  &.dragover {
+    border-color: #2196f3;
+    background-color: #e3f2fd;
+    border-style: solid;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.3);
+    transform: scale(1.02);
+
+    .drop-zone-content {
+      .drop-icon {
+        color: #2196f3;
+        animation: bounce 1s ease-in-out infinite;
+      }
+
+      .primary-text {
+        color: #1976d2;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+
+    .drop-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: #bdbdbd;
+      transition: all 0.3s ease;
+    }
+
+    .drop-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .primary-text {
+        font-size: 18px;
+        font-weight: 500;
+        color: #424242;
+        transition: all 0.3s ease;
+      }
+
+      .secondary-text {
+        font-size: 14px;
+        color: #757575;
+      }
+    }
+  }
+}
+
+// Bounce animation for drag over state
+@keyframes bounce {
+  0%, 20%, 60%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  80% {
+    transform: translateY(-5px);
+  }
+}
+
+// Welcome card adjustments
+.welcome-card {
+  .mat-mdc-card-content {
+    padding-bottom: 0; // Remove default padding since we have the drop zone
+  }
+
+  .mat-mdc-card-actions {
+    padding-top: 16px;
+    justify-content: center;
+  }
+}
+
+// Loading indicator styles
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 20px;
+  text-align: center;
+
+  mat-progress-bar {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .loading-text {
+    margin: 0;
+    color: #666;
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+// Toolbar Drop Zone Styles
+.toolbar-drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin-left: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 180px;
+  height: 36px;
+  box-sizing: border-box;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  &.dragover {
+    border-color: #fff;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-style: solid;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+    transform: scale(1.05);
+
+    .toolbar-drop-icon {
+      animation: pulse 1s ease-in-out infinite;
+      color: #fff;
+    }
+
+    .toolbar-drop-text {
+      color: #fff;
+      font-weight: 600;
+    }
+  }
+
+  .toolbar-drop-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .toolbar-drop-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+}
+
+// Pulse animation for toolbar drag over state
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+// Toolbar spacing adjustment
+mat-toolbar {
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  // Ensure proper alignment of toolbar elements
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 // Responsive design
 @media (max-width: 1400px) {
   .left-panel {
@@ -477,6 +705,56 @@
       }
     }
   }
+
+  // Drop zone mobile adjustments
+  .drop-zone {
+    padding: 24px 16px;
+    margin: 16px 0;
+
+    .drop-zone-content {
+      gap: 12px;
+
+      .drop-icon {
+        font-size: 36px;
+        width: 36px;
+        height: 36px;
+      }
+
+      .drop-text {
+        .primary-text {
+          font-size: 16px;
+        }
+
+        .secondary-text {
+          font-size: 13px;
+        }
+      }
+    }
+  }
+
+  // Toolbar drop zone mobile adjustments
+  .toolbar-drop-zone {
+    min-width: 120px;
+    padding: 6px 12px;
+    margin-left: 8px;
+
+    .toolbar-drop-text {
+      font-size: 11px;
+    }
+
+    .toolbar-drop-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+// Hide toolbar drop zone on very small screens
+@media (max-width: 480px) {
+  .toolbar-drop-zone {
+    display: none;
+  }
 }
 
 // Field changes and comparison styles
@@ -485,6 +763,10 @@
 
   .changed-field {
     border-left: 3px solid #ff9800;
+  }
+
+  .drifted-field {
+    border-left: 3px solid #2196f3;
   }
 
   .field-name {
@@ -649,6 +931,27 @@
         width: 18px;
         height: 18px;
       }
+
+      .drift-indicator {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #2196f3;
+        background-color: #e3f2fd;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+
+        mat-icon {
+          font-size: 12px;
+          width: 12px;
+          height: 12px;
+          vertical-align: middle;
+        }
+      }
     }
   }
 }
@@ -667,6 +970,10 @@
     font-weight: 600;
     font-size: 13px;
     border-bottom: 2px solid #e0e0e0;
+
+    &.three-column {
+      grid-template-columns: 2fr 2fr 2fr 2fr;
+    }
 
     div {
       display: flex;
@@ -689,6 +996,11 @@
       padding: 12px;
       border-bottom: 1px solid #f0f0f0;
       transition: background-color 0.2s ease;
+      align-items: start;
+
+      &.three-column {
+        grid-template-columns: 2fr 2.5fr 2.5fr 2.5fr;
+      }
 
       &:hover {
         background-color: #f8f9fa;
@@ -750,18 +1062,51 @@
               margin-right: 2px;
             }
           }
+
+          .drift-chip {
+            height: 18px;
+            font-size: 10px;
+            padding: 0 6px;
+            margin-left: 4px;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+
+            mat-icon {
+              font-size: 10px;
+              width: 10px;
+              height: 10px;
+              margin-right: 2px;
+              vertical-align: middle;
+            }
+          }
         }
       }
 
       .property-before-value,
+      .property-current-value,
       .property-after-value {
+        
         .value-display {
           border-radius: 4px;
           padding: 8px;
+          width: 100%;
+          box-sizing: border-box;
 
           &.before-value {
             background-color: #fff5f5;
             border: 1px solid #ffcdd2;
+          }
+
+          &.current-value {
+            background-color: #f0f4ff;
+            border: 1px solid #bbdefb;
+
+            &.drifted {
+              background-color: #e3f2fd;
+              border: 1px solid #2196f3;
+              box-shadow: 0 0 4px rgba(33, 150, 243, 0.3);
+            }
           }
 
           &.after-value {
@@ -805,7 +1150,13 @@
       gap: 16px;
       align-items: start;
 
+      &.three-column {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+      }
+
       .before-section,
+      .current-section,
       .after-section {
         .section-label {
           display: flex;
@@ -829,6 +1180,17 @@
           &.before-value {
             background-color: #ffebee;
             border: 1px solid #ef5350;
+          }
+
+          &.current-value {
+            background-color: #f0f4ff;
+            border: 1px solid #bbdefb;
+
+            &.drifted {
+              background-color: #e3f2fd;
+              border: 1px solid #2196f3;
+              box-shadow: 0 0 4px rgba(33, 150, 243, 0.3);
+            }
           }
 
           &.after-value {
@@ -872,7 +1234,6 @@
 }
 
 .current-value {
-  margin-top: 12px;
   padding: 16px;
   background-color: #f5f5f5;
   border-radius: 4px;

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { TerraformPlan, ResourceSummary, ResourceChange, ResourceTypeGroup, ModuleGroup, IteratorGroup } from '../interfaces/terraform-plan.interface';
+import { TerraformPlan, ResourceSummary, ResourceChange, ResourceDrift, ResourceTypeGroup, ModuleGroup, IteratorGroup } from '../interfaces/terraform-plan.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -140,7 +140,7 @@ export class TerraformPlanService {
       // Simple grouping by prefix (before first underscore)
       const parts = output.key.split('_');
       const groupName = parts.length > 1 ? parts[0] : 'default';
-      
+
       if (!groups.has(groupName)) {
         groups.set(groupName, []);
       }
@@ -330,7 +330,7 @@ export class TerraformPlanService {
       // Extract module path
       const moduleParts = resource.address.split('.');
       let modulePath = 'root';
-      
+
       if (moduleParts[0] === 'module') {
         let moduleEndIndex = 1;
         for (let i = 1; i < moduleParts.length; i += 2) {
@@ -348,11 +348,11 @@ export class TerraformPlanService {
 
       const moduleResources = resourcesByModule.get(modulePath)!;
       const type = resource.type;
-      
+
       if (!moduleResources.has(type)) {
         moduleResources.set(type, []);
       }
-      
+
       moduleResources.get(type)!.push(resource);
     });
 
@@ -406,7 +406,7 @@ export class TerraformPlanService {
       // Extract module path
       const moduleParts = change.address.split('.');
       let moduleAddress = 'root';
-      
+
       if (moduleParts[0] === 'module') {
         let moduleEndIndex = 1;
         for (let i = 1; i < moduleParts.length; i += 2) {
@@ -493,5 +493,32 @@ export class TerraformPlanService {
    */
   private getResourceTypeDisplayName(type: string): string {
     return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  /**
+   * Get the current state (from resource_drift) for a resource if it exists
+   */
+  getResourceDriftState(resourceAddress: string): any | null {
+    const plan = this.planSubject.value;
+
+    if (!plan || !plan.resource_drift) {
+      return null;
+    }
+
+    const driftResource = plan.resource_drift.find(drift => drift.address === resourceAddress);
+    return driftResource ? driftResource.change.before : null;
+  }
+
+  /**
+   * Check if a resource has drift data available
+   */
+  hasResourceDrift(resourceAddress: string): boolean {
+    const plan = this.planSubject.value;
+
+    if (!plan || !plan.resource_drift) {
+      return false;
+    }
+
+    return plan.resource_drift.some(drift => drift.address === resourceAddress);
   }
 }

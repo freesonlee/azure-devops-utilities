@@ -1,6 +1,21 @@
 <mat-toolbar color="primary">
   <mat-icon>cloud</mat-icon>
   <span>Terraform Plan Viewer</span>
+  
+  <!-- Compact Drag Zone for loaded plans -->
+  <div 
+    class="toolbar-drop-zone"
+    [class.dragover]="isToolbarDragOver"
+    (dragenter)="onToolbarDragEnter($event)"
+    (dragover)="onToolbarDragOver($event)"
+    (dragleave)="onToolbarDragLeave($event)"
+    (drop)="onToolbarDrop($event)"
+    *ngIf="plan">
+    
+    <mat-icon class="toolbar-drop-icon">swap_horiz</mat-icon>
+    <span class="toolbar-drop-text">Drop file or URL to switch</span>
+  </div>
+  
   <span class="spacer"></span>
   <button mat-raised-button color="accent" (click)="fileInput.click()">
     <mat-icon>upload_file</mat-icon>
@@ -22,6 +37,14 @@
       <mat-card-subtitle>Load a Terraform plan JSON file to get started</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
+      
+      <!-- Loading indicator for URL downloads -->
+      <div *ngIf="isDownloading" class="loading-container">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        <p class="loading-text">Downloading and processing file...</p>
+      </div>
+      
+      <div *ngIf="!isDownloading">
       <p>Upload your Terraform plan JSON file to visualize:</p>
       <ul>
         <li>Variables and their values</li>
@@ -39,6 +62,25 @@
         </li>
         <li>Upload the <code>tfplan.json</code> file using the button below.</li>
       </ol>
+
+      <!-- Drag and Drop Zone -->
+      <div 
+        class="drop-zone"
+        [class.dragover]="isDragOver"
+        (dragenter)="onDragEnter($event)"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)">
+        
+        <div class="drop-zone-content">
+          <mat-icon class="drop-icon">cloud_upload</mat-icon>
+          <div class="drop-text">
+            <span class="primary-text">Drop your Terraform plan JSON file or URL here</span>
+            <span class="secondary-text">Supports files and direct links • Click below to browse files</span>
+          </div>
+        </div>
+      </div>
+      </div>
     </mat-card-content>
     <mat-card-actions>
       <button mat-raised-button color="primary" (click)="fileInput.click()">
@@ -308,41 +350,50 @@
                   <div class="field-changes">
                     <mat-accordion>
                       <mat-expansion-panel *ngFor="
-                          let change of getSortedChangedFields(selectedResource);
+                          let change of getSortedChangedFieldsWithDrift(selectedResource);
                           trackBy: trackByFieldChange
-                        " [class.changed-field]="change.value.changed">
+                        " [class.changed-field]="change.value.changed" [class.drifted-field]="change.value.hasDrift">
                         <mat-expansion-panel-header>
                           <mat-panel-title>
-                            <mat-icon [style.color]="change.value.changed ? '#ff9800' : '#4caf50'"
+                            <mat-icon [style.color]="change.value.changed ? '#ff9800' : (change.value.hasDrift ? '#2196f3' : '#4caf50')"
                               [style.margin-right.px]="8">
-                              {{ change.value.changed ? 'edit' : 'check_circle' }}
+                              {{ change.value.changed ? 'edit' : (change.value.hasDrift ? 'compare_arrows' : 'check_circle') }}
                             </mat-icon>
                             <code class="field-name">{{ change.key }}</code>
                           </mat-panel-title>
                           <mat-panel-description>
-                            {{ change.value.changed ? 'Modified' : 'Unchanged' }}
+                            {{ change.value.changed ? 'Modified' : (change.value.hasDrift ? 'Drift Detected' : 'Unchanged') }}
                           </mat-panel-description>
                         </mat-expansion-panel-header>
 
-                        <div class="change-comparison" *ngIf="change.value.changed">
-                          <!-- Object property differences (only show changed properties) -->
+                        <div class="change-comparison" *ngIf="change.value.changed || change.value.hasDrift">
+                          <!-- Object property differences with drift support -->
                           <div *ngIf="
-                              shouldShowObjectDiff(change.value.before, change.value.after);
-                              else simpleComparison
+                              shouldShowObjectDiffWithDrift(change.value.before, change.value.current, change.value.after);
+                              else simpleComparisonWithDrift
                             " class="object-diff-container">
                             <div class="diff-header">
                               <h5>
                                 <mat-icon color="accent">data_object</mat-icon>
                                 Property Changes
+                                <span *ngIf="change.value.hasDrift && hasResourceDrift(selectedResource.address)" class="drift-indicator">
+                                  <mat-icon color="primary" [matTooltip]="'Current state differs from planned state'">info</mat-icon>
+                                  Drift Detected
+                                </span>
                               </h5>
                             </div>
 
                             <div class="object-property-diff">
-                              <div class="property-diff-header">
+                              <div class="property-diff-header" 
+                                   [class.three-column]="hasResourceDrift(selectedResource.address)">
                                 <div class="property-name-header">Property</div>
                                 <div class="before-header">
                                   <mat-icon color="warn">remove_circle</mat-icon>
                                   <span>Before</span>
+                                </div>
+                                <div class="current-header" *ngIf="hasResourceDrift(selectedResource.address)">
+                                  <mat-icon color="primary">present_to_all</mat-icon>
+                                  <span>Current</span>
                                 </div>
                                 <div class="after-header">
                                   <mat-icon color="primary">add_circle</mat-icon>
@@ -352,12 +403,15 @@
 
                               <div class="property-diff-rows">
                                 <div *ngFor="
-                                    let propDiff of getChangedPropertiesFlat(
+                                    let propDiff of getChangedPropertiesFlatWithDrift(
                                       change.value.before,
+                                      change.value.current,
                                       change.value.after
                                     );
                                     trackBy: trackByPropertyDiff
-                                  " class="property-diff-row" [class.nested-property]="propDiff.depth > 0"
+                                  " class="property-diff-row" 
+                                  [class.nested-property]="propDiff.depth > 0"
+                                  [class.three-column]="hasResourceDrift(selectedResource.address)"
                                   [style.margin-left.px]="propDiff.depth * 20">
                                   <div class="property-name">
                                     <div class="property-path-container">
@@ -377,11 +431,6 @@
                                       </span>
                                     </div>
                                     <div class="property-type-info">
-                                      <mat-chip *ngIf="propDiff.isNested" class="type-chip nested-type"
-                                        [style.background-color]="'#607d8b'" [style.color]="'white'">
-                                        <mat-icon [style.font-size.px]="12">data_object</mat-icon>
-                                        object
-                                      </mat-chip>
                                     </div>
                                   </div>
                                   <div class="property-before-value">
@@ -401,6 +450,26 @@
                                           propDiff.before !== undefined &&
                                           !isComplexValue(propDiff.before)
                                         " class="simple-value">{{ formatChangeValue(propDiff.before) }}</code>
+                                    </div>
+                                  </div>
+                                  <div class="property-current-value" *ngIf="hasResourceDrift(selectedResource.address)">
+                                    <div class="value-display current-value" 
+                                         [class.drifted]="propDiff.hasDrift">
+                                      <div *ngIf="
+                                          propDiff.current === null || propDiff.current === undefined
+                                        " class="null-value">
+                                        <em>null</em>
+                                      </div>
+                                      <pre *ngIf="
+                                          propDiff.current !== null &&
+                                          propDiff.current !== undefined &&
+                                          isComplexValue(propDiff.current)
+                                        " class="json-content">{{ formatChangeValue(propDiff.current) }}</pre>
+                                      <code *ngIf="
+                                          propDiff.current !== null &&
+                                          propDiff.current !== undefined &&
+                                          !isComplexValue(propDiff.current)
+                                        " class="simple-value">{{ formatChangeValue(propDiff.current) }}</code>
                                     </div>
                                   </div>
                                   <div class="property-after-value">
@@ -427,17 +496,22 @@
                             </div>
                           </div>
 
-                          <!-- Simple before/after comparison for non-objects -->
-                          <ng-template #simpleComparison>
+                          <!-- Simple before/current/after comparison for non-objects -->
+                          <ng-template #simpleComparisonWithDrift>
                             <div class="simple-diff-container">
                               <div class="diff-header">
                                 <h5>
                                   <mat-icon color="accent">compare_arrows</mat-icon>
                                   Value Change
+                                  <span *ngIf="change.value.hasDrift && hasResourceDrift(selectedResource.address)" class="drift-indicator">
+                                    <mat-icon color="primary" [matTooltip]="'Current state differs from planned state'">info</mat-icon>
+                                    Drift Detected
+                                  </span>
                                 </h5>
                               </div>
 
-                              <div class="simple-value-diff">
+                              <div class="simple-value-diff" 
+                                   [class.three-column]="hasResourceDrift(selectedResource.address)">
                                 <div class="value-diff-row">
                                   <div class="before-section">
                                     <div class="section-label">
@@ -452,7 +526,21 @@
                                     </div>
                                   </div>
 
-                                  <div class="arrow-separator">
+                                  <div class="current-section" *ngIf="hasResourceDrift(selectedResource.address)">
+                                    <div class="section-label">
+                                      <mat-icon color="primary">present_to_all</mat-icon>
+                                      <span>Current</span>
+                                    </div>
+                                    <div class="value-container current-value" 
+                                         [class.drifted]="change.value.hasDrift">
+                                      <pre *ngIf="isComplexValue(change.value.current)"
+                                        class="json-content">{{ formatChangeValue(change.value.current) }}</pre>
+                                      <code *ngIf="!isComplexValue(change.value.current)"
+                                        class="simple-value">{{ formatChangeValue(change.value.current) }}</code>
+                                    </div>
+                                  </div>
+
+                                  <div class="arrow-separator" *ngIf="!hasResourceDrift(selectedResource.address)">
                                     <mat-icon color="primary">arrow_forward</mat-icon>
                                   </div>
 
@@ -475,7 +563,7 @@
                         </div>
 
                         <!-- Show current value for unchanged fields -->
-                        <div class="current-value" *ngIf="!change.value.changed">
+                        <div class="current-value" *ngIf="!change.value.changed && !change.value.hasDrift">
                           <h5>Current Value</h5>
                           <div class="value-container">
                             <pre *ngIf="isComplexValue(change.value.after)" class="json-content">{{
