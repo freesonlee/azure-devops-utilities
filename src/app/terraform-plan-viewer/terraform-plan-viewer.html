@@ -28,6 +28,17 @@
         <li>Planned outputs</li>
         <li>Resource changes</li>
       </ul>
+      <mat-divider class="instructions-divider"></mat-divider>
+      <h3 class="instructions-title">How to generate the plan JSON file:</h3>
+      <ol class="instructions-list">
+        <li>First, create a Terraform plan file:
+          <pre class="code-block"><code>terraform plan -out=tfplan</code></pre>
+        </li>
+        <li>Convert the plan file to JSON format:
+          <pre class="code-block"><code>terraform show -json tfplan > tfplan.json</code></pre>
+        </li>
+        <li>Upload the <code>tfplan.json</code> file using the button below.</li>
+      </ol>
     </mat-card-content>
     <mat-card-actions>
       <button mat-raised-button color="primary" (click)="fileInput.click()">
