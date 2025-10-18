@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatTableDataSource } from '@angular/material/table';
 import { TerraformPlanService } from '../../services/terraform-plan.service';
 import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
@@ -36,7 +37,8 @@ import * as Diff from 'diff';
     MatInputModule,
     MatFormFieldModule,
     MatProgressBarModule,
-    MatSidenavModule
+    MatSidenavModule,
+    MatDividerModule
   ],
   providers: [TerraformPlanService],
   templateUrl: './terraform-plan-viewer.html',
