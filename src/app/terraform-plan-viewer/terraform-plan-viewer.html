@@ -28,14 +28,14 @@
         <li>Planned outputs</li>
         <li>Resource changes</li>
       </ul>
-      <mat-divider style="margin: 16px 0;"></mat-divider>
-      <h3 style="margin-top: 16px; margin-bottom: 8px; font-size: 16px;">How to generate the plan JSON file:</h3>
-      <ol style="margin-left: 16px;">
+      <mat-divider class="instructions-divider"></mat-divider>
+      <h3 class="instructions-title">How to generate the plan JSON file:</h3>
+      <ol class="instructions-list">
         <li>First, create a Terraform plan file:
-          <pre style="background-color: #f5f5f5; padding: 8px; border-radius: 4px; margin: 8px 0;"><code>terraform plan -out=tfplan</code></pre>
+          <pre class="code-block"><code>terraform plan -out=tfplan</code></pre>
         </li>
         <li>Convert the plan file to JSON format:
-          <pre style="background-color: #f5f5f5; padding: 8px; border-radius: 4px; margin: 8px 0;"><code>terraform show -json tfplan > tfplan.json</code></pre>
+          <pre class="code-block"><code>terraform show -json tfplan > tfplan.json</code></pre>
         </li>
         <li>Upload the <code>tfplan.json</code> file using the button below.</li>
       </ol>
