@@ -26,6 +26,13 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run build --if-present
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          retention-days: 1
+          path: dist/azure-devops-variable-group-editor/
+          name: github-pages
+          
 
 # Deploy job
   deploy:
