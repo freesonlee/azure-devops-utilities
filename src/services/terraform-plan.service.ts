@@ -563,8 +563,15 @@ export class TerraformPlanService {
    */
   private checkSensitivityRecursive(sensitiveMetadata: any, pathParts: (string | number)[]): boolean {
     if (pathParts.length === 0) {
-      // If we've traversed the entire path and the value is true, it's sensitive
-      return sensitiveMetadata === true;
+      // If we've traversed the entire path
+      if (sensitiveMetadata === true) {
+        return true;
+      }
+      // If the value is an array, check if any element is true
+      if (Array.isArray(sensitiveMetadata)) {
+        return sensitiveMetadata.some(item => item === true);
+      }
+      return false;
     }
 
     if (typeof sensitiveMetadata !== 'object' || sensitiveMetadata === null) {
@@ -591,7 +598,15 @@ export class TerraformPlanService {
         return false;
       }
       if (remainingParts.length === 0) {
-        return propertyValue === true;
+        // Check if it's a boolean true
+        if (propertyValue === true) {
+          return true;
+        }
+        // If it's an array, check if any element is true
+        if (Array.isArray(propertyValue)) {
+          return propertyValue.some(item => item === true);
+        }
+        return false;
       }
       return this.checkSensitivityRecursive(propertyValue, remainingParts);
     }

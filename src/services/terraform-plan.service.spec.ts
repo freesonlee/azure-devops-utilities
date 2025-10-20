@@ -34,6 +34,18 @@ describe('TerraformPlanService - Sensitive Property Detection', () => {
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[2]')).toBe(true);
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[3]')).toBe(false);
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[4]')).toBe(false);
+      
+      // When checking the array property itself (without index), it should be sensitive if any element is sensitive
+      expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace')).toBe(true);
+    });
+
+    it('should return false for array property when no elements are sensitive', () => {
+      const sensitiveMetadata = {
+        triggers_replace: [false, false, false]
+      };
+
+      expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace')).toBe(false);
+      expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[0]')).toBe(false);
     });
 
     it('should detect nested sensitive properties', () => {
