@@ -12,6 +12,8 @@
 <button mat-raised-button (click)="openSaveDialog()" color="warn" #saveButton [disabled]="!hasChange">Save Changes</button>
 <button mat-raised-button (click)="mode='pipelines'" [disabled]="!server" *ngIf="mode=='variables'">Run Pipeline(s)</button>
 <button mat-raised-button (click)="mode='variables'" [disabled]="!server" *ngIf="mode=='pipelines'">Variables</button>
+<button mat-raised-button (click)="mode='terraform'" *ngIf="mode!='terraform'">Terraform Plan Viewer</button>
+<button mat-raised-button (click)="mode='variables'" *ngIf="mode=='terraform'">Back to Home</button>
 &nbsp;&nbsp;<a href="https://github.com/freesonlee/azure-devops-utilities/issues/new" target="_blank">Report Issue</a>
 <br>
 
@@ -147,3 +149,5 @@
 </mat-drawer-container>
 
 <pipeline-list *ngIf="mode=='pipelines' && server" #pipelineComp [server]="server!"></pipeline-list>
+
+<app-terraform-plan-viewer *ngIf="mode=='terraform'"></app-terraform-plan-viewer>

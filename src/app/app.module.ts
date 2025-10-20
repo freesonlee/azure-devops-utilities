@@ -20,6 +20,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { HttpClientModule } from '@angular/common/http';
 import { PipelineComponent } from './pipeline.component';
+import { TerraformPlanViewerComponent } from './terraform-plan-viewer/terraform-plan-viewer';
+import { TerraformPlanService } from '../services/terraform-plan.service';
+import { TerraformStateService } from '../services/terraform-state.service';
+
 @NgModule({
   declarations: [
     AppComponent
@@ -42,9 +46,10 @@ import { PipelineComponent } from './pipeline.component';
     MatIconModule,
     MatTooltipModule,
     MatRadioModule,
-    PipelineComponent
+    PipelineComponent,
+    TerraformPlanViewerComponent
   ],
-  providers: [],
+  providers: [TerraformPlanService, TerraformStateService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
