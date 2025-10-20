@@ -37,7 +37,7 @@ describe('TerraformResourceComponent', () => {
     };
 
     component.resourceChange = resourceChange;
-    component.ngOnInit();
+    component.ngOnChanges();
 
     const property = component.properties.find(p => p.path === 'password');
     expect(property).toBeDefined();
@@ -60,7 +60,7 @@ describe('TerraformResourceComponent', () => {
     };
 
     component.resourceChange = resourceChange;
-    component.ngOnInit();
+    component.ngOnChanges();
 
     const property = component.properties.find(p => p.path === 'password');
     expect(property).toBeDefined();
@@ -106,7 +106,7 @@ describe('TerraformResourceComponent', () => {
     };
 
     component.resourceChange = resourceChange;
-    component.ngOnInit();
+    component.ngOnChanges();
 
     const property = component.properties.find(p => p.path === 'name');
     expect(property).toBeDefined();
@@ -133,7 +133,7 @@ describe('TerraformResourceComponent', () => {
     };
 
     component.resourceChange = resourceChange;
-    component.ngOnInit();
+    component.ngOnChanges();
 
     const prop0 = component.properties.find(p => p.path === 'triggers_replace[0]');
     const prop1 = component.properties.find(p => p.path === 'triggers_replace[1]');

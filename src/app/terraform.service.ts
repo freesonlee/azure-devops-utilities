@@ -87,7 +87,7 @@ export class TerraformService {
 
       // Check if it's an array
       if (Array.isArray(current)) {
-        const index = parseInt(part, 10);
+        const index = Number.parseInt(part, 10);
         if (!isNaN(index) && index >= 0 && index < current.length) {
           current = current[index];
         } else {
@@ -111,9 +111,25 @@ export class TerraformService {
 
   /**
    * Flatten an object into a list of properties with their paths
+   * @param obj The object to flatten
+   * @param prefix The property path prefix
+   * @param sensitiveMap The sensitivity map
+   * @param depth Current recursion depth (for circular reference protection)
+   * @param maxDepth Maximum recursion depth (default: 10)
    */
-  flattenObject(obj: any, prefix: string = '', sensitiveMap?: SensitiveMap): PropertyInfo[] {
+  flattenObject(obj: any, prefix: string = '', sensitiveMap?: SensitiveMap, depth: number = 0, maxDepth: number = 10): PropertyInfo[] {
     const result: PropertyInfo[] = [];
+    
+    // Prevent stack overflow from deeply nested objects
+    if (depth > maxDepth) {
+      result.push({
+        path: prefix,
+        value: '[Max depth reached]',
+        isSensitive: false,
+        isVisible: false
+      });
+      return result;
+    }
     
     if (obj === null || obj === undefined) {
       return result;
@@ -134,13 +150,13 @@ export class TerraformService {
       // Array
       obj.forEach((item, index) => {
         const path = `${prefix}[${index}]`;
-        result.push(...this.flattenObject(item, path, sensitiveMap));
+        result.push(...this.flattenObject(item, path, sensitiveMap, depth + 1, maxDepth));
       });
     } else {
       // Object
       Object.keys(obj).forEach(key => {
         const path = prefix ? `${prefix}.${key}` : key;
-        result.push(...this.flattenObject(obj[key], path, sensitiveMap));
+        result.push(...this.flattenObject(obj[key], path, sensitiveMap, depth + 1, maxDepth));
       });
     }
 

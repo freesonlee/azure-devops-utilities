@@ -34,10 +34,6 @@ export class TerraformResourceComponent {
     this.loadProperties();
   }
 
-  ngOnInit() {
-    this.loadProperties();
-  }
-
   private loadProperties() {
     if (!this.resourceChange) {
       return;
@@ -67,7 +63,12 @@ export class TerraformResourceComponent {
     }
     
     if (typeof property.value === 'object') {
-      return JSON.stringify(property.value);
+      const jsonStr = JSON.stringify(property.value);
+      // Truncate very large objects for better UX
+      if (jsonStr.length > 200) {
+        return jsonStr.substring(0, 197) + '...';
+      }
+      return jsonStr;
     }
     
     return String(property.value);
