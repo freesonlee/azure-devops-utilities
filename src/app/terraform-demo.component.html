@@ -1,0 +1,34 @@
+<div class="demo-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Terraform Resource with Sensitive Properties Demo</mat-card-title>
+      <mat-card-subtitle>
+        This demonstrates masking sensitive property values from Terraform plan JSON
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="info-section">
+        <h4>How it works:</h4>
+        <ul>
+          <li>Properties marked as sensitive in <code>after_sensitive</code> are masked with ****</li>
+          <li>Click the eye icon to toggle visibility of sensitive values</li>
+          <li>Array elements can have individual sensitivity flags</li>
+          <li>In this example:
+            <ul>
+              <li><code>custom_domain_verification_id</code> is sensitive</li>
+              <li><code>triggers_replace[0-2]</code> are sensitive</li>
+              <li><code>triggers_replace[3-4]</code> are NOT sensitive</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <div class="resource-display">
+        <app-terraform-resource 
+          [resourceChange]="sampleResourceChange"
+          [plan]="samplePlan">
+        </app-terraform-resource>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

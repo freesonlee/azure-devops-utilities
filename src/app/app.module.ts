@@ -17,9 +17,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCardModule } from '@angular/material/card';
 
 import { HttpClientModule } from '@angular/common/http';
 import { PipelineComponent } from './pipeline.component';
+import { TerraformDemoComponent } from './terraform-demo.component';
 @NgModule({
   declarations: [
     AppComponent
@@ -42,7 +44,9 @@ import { PipelineComponent } from './pipeline.component';
     MatIconModule,
     MatTooltipModule,
     MatRadioModule,
-    PipelineComponent
+    MatCardModule,
+    PipelineComponent,
+    TerraformDemoComponent
   ],
   providers: [],
   bootstrap: [AppComponent]

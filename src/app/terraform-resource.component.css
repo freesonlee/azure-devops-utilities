@@ -1,0 +1,68 @@
+.terraform-resource {
+  padding: 20px;
+}
+
+.terraform-resource h3 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.resource-type,
+.resource-actions {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.property-table {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.property-path {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #0066cc;
+}
+
+.sensitive-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.sensitive-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #ff9800;
+}
+
+.property-value {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #333;
+  word-break: break-word;
+}
+
+.sensitive-value {
+  font-weight: bold;
+  color: #999;
+  letter-spacing: 2px;
+}
+
+.no-resource {
+  padding: 40px;
+  text-align: center;
+  color: #999;
+}
+
+.no-resource p {
+  font-size: 16px;
+}
+
+/* Ensure the action buttons are aligned properly */
+td.mat-cell:last-child {
+  text-align: right;
+  width: 60px;
+}

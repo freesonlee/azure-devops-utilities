@@ -1,0 +1,51 @@
+<div *ngIf="resourceChange" class="terraform-resource">
+  <h3>{{ resourceChange.address }}</h3>
+  <p class="resource-type">Type: {{ resourceChange.type }}</p>
+  <p class="resource-actions">Actions: {{ resourceChange.change.actions.join(', ') }}</p>
+  
+  <table mat-table [dataSource]="properties" class="property-table">
+    
+    <!-- Property Name Column -->
+    <ng-container matColumnDef="property">
+      <th mat-header-cell *matHeaderCellDef>Property</th>
+      <td mat-cell *matCellDef="let property">
+        <span class="property-path">{{ property.path }}</span>
+        <span *ngIf="property.isSensitive" class="sensitive-badge" matTooltip="Sensitive property">
+          <mat-icon class="sensitive-icon">lock</mat-icon>
+        </span>
+      </td>
+    </ng-container>
+    
+    <!-- Value Column -->
+    <ng-container matColumnDef="value">
+      <th mat-header-cell *matHeaderCellDef>Value</th>
+      <td mat-cell *matCellDef="let property">
+        <span class="property-value" [ngClass]="{'sensitive-value': property.isSensitive && !property.isVisible}">
+          {{ getDisplayValue(property) }}
+        </span>
+      </td>
+    </ng-container>
+    
+    <!-- Actions Column -->
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef></th>
+      <td mat-cell *matCellDef="let property">
+        <button 
+          *ngIf="property.isSensitive"
+          mat-icon-button 
+          (click)="toggleVisibility(property)"
+          [matTooltip]="getTooltip(property)"
+          aria-label="Toggle visibility">
+          <mat-icon>{{ getIconName(property) }}</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+    
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+</div>
+
+<div *ngIf="!resourceChange" class="no-resource">
+  <p>No resource selected</p>
+</div>
