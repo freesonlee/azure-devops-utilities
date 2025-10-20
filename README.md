@@ -14,6 +14,43 @@ The history doesn't have secret variable value saved.
 ## Pipeline
 You can create profile and add one or more pipeline to it. You can then define parameter values and variables for each pipeline in the profile. 
 
+## Terraform Plan Viewer
+The tool includes a Terraform Plan Viewer that allows you to visualize and analyze Terraform plan JSON files.
+
+### Features
+- Upload and visualize Terraform plan JSON files
+- View resource changes (create, update, delete, replace)
+- Compare before and after values for each property
+- Detect and display resource drift
+- **Sensitive Value Protection**: Automatically masks sensitive property values with `****`
+
+### Sensitive Value Handling
+The viewer automatically detects and masks sensitive properties based on the `before_sensitive` and `after_sensitive` metadata in the Terraform plan:
+- Sensitive values are masked with `****` by default
+- Click the eye icon next to any masked value to reveal it temporarily
+- Click again to re-mask the value
+- Supports simple properties, nested objects, and array elements with different sensitivity levels
+
+Example of sensitive property detection:
+```json
+{
+  "change": {
+    "after": {
+      "custom_domain_verification_id": "verification-id-12345",
+      "triggers_replace": ["value1", "value2", "public-value"]
+    },
+    "after_sensitive": {
+      "custom_domain_verification_id": true,
+      "triggers_replace": [true, true, false]
+    }
+  }
+}
+```
+In this example:
+- `custom_domain_verification_id` will be fully masked
+- `triggers_replace[0]` and `triggers_replace[1]` will be masked
+- `triggers_replace[2]` will be shown in plain text
+
 ## TODO
 * Allow user to run all pipelines defined in a profile.
 

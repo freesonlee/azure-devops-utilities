@@ -391,7 +391,7 @@ export class DashboardComponent implements OnInit {
     // Clear all expanded states and cache when switching data
     this.changeFieldsCache.clear();
     this.selectedResource = null;
-    this.sensitiveValuesVisible.clear(); // Clear sensitive value visibility state
+    this.sensitiveValuesVisible.clear();
     for (const [type, resources] of this.resourcesByType.entries()) {
       resources.forEach(resource => {
         (resource as any).expanded = false;
