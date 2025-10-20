@@ -605,8 +605,8 @@ export class DashboardComponent implements OnInit {
       for (let i = 0; i < maxLength; i++) {
         const beforeItem = beforeArr[i];
         const afterItem = afterArr[i];
-        const currentPath = path ? `${path}.${i}` : `${i}`;
-        const depth = path ? path.split('.').length + 1 : 0;
+        const currentPath = path ? `${path}[${i}]` : `[${i}]`;
+        const depth = path ? path.split('.').length : 1;
 
         // Check if array items are deeply equal
         const changed = !this.deepEqual(beforeItem, afterItem);
