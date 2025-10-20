@@ -521,4 +521,92 @@ export class TerraformPlanService {
 
     return plan.resource_drift.some(drift => drift.address === resourceAddress);
   }
+
+  /**
+   * Check if a property is sensitive based on the sensitivity metadata
+   * @param sensitiveMetadata - The before_sensitive or after_sensitive object
+   * @param propertyPath - The property path (e.g., "name", "network_rules[0].default_action")
+   * @returns true if the property is marked as sensitive
+   */
+  isPropertySensitive(sensitiveMetadata: any, propertyPath: string): boolean {
+    if (!sensitiveMetadata || !propertyPath) {
+      return false;
+    }
+
+    const pathParts = this.parsePropertyPath(propertyPath);
+    return this.checkSensitivityRecursive(sensitiveMetadata, pathParts);
+  }
+
+  /**
+   * Parse a property path into parts, handling array indices
+   * Example: "network_rules[0].default_action" -> ["network_rules", 0, "default_action"]
+   */
+  private parsePropertyPath(path: string): (string | number)[] {
+    const parts: (string | number)[] = [];
+    const segments = path.split('.');
+
+    segments.forEach(segment => {
+      const arrayMatch = segment.match(/^(.+)\[(\d+)\]$/);
+      if (arrayMatch) {
+        parts.push(arrayMatch[1]); // property name
+        parts.push(parseInt(arrayMatch[2], 10)); // array index
+      } else {
+        parts.push(segment);
+      }
+    });
+
+    return parts;
+  }
+
+  /**
+   * Recursively check if a property is sensitive by navigating the sensitivity metadata
+   */
+  private checkSensitivityRecursive(sensitiveMetadata: any, pathParts: (string | number)[]): boolean {
+    if (pathParts.length === 0) {
+      // If we've traversed the entire path and the value is true, it's sensitive
+      return sensitiveMetadata === true;
+    }
+
+    if (typeof sensitiveMetadata !== 'object' || sensitiveMetadata === null) {
+      return false;
+    }
+
+    const currentPart = pathParts[0];
+    const remainingParts = pathParts.slice(1);
+
+    if (typeof currentPart === 'number') {
+      // Handle array index
+      if (Array.isArray(sensitiveMetadata)) {
+        const arrayValue = sensitiveMetadata[currentPart];
+        if (remainingParts.length === 0) {
+          return arrayValue === true;
+        }
+        return this.checkSensitivityRecursive(arrayValue, remainingParts);
+      }
+      return false;
+    } else {
+      // Handle object property
+      const propertyValue = sensitiveMetadata[currentPart];
+      if (propertyValue === undefined) {
+        return false;
+      }
+      if (remainingParts.length === 0) {
+        return propertyValue === true;
+      }
+      return this.checkSensitivityRecursive(propertyValue, remainingParts);
+    }
+  }
+
+  /**
+   * Check if a property in a resource change is sensitive (checks both before and after)
+   */
+  isResourcePropertySensitive(resource: ResourceChange, propertyPath: string): {
+    beforeSensitive: boolean;
+    afterSensitive: boolean;
+  } {
+    return {
+      beforeSensitive: this.isPropertySensitive(resource.change.before_sensitive, propertyPath),
+      afterSensitive: this.isPropertySensitive(resource.change.after_sensitive, propertyPath)
+    };
+  }
 }

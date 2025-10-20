@@ -444,12 +444,20 @@
                                           propDiff.before !== null &&
                                           propDiff.before !== undefined &&
                                           isComplexValue(propDiff.before)
-                                        " class="json-content">{{ formatChangeValue(propDiff.before) }}</pre>
+                                        " class="json-content">{{ formatSensitiveValue(propDiff.before, selectedResource, propDiff.path, 'before') }}</pre>
                                       <code *ngIf="
                                           propDiff.before !== null &&
                                           propDiff.before !== undefined &&
                                           !isComplexValue(propDiff.before)
-                                        " class="simple-value">{{ formatChangeValue(propDiff.before) }}</code>
+                                        " class="simple-value">{{ formatSensitiveValue(propDiff.before, selectedResource, propDiff.path, 'before') }}</code>
+                                      <button 
+                                        *ngIf="isPropertySensitive(selectedResource, propDiff.path) && propDiff.before !== null && propDiff.before !== undefined"
+                                        mat-icon-button 
+                                        class="sensitive-toggle-btn"
+                                        (click)="toggleSensitiveValueVisibility(selectedResource, propDiff.path, 'before')"
+                                        [matTooltip]="isSensitiveValueVisible(selectedResource, propDiff.path, 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                        <mat-icon>{{ isSensitiveValueVisible(selectedResource, propDiff.path, 'before') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                                      </button>
                                     </div>
                                   </div>
                                   <div class="property-current-value" *ngIf="hasResourceDrift(selectedResource.address)">
@@ -464,12 +472,20 @@
                                           propDiff.current !== null &&
                                           propDiff.current !== undefined &&
                                           isComplexValue(propDiff.current)
-                                        " class="json-content">{{ formatChangeValue(propDiff.current) }}</pre>
+                                        " class="json-content">{{ formatSensitiveValue(propDiff.current, selectedResource, propDiff.path, 'before') }}</pre>
                                       <code *ngIf="
                                           propDiff.current !== null &&
                                           propDiff.current !== undefined &&
                                           !isComplexValue(propDiff.current)
-                                        " class="simple-value">{{ formatChangeValue(propDiff.current) }}</code>
+                                        " class="simple-value">{{ formatSensitiveValue(propDiff.current, selectedResource, propDiff.path, 'before') }}</code>
+                                      <button 
+                                        *ngIf="isPropertySensitive(selectedResource, propDiff.path) && propDiff.current !== null && propDiff.current !== undefined"
+                                        mat-icon-button 
+                                        class="sensitive-toggle-btn"
+                                        (click)="toggleSensitiveValueVisibility(selectedResource, propDiff.path, 'before')"
+                                        [matTooltip]="isSensitiveValueVisible(selectedResource, propDiff.path, 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                        <mat-icon>{{ isSensitiveValueVisible(selectedResource, propDiff.path, 'before') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                                      </button>
                                     </div>
                                   </div>
                                   <div class="property-after-value">
@@ -483,12 +499,20 @@
                                           propDiff.after !== null &&
                                           propDiff.after !== undefined &&
                                           isComplexValue(propDiff.after)
-                                        " class="json-content">{{ formatChangeValue(propDiff.after) }}</pre>
+                                        " class="json-content">{{ formatSensitiveValue(propDiff.after, selectedResource, propDiff.path, 'after') }}</pre>
                                       <code *ngIf="
                                           propDiff.after !== null &&
                                           propDiff.after !== undefined &&
                                           !isComplexValue(propDiff.after)
-                                        " class="simple-value">{{ formatChangeValue(propDiff.after) }}</code>
+                                        " class="simple-value">{{ formatSensitiveValue(propDiff.after, selectedResource, propDiff.path, 'after') }}</code>
+                                      <button 
+                                        *ngIf="isPropertySensitive(selectedResource, propDiff.path) && propDiff.after !== null && propDiff.after !== undefined"
+                                        mat-icon-button 
+                                        class="sensitive-toggle-btn"
+                                        (click)="toggleSensitiveValueVisibility(selectedResource, propDiff.path, 'after')"
+                                        [matTooltip]="isSensitiveValueVisible(selectedResource, propDiff.path, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                        <mat-icon>{{ isSensitiveValueVisible(selectedResource, propDiff.path, 'after') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
@@ -520,9 +544,17 @@
                                     </div>
                                     <div class="value-container before-value">
                                       <pre *ngIf="isComplexValue(change.value.before)"
-                                        class="json-content">{{ formatChangeValue(change.value.before) }}</pre>
+                                        class="json-content">{{ formatSensitiveValue(change.value.before, selectedResource, change.key, 'before') }}</pre>
                                       <code *ngIf="!isComplexValue(change.value.before)"
-                                        class="simple-value">{{ formatChangeValue(change.value.before) }}</code>
+                                        class="simple-value">{{ formatSensitiveValue(change.value.before, selectedResource, change.key, 'before') }}</code>
+                                      <button 
+                                        *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.before !== null && change.value.before !== undefined"
+                                        mat-icon-button 
+                                        class="sensitive-toggle-btn"
+                                        (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'before')"
+                                        [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                        <mat-icon>{{ isSensitiveValueVisible(selectedResource, change.key, 'before') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                                      </button>
                                     </div>
                                   </div>
 
@@ -534,9 +566,17 @@
                                     <div class="value-container current-value" 
                                          [class.drifted]="change.value.hasDrift">
                                       <pre *ngIf="isComplexValue(change.value.current)"
-                                        class="json-content">{{ formatChangeValue(change.value.current) }}</pre>
+                                        class="json-content">{{ formatSensitiveValue(change.value.current, selectedResource, change.key, 'before') }}</pre>
                                       <code *ngIf="!isComplexValue(change.value.current)"
-                                        class="simple-value">{{ formatChangeValue(change.value.current) }}</code>
+                                        class="simple-value">{{ formatSensitiveValue(change.value.current, selectedResource, change.key, 'before') }}</code>
+                                      <button 
+                                        *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.current !== null && change.value.current !== undefined"
+                                        mat-icon-button 
+                                        class="sensitive-toggle-btn"
+                                        (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'before')"
+                                        [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                        <mat-icon>{{ isSensitiveValueVisible(selectedResource, change.key, 'before') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                                      </button>
                                     </div>
                                   </div>
 
@@ -551,9 +591,17 @@
                                     </div>
                                     <div class="value-container after-value">
                                       <pre *ngIf="isComplexValue(change.value.after)"
-                                        class="json-content">{{ formatChangeValue(change.value.after) }}</pre>
+                                        class="json-content">{{ formatSensitiveValue(change.value.after, selectedResource, change.key, 'after') }}</pre>
                                       <code *ngIf="!isComplexValue(change.value.after)"
-                                        class="simple-value">{{ formatChangeValue(change.value.after) }}</code>
+                                        class="simple-value">{{ formatSensitiveValue(change.value.after, selectedResource, change.key, 'after') }}</code>
+                                      <button 
+                                        *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.after !== null && change.value.after !== undefined"
+                                        mat-icon-button 
+                                        class="sensitive-toggle-btn"
+                                        (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
+                                        [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                        <mat-icon>{{ isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
@@ -567,11 +615,19 @@
                           <h5>Current Value</h5>
                           <div class="value-container">
                             <pre *ngIf="isComplexValue(change.value.after)" class="json-content">{{
-                              formatChangeValue(change.value.after)
+                              formatSensitiveValue(change.value.after, selectedResource, change.key, 'after')
                             }}</pre>
                             <code *ngIf="!isComplexValue(change.value.after)" class="simple-value">{{
-                              formatChangeValue(change.value.after)
+                              formatSensitiveValue(change.value.after, selectedResource, change.key, 'after')
                             }}</code>
+                            <button 
+                              *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.after !== null && change.value.after !== undefined"
+                              mat-icon-button 
+                              class="sensitive-toggle-btn"
+                              (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
+                              [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
+                              <mat-icon>{{ isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'visibility_off' : 'visibility' }}</mat-icon>
+                            </button>
                           </div>
                         </div>
                       </mat-expansion-panel>

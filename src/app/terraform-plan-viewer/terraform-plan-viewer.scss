@@ -1293,3 +1293,37 @@ mat-toolbar {
     margin: 8px 0;
   }
 }
+
+// Sensitive value styling
+.value-display {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sensitive-toggle-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  
+  &:hover {
+    opacity: 1;
+  }
+  
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.value-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .sensitive-toggle-btn {
+    margin-left: 8px;
+  }
+}
