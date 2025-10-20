@@ -64,6 +64,9 @@ export class DashboardComponent implements OnInit {
   expandedVariables: Set<string> = new Set<string>();
   expandedOutputs: Set<string> = new Set<string>();
 
+  // Track visibility of sensitive values (key format: "resourceAddress.propertyPath")
+  sensitiveValuesVisible: Set<string> = new Set<string>();
+
   // Cache for change calculations to prevent recalculation during change detection
   private changeFieldsCache = new Map<string, { [key: string]: { before: any, after: any, changed: boolean } }>();
 
@@ -388,6 +391,7 @@ export class DashboardComponent implements OnInit {
     // Clear all expanded states and cache when switching data
     this.changeFieldsCache.clear();
     this.selectedResource = null;
+    this.sensitiveValuesVisible.clear(); // Clear sensitive value visibility state
     for (const [type, resources] of this.resourcesByType.entries()) {
       resources.forEach(resource => {
         (resource as any).expanded = false;
@@ -913,5 +917,62 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  /**
+   * Check if a property value should be masked (is sensitive and not visible)
+   */
+  isSensitiveValueMasked(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): boolean {
+    const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
+    const isSensitive = valueType === 'before' ? sensitivity.beforeSensitive : sensitivity.afterSensitive;
+    
+    if (!isSensitive) {
+      return false;
+    }
+
+    // Check if this sensitive value is currently visible
+    const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
+    return !this.sensitiveValuesVisible.has(visibilityKey);
+  }
+
+  /**
+   * Toggle visibility of a sensitive value
+   */
+  toggleSensitiveValueVisibility(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): void {
+    const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
+    if (this.sensitiveValuesVisible.has(visibilityKey)) {
+      this.sensitiveValuesVisible.delete(visibilityKey);
+    } else {
+      this.sensitiveValuesVisible.add(visibilityKey);
+    }
+  }
+
+  /**
+   * Check if a sensitive value is currently visible
+   */
+  isSensitiveValueVisible(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): boolean {
+    const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
+    return this.sensitiveValuesVisible.has(visibilityKey);
+  }
+
+  /**
+   * Format a value for display, masking it if sensitive
+   */
+  formatSensitiveValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): string {
+    const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
+    const isSensitive = valueType === 'before' ? sensitivity.beforeSensitive : sensitivity.afterSensitive;
+
+    if (isSensitive && this.isSensitiveValueMasked(resource, propertyPath, valueType)) {
+      return '****';
+    }
+
+    return this.formatChangeValue(value);
+  }
+
+  /**
+   * Check if a property is sensitive (before or after)
+   */
+  isPropertySensitive(resource: ResourceChange, propertyPath: string): boolean {
+    const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
+    return sensitivity.beforeSensitive || sensitivity.afterSensitive;
+  }
 
 }
