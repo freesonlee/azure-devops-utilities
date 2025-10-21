@@ -1,0 +1,259 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.5.0",
+  "resource_changes": [
+    {
+      "address": "azurerm_storage_account.example",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "example",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "examplestorage",
+          "account_tier": "Standard",
+          "account_replication_type": "LRS",
+          "custom_domain_verification_id": "old-verification-id-12345",
+          "primary_access_key": "oldkey123",
+          "network_rules": [
+            {
+              "default_action": "Allow",
+              "ip_rules": [],
+              "virtual_network_subnet_ids": []
+            }
+          ]
+        },
+        "after": {
+          "name": "examplestorage",
+          "account_tier": "Standard",
+          "account_replication_type": "GRS",
+          "custom_domain_verification_id": "new-verification-id-67890",
+          "primary_access_key": "newkey456",
+          "network_rules": [
+            {
+              "default_action": "Deny",
+              "ip_rules": ["10.0.0.0/8"],
+              "virtual_network_subnet_ids": ["/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1"]
+            }
+          ]
+        },
+        "before_sensitive": {
+          "name": false,
+          "account_tier": false,
+          "account_replication_type": false,
+          "custom_domain_verification_id": true,
+          "primary_access_key": true,
+          "network_rules": [
+            {
+              "default_action": false,
+              "ip_rules": false,
+              "virtual_network_subnet_ids": false
+            }
+          ]
+        },
+        "after_sensitive": {
+          "name": false,
+          "account_tier": false,
+          "account_replication_type": false,
+          "custom_domain_verification_id": true,
+          "primary_access_key": true,
+          "network_rules": [
+            {
+              "default_action": false,
+              "ip_rules": true,
+              "virtual_network_subnet_ids": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "address": "azurerm_key_vault_secret.example[0]",
+      "mode": "managed",
+      "type": "azurerm_key_vault_secret",
+      "name": "example",
+      "index": 0,
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "database-password",
+          "value": "SuperSecretPassword123!",
+          "key_vault_id": "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/example-vault",
+          "tags": {
+            "environment": "production",
+            "managed_by": "terraform"
+          }
+        },
+        "after_sensitive": {
+          "name": false,
+          "value": true,
+          "key_vault_id": false,
+          "tags": false
+        }
+      }
+    },
+    {
+      "address": "azurerm_key_vault_secret.example[1]",
+      "mode": "managed",
+      "type": "azurerm_key_vault_secret",
+      "name": "example",
+      "index": 1,
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "api-key",
+          "value": "sk-1234567890abcdef",
+          "key_vault_id": "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/example-vault",
+          "tags": {
+            "environment": "production",
+            "managed_by": "terraform"
+          }
+        },
+        "after_sensitive": {
+          "name": false,
+          "value": true,
+          "key_vault_id": false,
+          "tags": false
+        }
+      }
+    },
+    {
+      "address": "random_password.passwords",
+      "mode": "managed",
+      "type": "random_password",
+      "name": "passwords",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "length": 16,
+          "special": true,
+          "override_special": "!@#$%",
+          "result": "P@ssw0rd!2345678",
+          "triggers_replace": [
+            "value1",
+            "value2",
+            "value3",
+            "public-value",
+            "another-public"
+          ]
+        },
+        "after_sensitive": {
+          "length": false,
+          "special": false,
+          "override_special": false,
+          "result": true,
+          "triggers_replace": [
+            true,
+            true,
+            true,
+            false,
+            false
+          ]
+        }
+      }
+    }
+  ],
+  "resource_drift": [
+    {
+      "address": "azurerm_storage_account.example",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "example",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "examplestorage",
+          "account_tier": "Standard",
+          "account_replication_type": "LRS",
+          "custom_domain_verification_id": "drifted-verification-id-99999",
+          "primary_access_key": "driftedkey789",
+          "network_rules": [
+            {
+              "default_action": "Allow",
+              "ip_rules": [],
+              "virtual_network_subnet_ids": []
+            }
+          ]
+        },
+        "after": {
+          "name": "examplestorage",
+          "account_tier": "Standard",
+          "account_replication_type": "LRS",
+          "custom_domain_verification_id": "old-verification-id-12345",
+          "primary_access_key": "oldkey123",
+          "network_rules": [
+            {
+              "default_action": "Allow",
+              "ip_rules": [],
+              "virtual_network_subnet_ids": []
+            }
+          ]
+        },
+        "before_sensitive": {
+          "name": false,
+          "account_tier": false,
+          "account_replication_type": false,
+          "custom_domain_verification_id": true,
+          "primary_access_key": true,
+          "network_rules": [
+            {
+              "default_action": false,
+              "ip_rules": false,
+              "virtual_network_subnet_ids": false
+            }
+          ]
+        },
+        "after_sensitive": {
+          "name": false,
+          "account_tier": false,
+          "account_replication_type": false,
+          "custom_domain_verification_id": true,
+          "primary_access_key": true,
+          "network_rules": [
+            {
+              "default_action": false,
+              "ip_rules": false,
+              "virtual_network_subnet_ids": false
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.5.0",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "azurerm_storage_account.unchanged",
+            "mode": "managed",
+            "type": "azurerm_storage_account",
+            "name": "unchanged",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "values": {
+              "name": "unchangedstorage",
+              "account_tier": "Standard",
+              "account_replication_type": "LRS",
+              "primary_access_key": "unchangedkey111",
+              "secondary_access_key": "unchangedkey222"
+            },
+            "sensitive_values": {
+              "primary_access_key": true,
+              "secondary_access_key": true
+            }
+          }
+        ]
+      }
+    }
+  }
+}

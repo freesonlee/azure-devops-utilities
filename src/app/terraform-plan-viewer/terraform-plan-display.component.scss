@@ -430,333 +430,6 @@
   padding: 20px;
 }
 
-// Drag and Drop Zone Styles
-.drop-zone {
-  border: 2px dashed #e0e0e0;
-  border-radius: 12px;
-  padding: 40px 20px;
-  margin: 24px 0;
-  background-color: #fafafa;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: center;
-  position: relative;
-  
-  &:hover {
-    border-color: #2196f3;
-    background-color: #f3f8ff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
-  }
-
-  &.dragover {
-    border-color: #2196f3;
-    background-color: #e3f2fd;
-    border-style: solid;
-    box-shadow: 0 0 20px rgba(33, 150, 243, 0.3);
-    transform: scale(1.02);
-
-    .drop-zone-content {
-      .drop-icon {
-        color: #2196f3;
-        animation: bounce 1s ease-in-out infinite;
-      }
-
-      .primary-text {
-        color: #1976d2;
-        font-weight: 600;
-      }
-    }
-  }
-
-  .drop-zone-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-
-    .drop-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      color: #bdbdbd;
-      transition: all 0.3s ease;
-    }
-
-    .drop-text {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-
-      .primary-text {
-        font-size: 18px;
-        font-weight: 500;
-        color: #424242;
-        transition: all 0.3s ease;
-      }
-
-      .secondary-text {
-        font-size: 14px;
-        color: #757575;
-      }
-    }
-  }
-}
-
-// Bounce animation for drag over state
-@keyframes bounce {
-  0%, 20%, 60%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  80% {
-    transform: translateY(-5px);
-  }
-}
-
-// Welcome card adjustments
-.welcome-card {
-  .mat-mdc-card-content {
-    padding-bottom: 0; // Remove default padding since we have the drop zone
-  }
-
-  .mat-mdc-card-actions {
-    padding-top: 16px;
-    justify-content: center;
-  }
-}
-
-// Loading indicator styles
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 40px 20px;
-  text-align: center;
-
-  mat-progress-bar {
-    width: 100%;
-    max-width: 400px;
-  }
-
-  .loading-text {
-    margin: 0;
-    color: #666;
-    font-size: 16px;
-    font-weight: 500;
-  }
-}
-
-// Toolbar Drop Zone Styles
-.toolbar-drop-zone {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  margin-left: 16px;
-  border: 1px dashed rgba(255, 255, 255, 0.5);
-  border-radius: 6px;
-  background-color: rgba(255, 255, 255, 0.1);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 180px;
-  height: 36px;
-  box-sizing: border-box;
-
-  &:hover {
-    border-color: rgba(255, 255, 255, 0.8);
-    background-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  &.dragover {
-    border-color: #fff;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-style: solid;
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
-    transform: scale(1.05);
-
-    .toolbar-drop-icon {
-      animation: pulse 1s ease-in-out infinite;
-      color: #fff;
-    }
-
-    .toolbar-drop-text {
-      color: #fff;
-      font-weight: 600;
-    }
-  }
-
-  .toolbar-drop-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    color: rgba(255, 255, 255, 0.8);
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-  }
-
-  .toolbar-drop-text {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.9);
-    white-space: nowrap;
-    transition: all 0.3s ease;
-    font-weight: 500;
-  }
-}
-
-// Pulse animation for toolbar drag over state
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-// Toolbar spacing adjustment
-mat-toolbar {
-  .spacer {
-    flex: 1 1 auto;
-  }
-
-  // Ensure proper alignment of toolbar elements
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-// Responsive design
-@media (max-width: 1400px) {
-  .left-panel {
-    width: 600px;
-    min-width: 600px;
-    max-width: 600px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .left-panel {
-    width: 500px;
-    min-width: 500px;
-    max-width: 500px;
-  }
-}
-
-@media (max-width: 1000px) {
-  .left-panel {
-    width: 400px;
-    min-width: 400px;
-    max-width: 400px;
-  }
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 10px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .split-container {
-    flex-direction: column;
-    height: auto;
-    min-height: 400px;
-  }
-
-  .left-panel {
-    width: 100%;
-    min-width: auto;
-    max-width: none;
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
-    max-height: 300px;
-  }
-
-  .right-panel {
-    min-height: 300px;
-
-    .resource-details {
-      padding: 16px;
-    }
-  }
-
-  .resource-item {
-    padding: 8px 12px;
-
-    .resource-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-
-      .resource-actions {
-        .action-chip {
-          font-size: 10px;
-          height: 18px;
-          padding: 0 4px;
-        }
-      }
-    }
-  }
-
-  // Drop zone mobile adjustments
-  .drop-zone {
-    padding: 24px 16px;
-    margin: 16px 0;
-
-    .drop-zone-content {
-      gap: 12px;
-
-      .drop-icon {
-        font-size: 36px;
-        width: 36px;
-        height: 36px;
-      }
-
-      .drop-text {
-        .primary-text {
-          font-size: 16px;
-        }
-
-        .secondary-text {
-          font-size: 13px;
-        }
-      }
-    }
-  }
-
-  // Toolbar drop zone mobile adjustments
-  .toolbar-drop-zone {
-    min-width: 120px;
-    padding: 6px 12px;
-    margin-left: 8px;
-
-    .toolbar-drop-text {
-      font-size: 11px;
-    }
-
-    .toolbar-drop-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-    }
-  }
-}
-
-// Hide toolbar drop zone on very small screens
-@media (max-width: 480px) {
-  .toolbar-drop-zone {
-    display: none;
-  }
-}
-
 // Field changes and comparison styles
 .field-changes {
   margin-top: 20px;
@@ -1270,30 +943,6 @@ mat-toolbar {
   }
 }
 
-// Welcome card styles
-.welcome-card {
-  .instructions-divider {
-    margin: 16px 0;
-  }
-
-  .instructions-title {
-    margin-top: 16px;
-    margin-bottom: 8px;
-    font-size: 16px;
-  }
-
-  .instructions-list {
-    margin-left: 16px;
-  }
-
-  .code-block {
-    background-color: #f5f5f5;
-    padding: 8px;
-    border-radius: 4px;
-    margin: 8px 0;
-  }
-}
-
 // Sensitive value styling
 .value-display {
   position: relative;
@@ -1325,5 +974,97 @@ mat-toolbar {
   
   .sensitive-toggle-btn {
     margin-left: 8px;
+  }
+}
+
+// Responsive design
+@media (max-width: 1400px) {
+  .left-panel {
+    width: 600px;
+    min-width: 600px;
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .left-panel {
+    width: 500px;
+    min-width: 500px;
+    max-width: 500px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .left-panel {
+    width: 400px;
+    min-width: 400px;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .split-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 400px;
+  }
+
+  .left-panel {
+    width: 100%;
+    min-width: auto;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    max-height: 300px;
+  }
+
+  .right-panel {
+    min-height: 300px;
+
+    .resource-details {
+      padding: 16px;
+    }
+  }
+
+  .resource-item {
+    padding: 8px 12px;
+
+    .resource-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+
+      .resource-actions {
+        .action-chip {
+          font-size: 10px;
+          height: 18px;
+          padding: 0 4px;
+        }
+      }
+    }
+  }
+}
+
+// Filter card styling
+.filter-card {
+  background-color: #fff3e0;
+  
+  .filter-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    .results-info {
+      color: #666;
+      font-size: 13px;
+    }
   }
 }
