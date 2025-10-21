@@ -1251,7 +1251,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
   isSensitiveValueMasked(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): boolean {
     const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
     const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
-    
+
     if (!isSensitive) {
       return false;
     }
@@ -1289,7 +1289,10 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
 
     if (isSensitive && this.isSensitiveValueMasked(resource, propertyPath, valueType)) {
-      return '****';
+      // Get the actual length of the value when formatted
+      const actualValue = this.formatChangeValue(value);
+      // Return asterisks matching the actual length
+      return '*'.repeat(actualValue.length);
     }
 
     return this.formatChangeValue(value);
@@ -1329,7 +1332,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     if (value === null || value === undefined) {
       return 'null';
     }
-    
+
     if (Array.isArray(value)) {
       const count = value.length;
       if (count === 0) {
@@ -1337,7 +1340,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
       }
       return `${count} element${count === 1 ? '' : 's'}`;
     }
-    
+
     if (typeof value === 'object') {
       const count = Object.keys(value).length;
       if (count === 0) {
@@ -1345,7 +1348,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
       }
       return `${count} propert${count === 1 ? 'y' : 'ies'}`;
     }
-    
+
     return 'n/a';
   }
 }
