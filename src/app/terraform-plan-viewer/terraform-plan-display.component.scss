@@ -371,6 +371,36 @@
     height: 40px;
     flex-shrink: 0;
   }
+
+  .clear-filters-link {
+    text-decoration: none;
+    font-weight: 500;
+    text-transform: none;
+    padding: 8px 16px;
+    margin-left: auto;
+    
+    &:hover {
+      background-color: rgba(63, 81, 181, 0.08);
+    }
+  }
+
+  .clear-filters-adjacent {
+    text-decoration: none;
+    font-weight: 500;
+    text-transform: none;
+    padding: 8px 16px;
+    
+    &:hover {
+      background-color: rgba(63, 81, 181, 0.08);
+    }
+    
+    mat-icon {
+      margin-right: 4px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
 }
 
 // Tables styling for Outputs and Variables

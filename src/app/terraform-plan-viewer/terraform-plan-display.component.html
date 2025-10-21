@@ -587,8 +587,10 @@
             <mat-form-field appearance="outline" class="filter-field">
               <mat-label>Filter by Name</mat-label>
               <input matInput [(ngModel)]="outputNameFilter" (input)="applyOutputFilter()" placeholder="Search outputs...">
+              <mat-icon matSuffix>search</mat-icon>
             </mat-form-field>
-            <button mat-raised-button (click)="clearOutputFilters()" *ngIf="outputNameFilter">
+            <button mat-button color="primary" (click)="clearOutputFilters()" *ngIf="outputNameFilter" class="clear-filters-adjacent">
+              <mat-icon>close</mat-icon>
               Clear Filters
             </button>
           </div>
@@ -635,12 +637,15 @@
             <mat-form-field appearance="outline" class="filter-field">
               <mat-label>Filter by Name</mat-label>
               <input matInput [(ngModel)]="variableNameFilter" (input)="applyVariableFilter()" placeholder="Search names...">
+              <mat-icon matSuffix>search</mat-icon>
             </mat-form-field>
             <mat-form-field appearance="outline" class="filter-field">
               <mat-label>Filter by Value</mat-label>
               <input matInput [(ngModel)]="variableValueFilter" (input)="applyVariableFilter()" placeholder="Search values...">
+              <mat-icon matSuffix>search</mat-icon>
             </mat-form-field>
-            <button mat-raised-button (click)="clearVariableFilters()" *ngIf="variableNameFilter || variableValueFilter">
+            <button mat-button color="primary" (click)="clearVariableFilters()" *ngIf="variableNameFilter || variableValueFilter" class="clear-filters-adjacent">
+              <mat-icon>close</mat-icon>
               Clear Filters
             </button>
           </div>
