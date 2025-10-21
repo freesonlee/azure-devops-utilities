@@ -608,6 +608,9 @@ export class TerraformPlanService {
         }
         return false;
       }
+      if( typeof propertyValue == "boolean" && propertyValue === true){
+        return true;
+      }
       return this.checkSensitivityRecursive(propertyValue, remainingParts);
     }
   }
@@ -621,7 +624,7 @@ export class TerraformPlanService {
   } {
     return {
       beforeSensitive: this.isPropertySensitive(resource.change.before_sensitive, propertyPath),
-      afterSensitive: this.isPropertySensitive(resource.change.after_sensitive, propertyPath)
+      afterSensitive: this.isPropertySensitive(resource.change.after_sensitive, propertyPath),
     };
   }
 }

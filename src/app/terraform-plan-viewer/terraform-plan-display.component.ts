@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -14,13 +14,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableDataSource } from '@angular/material/table';
 import { TerraformPlanService } from '../../services/terraform-plan.service';
-import { TerraformPlan, ResourceSummary, ResourceChange } from '../../interfaces/terraform-plan.interface';
+import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
 import * as Diff from 'diff';
 
 @Component({
-  selector: 'app-dashboard',
+  selector: 'app-terraform-plan-display',
   standalone: true,
   imports: [
     CommonModule,
@@ -36,18 +38,24 @@ import * as Diff from 'diff';
     MatInputModule,
     MatFormFieldModule,
     MatProgressBarModule,
-    MatSidenavModule
+    MatSidenavModule,
+    MatDividerModule,
+    MatTooltipModule
   ],
   providers: [TerraformPlanService],
-  templateUrl: './dashboard.html',
-  styleUrl: './dashboard.scss'
+  templateUrl: './terraform-plan-display.component.html',
+  styleUrl: './terraform-plan-display.component.scss'
 })
-export class DashboardComponent implements OnInit {
+export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
   @ViewChild('tabGroup') tabGroup!: MatTabGroup;
+  @Input() plan: TerraformPlan | null = null;
 
-  plan: TerraformPlan | null = null;
   resourceSummary: ResourceSummary = { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
   resourcesByType: Map<string, ResourceChange[]> = new Map();
+  resourceTypeGroups: Map<string, ResourceTypeGroup> = new Map();
+  moduleGroups: ModuleGroup[] = [];
+  resourcesByModule: Map<string, Map<string, ResourceChange[]>> = new Map();
+  resourcesByModuleWithIterators: Map<string, Map<string, ResourceTypeGroup>> = new Map();
   allVariables: any[] = [];
   filteredVariables = new MatTableDataSource<any>([]);
   allOutputs: any[] = [];
@@ -69,6 +77,7 @@ export class DashboardComponent implements OnInit {
 
   // Cache for change calculations to prevent recalculation during change detection
   private changeFieldsCache = new Map<string, { [key: string]: { before: any, after: any, changed: boolean } }>();
+  private changeFieldsWithDriftCache = new Map<string, { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } }>();
 
   // Selected resource for right panel display
   selectedResource: ResourceChange | null = null;
@@ -79,48 +88,31 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private terraformService: TerraformPlanService,
-    private http: HttpClient
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
-    this.terraformService.plan$.subscribe(plan => {
-      this.plan = plan;
-      if (plan) {
-        this.loadPlanData();
-      }
-    });
+  }
 
-    // Load sample data automatically
-    this.loadSampleData();
-
-    // Expose test method for debugging (development only)
-    if (typeof window !== 'undefined') {
-      (window as any).testRecursiveComparison = () => this.testRecursiveComparison();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['plan'] && changes['plan'].currentValue) {
+      this.loadPlanData();
     }
   }
 
-  private loadSampleData(): void {
-    this.http.get<TerraformPlan>('/update-sample.json').subscribe({
-      next: (data) => {
-        this.terraformService.loadPlan(data);
-      },
-      error: (error) => {
-        console.log('Sample data not found, trying original sample.json');
-        this.http.get<TerraformPlan>('/sample.json').subscribe({
-          next: (data) => {
-            this.terraformService.loadPlan(data);
-          },
-          error: (fallbackError) => {
-            console.log('No sample data found, waiting for user to upload a file');
-          }
-        });
-      }
-    });
-  }
-
   private loadPlanData(): void {
+    if (!this.plan) return;
+
+    // Load the plan into the service
+    this.terraformService.loadPlan(this.plan);
+
     this.resourceSummary = this.terraformService.getResourceSummary();
     this.resourcesByType = this.terraformService.getResourcesByType();
+    this.resourceTypeGroups = this.terraformService.getResourceTypeGroups();
+    this.moduleGroups = this.terraformService.getModuleGroups();
+    this.resourcesByModule = this.terraformService.getResourcesByModule();
+    this.resourcesByModuleWithIterators = this.terraformService.getResourcesByModuleWithIterators();
     this.allVariables = this.terraformService.getAllVariables();
     this.filteredVariables.data = this.allVariables;
     this.allOutputs = this.terraformService.getAllOutputs();
@@ -133,6 +125,8 @@ export class DashboardComponent implements OnInit {
     // Debug logging
     console.log('Resource Summary:', this.resourceSummary);
     console.log('Resources by Type:', this.resourcesByType);
+    console.log('Module Groups:', this.moduleGroups);
+    console.log('Resources by Module:', this.resourcesByModule);
     console.log('Plan loaded:', this.plan);
   }
 
@@ -189,23 +183,6 @@ export class DashboardComponent implements OnInit {
     if (actions.includes('update')) return '#ff9800';
     if (actions.includes('delete')) return '#f44336';
     return '#757575';
-  }
-
-  onFileSelected(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const planData = JSON.parse(e.target?.result as string);
-          this.terraformService.loadPlan(planData);
-        } catch (error) {
-          console.error('Error parsing JSON file:', error);
-          alert('Error parsing JSON file. Please check the file format.');
-        }
-      };
-      reader.readAsText(file);
-    }
   }
 
   formatValue(value: any, itemKey?: string, type?: 'variable' | 'output'): string {
@@ -356,7 +333,27 @@ export class DashboardComponent implements OnInit {
     return item.key;
   }
 
+  trackByResource(index: number, item: ResourceChange): string {
+    return item.address;
+  }
+
+  trackByModuleGroup(index: number, item: ModuleGroup): string {
+    return item.name;
+  }
+
+  trackByIteratorGroup(index: number, item: IteratorGroup): string {
+    return item.base_address;
+  }
+
+  trackByResourceTypeGroup(index: number, item: any): string {
+    return item.key;
+  }
+
   trackByFieldChange(index: number, item: any): string {
+    return item.key;
+  }
+
+  trackByFieldKey(index: number, item: any): string {
     return item.key;
   }
 
@@ -390,8 +387,9 @@ export class DashboardComponent implements OnInit {
   clearExpandedResources(): void {
     // Clear all expanded states and cache when switching data
     this.changeFieldsCache.clear();
+    this.changeFieldsWithDriftCache.clear();
     this.selectedResource = null;
-    this.sensitiveValuesVisible.clear();
+    this.sensitiveValuesVisible.clear(); // Clear sensitive value visibility state
     for (const [type, resources] of this.resourcesByType.entries()) {
       resources.forEach(resource => {
         (resource as any).expanded = false;
@@ -504,6 +502,25 @@ export class DashboardComponent implements OnInit {
     return Array.isArray(value) || (typeof value === 'object' && value !== null);
   }
 
+  getValueType(value: any): string {
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+    if (Array.isArray(value)) {
+      return 'array';
+    }
+    if (typeof value === 'object') {
+      return 'object';
+    }
+    if (typeof value === 'boolean') {
+      return 'boolean';
+    }
+    if (typeof value === 'number') {
+      return 'number';
+    }
+    return 'string';
+  }
+
   /**
    * Compare two values and return line-by-line differences with highlighting
    */
@@ -572,6 +589,172 @@ export class DashboardComponent implements OnInit {
    */
   isObjectValue(value: any): boolean {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  /**
+   * Get object property differences for side-by-side comparison with drift support (Before, Current, After)
+   */
+  getObjectPropertyDifferencesWithDrift(beforeValue: any, currentValue: any, afterValue: any, path: string = ''): Array<{
+    key: string,
+    before: any,
+    current: any,
+    after: any,
+    changed: boolean,
+    hasDrift: boolean,
+    isNested: boolean,
+    depth: number,
+    path: string
+  }> {
+    const differences: Array<{
+      key: string,
+      before: any,
+      current: any,
+      after: any,
+      changed: boolean,
+      hasDrift: boolean,
+      isNested: boolean,
+      depth: number,
+      path: string
+    }> = [];
+
+    // Handle arrays
+    if (Array.isArray(beforeValue) || Array.isArray(currentValue) || Array.isArray(afterValue)) {
+      const beforeArr = Array.isArray(beforeValue) ? beforeValue : [];
+      const currentArr = Array.isArray(currentValue) ? currentValue : [];
+      const afterArr = Array.isArray(afterValue) ? afterValue : [];
+      const maxLength = Math.max(beforeArr.length, currentArr.length, afterArr.length);
+
+      for (let i = 0; i < maxLength; i++) {
+        const beforeItem = beforeArr[i];
+        const currentItem = currentArr[i];
+        const afterItem = afterArr[i];
+        const currentPath = path ? `${path}[${i}]` : `[${i}]`;
+        const depth = path ? path.split('.').length : 1;
+
+        // Check changes and drift
+        const changed = !this.deepEqual(beforeItem, afterItem);
+        const hasDrift = !this.deepEqual(beforeItem, currentItem);
+
+        // Add the array item difference
+        differences.push({
+          key: `[${i}]`,
+          before: beforeItem,
+          current: currentItem,
+          after: afterItem,
+          changed: changed,
+          hasDrift: hasDrift,
+          isNested: this.isObjectValue(beforeItem) || this.isObjectValue(currentItem) || this.isObjectValue(afterItem) ||
+            Array.isArray(beforeItem) || Array.isArray(currentItem) || Array.isArray(afterItem),
+          depth: depth,
+          path: currentPath
+        });
+
+        // Recursively process nested objects/arrays if they have differences or drift
+        if ((changed || hasDrift) && (this.isObjectValue(beforeItem) || this.isObjectValue(currentItem) || this.isObjectValue(afterItem) ||
+          Array.isArray(beforeItem) || Array.isArray(currentItem) || Array.isArray(afterItem))) {
+          const nestedDifferences = this.getObjectPropertyDifferencesWithDrift(beforeItem, currentItem, afterItem, currentPath);
+          differences.push(...nestedDifferences);
+        }
+      }
+    }
+    // Handle objects
+    else if (this.isObjectValue(beforeValue) || this.isObjectValue(currentValue) || this.isObjectValue(afterValue)) {
+      const beforeObj = this.isObjectValue(beforeValue) ? beforeValue : {};
+      const currentObj = this.isObjectValue(currentValue) ? currentValue : {};
+      const afterObj = this.isObjectValue(afterValue) ? afterValue : {};
+
+      // Get all unique keys from all three objects
+      const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(currentObj), ...Object.keys(afterObj)]);
+
+      allKeys.forEach(key => {
+        const beforeVal = beforeObj[key];
+        const currentVal = currentObj[key];
+        const afterVal = afterObj[key];
+        const currentPath = path ? `${path}.${key}` : key;
+        const depth = path ? path.split('.').length + 1 : 0;
+
+        // Check changes and drift
+        const changed = !this.deepEqual(beforeVal, afterVal);
+        const hasDrift = !this.deepEqual(beforeVal, currentVal);
+
+        // Add the property difference
+        differences.push({
+          key,
+          before: beforeVal,
+          current: currentVal,
+          after: afterVal,
+          changed: changed,
+          hasDrift: hasDrift,
+          isNested: this.isObjectValue(beforeVal) || this.isObjectValue(currentVal) || this.isObjectValue(afterVal) ||
+            Array.isArray(beforeVal) || Array.isArray(currentVal) || Array.isArray(afterVal),
+          depth: depth,
+          path: currentPath
+        });
+
+        // Recursively process nested objects/arrays if they have differences or drift
+        if ((changed || hasDrift) && (this.isObjectValue(beforeVal) || this.isObjectValue(currentVal) || this.isObjectValue(afterVal) ||
+          Array.isArray(beforeVal) || Array.isArray(currentVal) || Array.isArray(afterVal))) {
+          const nestedDifferences = this.getObjectPropertyDifferencesWithDrift(beforeVal, currentVal, afterVal, currentPath);
+          differences.push(...nestedDifferences);
+        }
+      });
+    }
+
+    return differences;
+  }
+
+  /**
+   * Get flattened property differences with drift support (only changed or drifted properties)
+   */
+  getChangedPropertiesFlatWithDrift(beforeValue: any, currentValue: any, afterValue: any): Array<{
+    key: string,
+    before: any,
+    current: any,
+    after: any,
+    changed: boolean,
+    hasDrift: boolean,
+    isNested: boolean,
+    depth: number,
+    path: string
+  }> {
+    const allDifferences = this.getObjectPropertyDifferencesWithDrift(beforeValue, currentValue, afterValue);
+
+    // Filter to only show properties with changes or drift
+    return allDifferences.filter(diff => {
+      if (!diff.changed && !diff.hasDrift) return false;
+
+      // If this is a nested object/array, check if it has any changed or drifted children
+      if (diff.isNested) {
+        const hasChangedOrDriftedChildren = allDifferences.some(childDiff =>
+          (childDiff.changed || childDiff.hasDrift) &&
+          childDiff.path.startsWith(diff.path + '.') &&
+          !childDiff.isNested // Only count leaf nodes as children
+        );
+
+        // Only include nested objects/arrays if they don't have changed/drifted leaf children
+        // (to avoid duplicate display)
+        return !hasChangedOrDriftedChildren;
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Check if we should show object diff with drift (values are objects/arrays and have property differences or drift)
+   */
+  shouldShowObjectDiffWithDrift(beforeValue: any, currentValue: any, afterValue: any): boolean {
+    // Check if any value is an object or array that can be decomposed
+    const beforeIsComplex = this.isObjectValue(beforeValue) || Array.isArray(beforeValue);
+    const currentIsComplex = this.isObjectValue(currentValue) || Array.isArray(currentValue);
+    const afterIsComplex = this.isObjectValue(afterValue) || Array.isArray(afterValue);
+
+    if (!beforeIsComplex && !currentIsComplex && !afterIsComplex) {
+      return false;
+    }
+
+    const differences = this.getObjectPropertyDifferencesWithDrift(beforeValue, currentValue, afterValue);
+    return differences.length > 0;
   }
 
   /**
@@ -784,33 +967,81 @@ export class DashboardComponent implements OnInit {
     return differences.length > 0;
   }
 
-  // Test method for debugging - can be called from browser console
-  testRecursiveComparison() {
-    const beforeNetworkRules = [
-      {
-        "default_action": "Allow",
-        "ip_rules": [],
-        "virtual_network_subnet_ids": []
-      }
-    ];
+  /**
+   * Get the current state (from resource_drift) for a resource if it exists
+   */
+  getResourceDriftState(resourceAddress: string): any | null {
+    return this.terraformService.getResourceDriftState(resourceAddress);
+  }
 
-    const afterNetworkRules = [
-      {
-        "default_action": "Deny",
-        "ip_rules": [
-          "10.0.0.0/8",
-          "192.168.1.0/24"
-        ],
-        "virtual_network_subnet_ids": [
-          "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1"
-        ]
-      }
-    ];
+  /**
+   * Check if a resource has drift data available
+   */
+  hasResourceDrift(resourceAddress: string): boolean {
+    return this.terraformService.hasResourceDrift(resourceAddress);
+  }
 
-    console.log('Testing recursive comparison:');
-    console.log('Should show object diff:', this.shouldShowObjectDiff(beforeNetworkRules, afterNetworkRules));
-    console.log('Differences:', this.getObjectPropertyDifferences(beforeNetworkRules, afterNetworkRules));
-    console.log('Changed properties flat:', this.getChangedPropertiesFlat(beforeNetworkRules, afterNetworkRules));
+  /**
+   * Get changed fields with drift support (Before, Current, After)
+   */
+  getChangedFieldsWithDrift(resource: ResourceChange): { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } } {
+    // Use resource address as cache key
+    const cacheKey = `${resource.address}_with_drift`;
+
+    // Return cached result if available
+    if (this.changeFieldsWithDriftCache.has(cacheKey)) {
+      return this.changeFieldsWithDriftCache.get(cacheKey)!;
+    }
+
+    const changes: { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } } = {};
+    const before = resource.change.before || {};
+    const after = resource.change.after || {};
+    const current = this.getResourceDriftState(resource.address) || before;
+
+    // Get all unique keys from before, current, and after
+    const allKeys = new Set([...Object.keys(before), ...Object.keys(current), ...Object.keys(after)]);
+
+    allKeys.forEach(key => {
+      const beforeValue = before[key];
+      const currentValue = current[key];
+      const afterValue = after[key];
+      const changed = JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
+      const hasDrift = JSON.stringify(beforeValue) !== JSON.stringify(currentValue);
+
+      changes[key] = {
+        before: beforeValue,
+        current: currentValue,
+        after: afterValue,
+        changed: changed,
+        hasDrift: hasDrift
+      };
+    });
+
+    // Cache the result
+    this.changeFieldsWithDriftCache.set(cacheKey, changes);
+    return changes;
+  }
+
+  /**
+   * Get sorted changed fields with drift support
+   */
+  getSortedChangedFieldsWithDrift(resource: ResourceChange): Array<{ key: string, value: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } }> {
+    const changes = this.getChangedFieldsWithDrift(resource);
+
+    // Convert object to array for sorting
+    const changeEntries = Object.entries(changes).map(([key, value]) => ({ key, value }));
+
+    // Sort entries: changed properties first, then drift properties, then unchanged properties
+    changeEntries.sort((a, b) => {
+      if (a.value.changed && !b.value.changed) return -1;
+      if (!a.value.changed && b.value.changed) return 1;
+      if (a.value.hasDrift && !b.value.hasDrift) return -1;
+      if (!a.value.hasDrift && b.value.hasDrift) return 1;
+      // If both have same change/drift status, sort alphabetically by key
+      return a.key.localeCompare(b.key);
+    });
+
+    return changeEntries;
   }
 
   /**
@@ -918,11 +1149,108 @@ export class DashboardComponent implements OnInit {
   }
 
   /**
+   * Get filtered module groups based on active resource filter
+   */
+  getFilteredModuleGroups(): any[] {
+    if (!this.activeResourceFilter) {
+      return this.moduleGroups;
+    }
+
+    return this.moduleGroups
+      .map(moduleGroup => {
+        const filteredResources = moduleGroup.resources.filter((resource: ResourceChange) =>
+          this.resourceMatchesAction(resource, this.activeResourceFilter!)
+        );
+
+        return {
+          ...moduleGroup,
+          resources: filteredResources,
+          resource_count: filteredResources.length
+        };
+      })
+      .filter(moduleGroup => moduleGroup.resource_count > 0);
+  }
+
+  /**
+   * Get filtered resources by module with iterator support
+   */
+  getFilteredResourcesByModuleWithIterators(): Map<string, Map<string, any>> {
+    if (!this.activeResourceFilter) {
+      return this.resourcesByModuleWithIterators;
+    }
+
+    const filteredMap = new Map<string, Map<string, any>>();
+
+    for (const [moduleAddress, resourceTypes] of this.resourcesByModuleWithIterators.entries()) {
+      const filteredResourceTypes = new Map<string, any>();
+
+      for (const [type, typeGroup] of resourceTypes.entries()) {
+        // Filter regular resources
+        const filteredRegularResources = typeGroup.resources.filter((resource: ResourceChange) =>
+          this.resourceMatchesAction(resource, this.activeResourceFilter!)
+        );
+
+        // Filter iterator groups
+        const filteredIteratorGroups: IteratorGroup[] = [];
+        if (typeGroup.iterator_groups) {
+          for (const iteratorGroup of typeGroup.iterator_groups) {
+            const filteredIteratorResources = iteratorGroup.resources.filter((resource: ResourceChange) =>
+              this.resourceMatchesAction(resource, this.activeResourceFilter!)
+            );
+
+            if (filteredIteratorResources.length > 0) {
+              filteredIteratorGroups.push({
+                ...iteratorGroup,
+                resources: filteredIteratorResources
+              });
+            }
+          }
+        }
+
+        // If there are filtered resources or iterator groups, include this type
+        if (filteredRegularResources.length > 0 || filteredIteratorGroups.length > 0) {
+          const totalCount = filteredRegularResources.length +
+            filteredIteratorGroups.reduce((sum: number, group: any) => sum + group.resources.length, 0);
+
+          filteredResourceTypes.set(type, {
+            ...typeGroup,
+            display_name: this.getResourceTypeDisplayName(type),
+            resources: filteredRegularResources,
+            iterator_groups: filteredIteratorGroups,
+            total_count: totalCount
+          });
+        }
+      }
+
+      if (filteredResourceTypes.size > 0) {
+        filteredMap.set(moduleAddress, filteredResourceTypes);
+      }
+    }
+
+    return filteredMap;
+  }
+
+  private getModuleDisplayName(modulePath: string): string {
+    if (modulePath === 'root') {
+      return 'Root Module';
+    }
+    return modulePath;
+  }
+
+  private getIteratorBaseAddress(iteratorGroup: IteratorGroup): string {
+    return iteratorGroup.base_address;
+  }
+
+  private getIteratorType(iteratorGroup: IteratorGroup): string {
+    return iteratorGroup.iterator_type;
+  }
+
+  /**
    * Check if a property value should be masked (is sensitive and not visible)
    */
-  isSensitiveValueMasked(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): boolean {
+  isSensitiveValueMasked(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): boolean {
     const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
-    const isSensitive = valueType === 'before' ? sensitivity.beforeSensitive : sensitivity.afterSensitive;
+    const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
     
     if (!isSensitive) {
       return false;
@@ -936,7 +1264,7 @@ export class DashboardComponent implements OnInit {
   /**
    * Toggle visibility of a sensitive value
    */
-  toggleSensitiveValueVisibility(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): void {
+  toggleSensitiveValueVisibility(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): void {
     const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
     if (this.sensitiveValuesVisible.has(visibilityKey)) {
       this.sensitiveValuesVisible.delete(visibilityKey);
@@ -948,7 +1276,7 @@ export class DashboardComponent implements OnInit {
   /**
    * Check if a sensitive value is currently visible
    */
-  isSensitiveValueVisible(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): boolean {
+  isSensitiveValueVisible(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): boolean {
     const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
     return this.sensitiveValuesVisible.has(visibilityKey);
   }
@@ -956,9 +1284,9 @@ export class DashboardComponent implements OnInit {
   /**
    * Format a value for display, masking it if sensitive
    */
-  formatSensitiveValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after'): string {
+  formatSensitiveValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): string {
     const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
-    const isSensitive = valueType === 'before' ? sensitivity.beforeSensitive : sensitivity.afterSensitive;
+    const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
 
     if (isSensitive && this.isSensitiveValueMasked(resource, propertyPath, valueType)) {
       return '****';
@@ -975,4 +1303,49 @@ export class DashboardComponent implements OnInit {
     return sensitivity.beforeSensitive || sensitivity.afterSensitive;
   }
 
+  /**
+   * Build the full property path by concatenating change key and property diff path
+   * Handles array indices correctly (avoids extra dots before brackets)
+   */
+  buildFullPropertyPath(changeKey: string, propDiffPath: string): string {
+    if (propDiffPath.startsWith('[')) {
+      // Array index path - no dot needed
+      // Example: changeKey="network_rules", propDiffPath="[0].default_action" -> "network_rules[0].default_action"
+      return changeKey + propDiffPath;
+    } else {
+      // Regular property path - add dot
+      // Example: changeKey="tags", propDiffPath="Environment" -> "tags.Environment"
+      return changeKey + '.' + propDiffPath;
+    }
+  }
+
+  /**
+   * Show a short summary for complex values
+   * Returns "[ ]" for empty arrays, "x elements" for non-empty arrays,
+   * "{ }" for empty objects, "x properties" for non-empty objects,
+   * "null" for null values, or "n/a" for other values
+   */
+  showShortComplexValue(value: any): string {
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+    
+    if (Array.isArray(value)) {
+      const count = value.length;
+      if (count === 0) {
+        return '[ ]';
+      }
+      return `${count} element${count === 1 ? '' : 's'}`;
+    }
+    
+    if (typeof value === 'object') {
+      const count = Object.keys(value).length;
+      if (count === 0) {
+        return '{ }';
+      }
+      return `${count} propert${count === 1 ? 'y' : 'ies'}`;
+    }
+    
+    return 'n/a';
+  }
 }
