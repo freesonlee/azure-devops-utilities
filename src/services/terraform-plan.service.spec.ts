@@ -1,13 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { TerraformPlanService } from './terraform-plan.service';
 import { ResourceChange } from '../interfaces/terraform-plan.interface';
+import { TerraformSensitivityService } from './terraform-sensitivity.service';
 
 describe('TerraformPlanService - Sensitive Property Detection', () => {
-  let service: TerraformPlanService;
+  let service: TerraformSensitivityService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(TerraformPlanService);
+    service = TestBed.inject(TerraformSensitivityService);
   });
 
   it('should be created', () => {
@@ -34,7 +35,7 @@ describe('TerraformPlanService - Sensitive Property Detection', () => {
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[2]')).toBe(true);
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[3]')).toBe(false);
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace[4]')).toBe(false);
-      
+
       // When checking the array property itself (without index), it should be sensitive if any element is sensitive
       expect(service.isPropertySensitive(sensitiveMetadata, 'triggers_replace')).toBe(true);
     });
@@ -101,7 +102,7 @@ describe('TerraformPlanService - Sensitive Property Detection', () => {
         provider_name: 'azurerm',
         change: {
           actions: ['update'],
-          before: { 
+          before: {
             name: 'oldvalue',
             key: 'secret1'
           },

@@ -18,6 +18,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableDataSource } from '@angular/material/table';
 import { TerraformPlanService } from '../../services/terraform-plan.service';
+import { TerraformSensitivityService } from '../../services/terraform-sensitivity.service';
 import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
 import * as Diff from 'diff';
 
@@ -88,6 +89,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
   constructor(
     private terraformService: TerraformPlanService,
+    private sensitivityService: TerraformSensitivityService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef
   ) { }
@@ -1249,7 +1251,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
    * Check if a property value should be masked (is sensitive and not visible)
    */
   isSensitiveValueMasked(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): boolean {
-    const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
+    const sensitivity = this.sensitivityService.isResourcePropertySensitive(resource, propertyPath);
     const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
 
     if (!isSensitive) {
@@ -1285,7 +1287,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
    * Format a value for display, masking it if sensitive
    */
   formatSensitiveValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): string {
-    const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
+    const sensitivity = this.sensitivityService.isResourcePropertySensitive(resource, propertyPath);
     const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
 
     if (isSensitive && this.isSensitiveValueMasked(resource, propertyPath, valueType)) {
@@ -1302,7 +1304,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
    * Check if a property is sensitive (before or after)
    */
   isPropertySensitive(resource: ResourceChange, propertyPath: string): boolean {
-    const sensitivity = this.terraformService.isResourcePropertySensitive(resource, propertyPath);
+    const sensitivity = this.sensitivityService.isResourcePropertySensitive(resource, propertyPath);
     return sensitivity.beforeSensitive || sensitivity.afterSensitive;
   }
 
