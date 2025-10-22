@@ -17,6 +17,8 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableDataSource } from '@angular/material/table';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { TerraformPlanService } from '../../services/terraform-plan.service';
 import { TerraformSensitivityService } from '../../services/terraform-sensitivity.service';
 import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
@@ -41,7 +43,9 @@ import * as Diff from 'diff';
     MatProgressBarModule,
     MatSidenavModule,
     MatDividerModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSnackBarModule,
+    ClipboardModule
   ],
   providers: [TerraformPlanService],
   templateUrl: './terraform-plan-display.component.html',
@@ -91,7 +95,9 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     private terraformService: TerraformPlanService,
     private sensitivityService: TerraformSensitivityService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private clipboard: Clipboard,
+    private snackBar: MatSnackBar
   ) { }
 
   ngOnInit(): void {
@@ -1321,6 +1327,31 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
       // Regular property path - add dot
       // Example: changeKey="tags", propDiffPath="Environment" -> "tags.Environment"
       return changeKey + '.' + propDiffPath;
+    }
+  }
+
+  /**
+   * Copy sensitive value to clipboard
+   */
+  copySensitiveValueToClipboard(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): void {
+    // Get the actual value (unmasked)
+    const actualValue = this.formatChangeValue(value);
+
+    // Copy to clipboard
+    const success = this.clipboard.copy(actualValue);
+
+    if (success) {
+      this.snackBar.open('Sensitive value copied to clipboard', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'right',
+        verticalPosition: 'top'
+      });
+    } else {
+      this.snackBar.open('Failed to copy to clipboard', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'right',
+        verticalPosition: 'top'
+      });
     }
   }
 
