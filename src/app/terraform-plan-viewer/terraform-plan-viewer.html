@@ -5,6 +5,15 @@
   (error)="onUploadError($event)">
 </app-terraform-plan-file-upload>
 
+<!-- Compact Upload Bar - shows when plan is loaded -->
+<div class="compact-upload-bar" *ngIf="currentPlan">
+  <app-terraform-plan-file-upload 
+    #uploadToolbar
+    (planLoaded)="onPlanLoaded($event)"
+    (error)="onUploadError($event)">
+  </app-terraform-plan-file-upload>
+</div>
+
 <!-- Display Component - shows when plan is loaded -->
 <app-terraform-plan-display 
   *ngIf="currentPlan"
