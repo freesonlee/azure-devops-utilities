@@ -17,35 +17,44 @@ export class TerraformPlanService {
 
   getResourceSummary(): ResourceSummary {
     const plan = this.planSubject.value;
-    const summary: ResourceSummary = {
-      create: 0,
-      update: 0,
-      delete: 0,
-      replace: 0,
-      total: 0
-    };
-
-    if (!plan || !plan.resource_changes) {
-      return summary;
+    if (!plan) {
+      return { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
     }
 
-    plan.resource_changes.forEach(resource => {
-      const actions = resource.change.actions;
-      summary.total++;
+    const summary = { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
 
-      if (actions.includes('create')) {
-        summary.create++;
-      }
-      if (actions.includes('update')) {
-        summary.update++;
-      }
-      if (actions.includes('delete') && !actions.includes('create')) {
-        summary.delete++;
-      }
-      if (actions.includes('delete') && actions.includes('create')) {
-        summary.replace++;
-      }
-    });
+    // Count resources with changes (for create/update/delete/replace counts)
+    if (plan.resource_changes) {
+      plan.resource_changes.forEach(change => {
+        const actions = change.change.actions;
+
+        // Skip no-op resources - they don't require any changes
+        if (actions.length === 1 && actions[0] === 'no-op') {
+          return;
+        }
+
+        // If a resource has both delete and create actions, it's a replace operation
+        if (actions.includes('delete') && actions.includes('create')) {
+          summary.replace++;
+        } else if (actions.includes('replace')) {
+          summary.replace++;
+        } else if (actions.includes('create')) {
+          summary.create++;
+        } else if (actions.includes('update')) {
+          summary.update++;
+        } else if (actions.includes('delete')) {
+          summary.delete++;
+        }
+      });
+    }
+
+    // Count ALL resources in the plan (including those with no changes)
+    if (plan.planned_values?.root_module?.resources) {
+      summary.total = plan.planned_values.root_module.resources.length;
+    } else if (plan.resource_changes) {
+      // Fallback: count all resources in resource_changes if planned_values not available
+      summary.total = plan.resource_changes.length;
+    }
 
     return summary;
   }

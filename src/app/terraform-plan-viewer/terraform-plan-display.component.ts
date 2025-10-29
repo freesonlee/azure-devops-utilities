@@ -72,6 +72,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
   variableValueFilter: string = '';
   outputNameFilter: string = '';
   activeResourceFilter: string | null = null;
+  resourceSearchFilter: string = '';
 
   // Track expanded variables and outputs
   expandedVariables: Set<string> = new Set<string>();
@@ -266,8 +267,13 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
   }
 
   onStatButtonClick(action: string): void {
-    // Set the active filter
-    this.activeResourceFilter = action;
+    // If total is clicked, clear the filter
+    if (action === 'total') {
+      this.activeResourceFilter = null;
+    } else {
+      // Set the active filter
+      this.activeResourceFilter = action;
+    }
 
     // Switch to Resource Changes tab (index 0)
     if (this.tabGroup) {
@@ -279,17 +285,30 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     this.activeResourceFilter = null;
   }
 
+  clearResourceSearchFilter(): void {
+    this.resourceSearchFilter = '';
+  }
+
   getFilteredResourcesByType(): Map<string, ResourceChange[]> {
-    if (!this.activeResourceFilter) {
+    // If no filters are active, return original data
+    if (!this.activeResourceFilter && !this.resourceSearchFilter) {
       return this.resourcesByType;
     }
 
     const filteredMap = new Map<string, ResourceChange[]>();
 
     for (const [type, resources] of this.resourcesByType.entries()) {
-      const filteredResources = resources.filter(resource =>
-        this.resourceMatchesAction(resource, this.activeResourceFilter!)
-      );
+      const filteredResources = resources.filter(resource => {
+        // Apply action filter (if active)
+        const matchesAction = !this.activeResourceFilter ||
+          this.resourceMatchesAction(resource, this.activeResourceFilter);
+
+        // Apply search filter (if active)
+        const matchesSearch = this.resourceMatchesSearch(resource, this.resourceSearchFilter);
+
+        // Resource must match both filters
+        return matchesAction && matchesSearch;
+      });
 
       if (filteredResources.length > 0) {
         filteredMap.set(type, filteredResources);
@@ -297,6 +316,19 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     }
 
     return filteredMap;
+  }
+
+  private resourceMatchesSearch(resource: ResourceChange, searchTerm: string): boolean {
+    if (!searchTerm) {
+      return true;
+    }
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+
+    // Search in resource address, type, and provider name
+    return resource.address.toLowerCase().includes(lowerSearchTerm) ||
+      resource.type.toLowerCase().includes(lowerSearchTerm) ||
+      resource.provider_name.toLowerCase().includes(lowerSearchTerm);
   }
 
   private resourceMatchesAction(resource: ResourceChange, action: string): boolean {
@@ -323,16 +355,25 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
   }
 
   getFilteredResourceCount(): number {
-    if (!this.activeResourceFilter) {
-      return Array.from(this.resourcesByType.values())
-        .reduce((total, resources) => total + resources.length, 0);
+    // If no filters are active, return the total count of all resources
+    if (!this.activeResourceFilter && !this.resourceSearchFilter) {
+      return this.resourceSummary.total;
     }
 
+    // When any filter is active, count only the resources that match all active filters
     return Array.from(this.resourcesByType.values())
       .reduce((total, resources) => {
-        const filteredCount = resources.filter(resource =>
-          this.resourceMatchesAction(resource, this.activeResourceFilter!)
-        ).length;
+        const filteredCount = resources.filter(resource => {
+          // Apply action filter (if active)
+          const matchesAction = !this.activeResourceFilter ||
+            this.resourceMatchesAction(resource, this.activeResourceFilter);
+
+          // Apply search filter (if active)
+          const matchesSearch = this.resourceMatchesSearch(resource, this.resourceSearchFilter);
+
+          // Resource must match both filters
+          return matchesAction && matchesSearch;
+        }).length;
         return total + filteredCount;
       }, 0);
   }
@@ -351,6 +392,37 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
   trackByIteratorGroup(index: number, item: IteratorGroup): string {
     return item.base_address;
+  }
+
+  getFilteredModuleResourceCount(moduleGroup: ModuleGroup): number {
+    const filteredModuleData = this.getFilteredResourcesByModuleWithIterators().get(moduleGroup.name);
+    if (!filteredModuleData) {
+      return 0;
+    }
+
+    let count = 0;
+    for (const [, typeGroup] of filteredModuleData) {
+      // Count regular resources
+      count += typeGroup.resources.length;
+
+      // Count resources in iterator groups
+      if (typeGroup.iterator_groups) {
+        for (const iteratorGroup of typeGroup.iterator_groups) {
+          count += iteratorGroup.resources.length;
+        }
+      }
+    }
+
+    return count;
+  }
+
+  getFilteredIteratorGroupsCount(typeGroupData: any): number {
+    if (!typeGroupData.iterator_groups) {
+      return 0;
+    }
+
+    // Count only iterator groups that have filtered resources
+    return typeGroupData.iterator_groups.filter((group: any) => group.resources.length > 0).length;
   }
 
   trackByResourceTypeGroup(index: number, item: any): string {
@@ -1183,7 +1255,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
    * Get filtered resources by module with iterator support
    */
   getFilteredResourcesByModuleWithIterators(): Map<string, Map<string, any>> {
-    if (!this.activeResourceFilter) {
+    if (!this.activeResourceFilter && !this.resourceSearchFilter) {
       return this.resourcesByModuleWithIterators;
     }
 
@@ -1194,17 +1266,23 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
       for (const [type, typeGroup] of resourceTypes.entries()) {
         // Filter regular resources
-        const filteredRegularResources = typeGroup.resources.filter((resource: ResourceChange) =>
-          this.resourceMatchesAction(resource, this.activeResourceFilter!)
-        );
+        const filteredRegularResources = typeGroup.resources.filter((resource: ResourceChange) => {
+          const matchesAction = !this.activeResourceFilter ||
+            this.resourceMatchesAction(resource, this.activeResourceFilter);
+          const matchesSearch = this.resourceMatchesSearch(resource, this.resourceSearchFilter);
+          return matchesAction && matchesSearch;
+        });
 
         // Filter iterator groups
         const filteredIteratorGroups: IteratorGroup[] = [];
         if (typeGroup.iterator_groups) {
           for (const iteratorGroup of typeGroup.iterator_groups) {
-            const filteredIteratorResources = iteratorGroup.resources.filter((resource: ResourceChange) =>
-              this.resourceMatchesAction(resource, this.activeResourceFilter!)
-            );
+            const filteredIteratorResources = iteratorGroup.resources.filter((resource: ResourceChange) => {
+              const matchesAction = !this.activeResourceFilter ||
+                this.resourceMatchesAction(resource, this.activeResourceFilter);
+              const matchesSearch = this.resourceMatchesSearch(resource, this.resourceSearchFilter);
+              return matchesAction && matchesSearch;
+            });
 
             if (filteredIteratorResources.length > 0) {
               filteredIteratorGroups.push({

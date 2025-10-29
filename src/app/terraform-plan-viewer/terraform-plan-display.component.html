@@ -36,6 +36,13 @@
                         <div class="stat-label">Replace</div>
                     </div>
                 </div>
+                <div class="stat-item total clickable-stat" (click)="onStatButtonClick('total')">
+                    <mat-icon>list</mat-icon>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ resourceSummary.total }}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
             </div>
         </mat-card-content>
     </mat-card>
@@ -44,19 +51,28 @@
     <mat-card class="content-card">
         <mat-tab-group #tabGroup>
             <!-- Resources Tab -->
-            <mat-tab label="Resources ({{ resourceSummary.total }})">
+            <mat-tab label="Resources ({{ getFilteredResourceCount() }})">
                 <div class="tab-content">
                     <!-- Filter indication -->
-                    <mat-card class="filter-card" *ngIf="activeResourceFilter" style="margin-bottom: 16px;">
+                    <mat-card class="filter-card" *ngIf="activeResourceFilter || resourceSearchFilter"
+                        style="margin-bottom: 16px;">
                         <mat-card-content>
                             <div class="filter-controls">
                                 <mat-chip-set>
-                                    <mat-chip [style.background-color]="getActionColor([activeResourceFilter])"
+                                    <mat-chip *ngIf="activeResourceFilter"
+                                        [style.background-color]="getActionColor([activeResourceFilter])"
                                         [style.color]="'white'" [removable]="true" (removed)="clearResourceFilter()">
                                         <mat-icon [style.font-size]="'16px'">{{
                                             getActionIcon([activeResourceFilter])
                                             }}</mat-icon>
                                         Showing {{ activeResourceFilter }} resources
+                                        <mat-icon matChipRemove>cancel</mat-icon>
+                                    </mat-chip>
+                                    <mat-chip *ngIf="resourceSearchFilter"
+                                        style="background-color: #2196f3; color: white;" [removable]="true"
+                                        (removed)="clearResourceSearchFilter()">
+                                        <mat-icon [style.font-size]="'16px'">search</mat-icon>
+                                        Search: "{{ resourceSearchFilter }}"
                                         <mat-icon matChipRemove>cancel</mat-icon>
                                     </mat-chip>
                                 </mat-chip-set>
@@ -66,6 +82,20 @@
                             </div>
                         </mat-card-content>
                     </mat-card>
+
+                    <!-- Search Bar -->
+                    <div class="search-controls" style="margin-bottom: 16px;">
+                        <mat-form-field appearance="outline" style="width: 100%;">
+                            <mat-label>Search resources...</mat-label>
+                            <input matInput [(ngModel)]="resourceSearchFilter"
+                                placeholder="Search by address, type, or provider">
+                            <mat-icon matSuffix>search</mat-icon>
+                            <button matSuffix mat-icon-button *ngIf="resourceSearchFilter"
+                                (click)="clearResourceSearchFilter()" aria-label="Clear search">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </mat-form-field>
+                    </div>
 
                     <!-- Split Layout Container -->
                     <div class="split-container">
@@ -82,7 +112,7 @@
                                             {{ moduleGroup.display_name }}
                                         </mat-panel-title>
                                         <mat-panel-description class="module-description">
-                                            {{ moduleGroup.resource_count }} resources
+                                            {{ getFilteredModuleResourceCount(moduleGroup) }} resources
                                         </mat-panel-description>
                                     </mat-expansion-panel-header>
 
@@ -99,9 +129,9 @@
                                                     </mat-panel-title>
                                                     <mat-panel-description class="resource-type-description">
                                                         {{ entry.value.total_count }} resources
-                                                        <span *ngIf="entry.value.iterator_groups.length > 0"
-                                                            class="iterator-info">
-                                                            ({{ entry.value.iterator_groups.length }} groups)
+                                                        <span *ngIf="getFilteredIteratorGroupsCount(entry.value) > 0"
+                                                            class="iterator-group-indicator">
+                                                            ({{ getFilteredIteratorGroupsCount(entry.value) }} groups)
                                                         </span>
                                                     </mat-panel-description>
                                                 </mat-expansion-panel-header>
