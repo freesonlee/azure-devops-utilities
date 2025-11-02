@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { NgFor } from '@angular/common';
 
 import { AppComponent } from './app.component';
+import { AppRoutingModule } from './app-routing.module';
 import { MatInputModule } from '@angular/material/input'
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -30,6 +31,7 @@ import { TerraformStateService } from '../services/terraform-state.service';
   ],
   imports: [
     BrowserModule,
+    AppRoutingModule,
     MatInputModule,
     BrowserAnimationsModule,
     MatButtonModule,

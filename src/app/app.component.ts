@@ -1,6 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { Observable, concatAll, delay, first, firstValueFrom, iif, map, of } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { ListResponse, Server, Variable, VariableData, VariableGroup } from './Models';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -42,8 +44,31 @@ export class AppComponent {
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
 
-  constructor(private httpClient: HttpClient, private dialog: MatDialog) {
+  constructor(private httpClient: HttpClient, private dialog: MatDialog, private router: Router) {
     this.loadServers();
+
+    // Listen to route changes and update mode
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event) => {
+      this.updateModeFromRoute((event as NavigationEnd).url);
+    });
+
+    // Set initial mode based on current route
+    this.updateModeFromRoute(this.router.url);
+  }
+
+  updateModeFromRoute(url: string) {
+    if (url.includes('/variables')) {
+      this.mode = 'variables';
+    } else if (url.includes('/profiles')) {
+      this.mode = 'pipelines';
+    } else if (url.includes('/planviewer')) {
+      this.mode = 'terraform';
+    } else {
+      // Default to variables for root path
+      this.mode = 'variables';
+    }
   }
 
   getRequestOptions() {

@@ -1,4 +1,14 @@
 
+  nav {
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
+  }
+
+  nav button {
+    margin-right: 10px;
+  }
+
   .baseUrl {
     width: 500px;
   }
