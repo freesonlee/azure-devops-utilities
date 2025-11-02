@@ -26,6 +26,8 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run build --if-present
+      - name: Copy index.html to 404.html
+        run: cp dist/azure-devops-variable-group-editor/index.html dist/azure-devops-variable-group-editor/404.html
       - name: Upload a Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
