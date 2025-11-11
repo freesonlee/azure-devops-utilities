@@ -6,6 +6,69 @@
   gap: 16px;
 }
 
+.cdktf-upload-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cdktf-drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+  height: 36px;
+  box-sizing: border-box;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  &.dragover {
+    border-color: #4caf50;
+    background-color: rgba(76, 175, 80, 0.2);
+    border-style: solid;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+    transform: scale(1.05);
+
+    .drop-icon {
+      animation: pulse 1s ease-in-out infinite;
+      color: #4caf50;
+    }
+
+    .drop-text {
+      color: #4caf50;
+      font-weight: 600;
+    }
+  }
+
+  .drop-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .drop-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+}
+
 .upload-container {
   max-width: 100%;
   margin: 0 auto;
@@ -48,6 +111,14 @@
     margin-top: 16px;
     margin-bottom: 8px;
     font-size: 16px;
+  }
+
+  .sub-instructions-title {
+    margin-top: 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1976d2;
   }
 
   .instructions-list {

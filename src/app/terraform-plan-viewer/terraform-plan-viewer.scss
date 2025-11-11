@@ -9,6 +9,53 @@
   padding: 8px 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  gap: 16px;
+
+  .upload-controls {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto; // Don't grow or shrink
+  }
+
+  .file-indicator-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto; // Don't grow or shrink
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    padding: 6px 12px;
+    min-height: 48px;
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    padding: 4px 8px;
+    min-height: 44px;
+    gap: 8px;
+  }
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-height: auto;
+    
+    .upload-controls,
+    .file-indicator-container {
+      justify-content: center;
+    }
+    
+    .file-indicator-container {
+      justify-content: flex-end;
+    }
+  }
 }
 
 // Global mat-chip alignment fixes

@@ -101,10 +101,80 @@
                     <div class="split-container">
                         <!-- Left Panel - Resource List -->
                         <div class="left-panel">
-                            <!-- Module Groups -->
+
+                            <!-- View Toggle (for CDKTF stacks) -->
+                            <div class="view-toggle-container" *ngIf="isCdktfStack()">
+                                <div class="view-toggle-wrapper">
+                                    <span class="view-label" [class.active]="!showConstructView">Terraform view</span>
+                                    <div class="custom-toggle" (click)="toggleViewMode()">
+                                        <div class="toggle-track">
+                                            <div class="toggle-dot" [class.right]="showConstructView"></div>
+                                        </div>
+                                    </div>
+                                    <span class="view-label" [class.active]="showConstructView">Construct view</span>
+                                </div>
+                            </div>
+
+                            <!-- Terraform View (Traditional) -->
+                            <div *ngIf="!showConstructView" class="terraform-view">
+                                <app-resource-list [moduleGroups]="getFilteredModuleGroups()"
+                                    [resourcesByModuleWithIterators]="resourcesByModuleWithIterators"
+                                    [selectedResource]="selectedResource" [activeResourceFilter]="activeResourceFilter"
+                                    [searchFilter]="resourceSearchFilter" (resourceSelected)="selectResource($event)"
+                                    (searchFilterChanged)="resourceSearchFilter = $event">
+                                </app-resource-list>
+                            </div>
+
+                            <!-- Construct View (CDKTF) -->
+                            <div *ngIf="showConstructView && hasConstructTree()" class="construct-view">
+                                <app-construct-view [rootChildren]="getConstructTreeRootChildren()"
+                                    [selectedResource]="selectedResource" [searchFilter]="resourceSearchFilter"
+                                    [activeResourceFilter]="activeResourceFilter" [showFullPath]="false"
+                                    (resourceSelected)="selectResource($event)"
+                                    (constructToggled)="onConstructToggled($event)">
+                                </app-construct-view>
+                            </div>
+
+                            <!-- Construct View - No Tree Available -->
+                            <div *ngIf="showConstructView && !hasConstructTree()" class="no-construct-tree">
+                                <mat-card class="info-card">
+                                    <mat-card-content>
+                                        <div class="info-content">
+                                            <mat-icon class="large-icon">info</mat-icon>
+                                            <h3>Construct Tree Not Available</h3>
+                                            <p>CDKTF construct hierarchy could not be built from the provided metadata.
+                                            </p>
+                                            <div class="debug-info"
+                                                style="background: #f5f5f5; padding: 12px; margin: 12px 0; border-radius: 4px; font-family: monospace; font-size: 12px;">
+                                                <strong>Debug Info:</strong><br>
+                                                Stack Type: {{ stackType }}<br>
+                                                Has Plan: {{ !!plan }}<br>
+                                                Has CDKTF JSON: {{ !!cdkTfJson }}<br>
+                                                Resource Changes: {{ (plan && plan.resource_changes) ?
+                                                plan.resource_changes.length : 0 }}<br>
+                                                <div *ngIf="cdkTfJson" style="margin-top: 8px;">
+                                                    CDKTF Keys: {{ getCdkTfJsonKeys() }}<br>
+                                                    Has Resources: {{ !!cdkTfJson.resource }}
+                                                </div>
+                                            </div>
+                                            <p class="help-text">
+                                                <mat-icon>lightbulb</mat-icon>
+                                                Switch to Terraform View to see resources grouped by modules and types.
+                                                Check browser console for detailed debugging.
+                                            </p>
+                                            <button mat-raised-button color="primary" (click)="toggleViewMode()">
+                                                <mat-icon>view_module</mat-icon>
+                                                Switch to Terraform View
+                                            </button>
+                                        </div>
+                                    </mat-card-content>
+                                </mat-card>
+                            </div>
+
+                            <!-- Legacy Module Groups (fallback - remove this section after testing) -->
                             <mat-accordion
                                 *ngFor="let moduleGroup of getFilteredModuleGroups(); trackBy: trackByModuleGroup"
-                                class="module-accordion">
+                                class="module-accordion" style="display: none;">
                                 <mat-expansion-panel class="module-panel">
                                     <mat-expansion-panel-header>
                                         <mat-panel-title class="module-title">

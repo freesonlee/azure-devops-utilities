@@ -41,10 +41,39 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
         <mat-icon>upload_file</mat-icon>
         Load Plan JSON
       </button>
+      
+      <!-- CDKTF Section - only shown when plan is loaded -->
+      <div class="cdktf-upload-section" *ngIf="showCdktfOptions">
+        <button mat-raised-button color="accent" (click)="cdktfFileInput.click()" style="margin-left: 16px;">
+          <mat-icon>account_tree</mat-icon>
+          Load CDKTF JSON
+        </button>
+        
+        <!-- CDKTF Drop Zone -->
+        <div 
+          class="cdktf-drop-zone"
+          [class.dragover]="isCdktfDragOver"
+          (dragenter)="onCdktfDragEnter($event)"
+          (dragover)="onCdktfDragOver($event)"
+          (dragleave)="onCdktfDragLeave($event)"
+          (drop)="onCdktfDrop($event)">
+          
+          <mat-icon class="drop-icon">account_tree</mat-icon>
+          <span class="drop-text">Drop CDKTF JSON</span>
+        </div>
+      </div>
+      
       <input
         #fileInput
         type="file"
         (change)="onFileSelected($event)"
+        accept=".json"
+        style="display: none"
+      />
+      <input
+        #cdktfFileInput
+        type="file"
+        (change)="onCdktfFileSelected($event)"
         accept=".json"
         style="display: none"
       />
@@ -83,14 +112,18 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
           </div>
           
           <div *ngIf="!isDownloading">
-            <p>Upload your Terraform plan JSON file to visualize:</p>
+            <p>Upload your Terraform or CDKTF plan JSON file to visualize:</p>
             <ul>
               <li>Variables and their values</li>
               <li>Planned outputs</li>
               <li>Resource changes</li>
+              <li><strong>CDKTF projects:</strong> Construct view with hierarchical structure</li>
             </ul>
             <mat-divider class="instructions-divider"></mat-divider>
             <h3 class="instructions-title">How to generate the plan JSON file:</h3>
+            
+            <!-- Terraform Instructions -->
+            <h4 class="sub-instructions-title">For Terraform projects:</h4>
             <ol class="instructions-list">
               <li>First, create a Terraform plan file:
                 <pre class="code-block"><code>terraform plan -out=tfplan</code></pre>
@@ -98,7 +131,17 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
               <li>Convert the plan file to JSON format:
                 <pre class="code-block"><code>terraform show -json tfplan > tfplan.json</code></pre>
               </li>
-              <li>Upload the <code>tfplan.json</code> file using the button below.</li>
+              <li>Upload the <code>tfplan.json</code> file using the "Load Plan JSON" button.</li>
+            </ol>
+
+            <!-- CDKTF Instructions -->
+            <h4 class="sub-instructions-title">For CDKTF projects:</h4>
+            <ol class="instructions-list">
+              <li>Generate a plan and convert to JSON (from your CDKTF project directory):
+                <pre class="code-block"><code>cdktf plan --json-plan > tfplan.json</code></pre>
+              </li>
+              <li>Upload the <code>tfplan.json</code> file using the "Choose Plan JSON" button.</li>
+              <li><strong>Optional:</strong> After the plan is loaded, you'll see a "Load CDKTF JSON" button to upload your <code>cdktf.json</code> file for enhanced construct view.</li>
             </ol>
 
             <!-- Drag and Drop Zone -->
@@ -123,7 +166,7 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
         <mat-card-actions>
           <button mat-raised-button color="primary" (click)="fileInput.click()">
             <mat-icon>upload_file</mat-icon>
-            Choose File
+            Choose Plan JSON
           </button>
         </mat-card-actions>
       </mat-card>
@@ -136,24 +179,36 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
         accept=".json"
         style="display: none"
       />
+      <input
+        #cdktfFileInput
+        type="file"
+        (change)="onCdktfFileSelected($event)"
+        accept=".json"
+        style="display: none"
+      />
     </div>
   `,
   styleUrls: ['./terraform-plan-file-upload.component.scss']
 })
 export class TerraformPlanFileUploadComponent {
   @Output() planLoaded = new EventEmitter<TerraformPlan>();
+  @Output() cdktfLoaded = new EventEmitter<any>();
   @Output() error = new EventEmitter<string>();
+  @Output() planFileNameChanged = new EventEmitter<string>();
+  @Output() cdktfFileNameChanged = new EventEmitter<string>();
 
   // Component state
   isDragOver: boolean = false;
   isToolbarDragOver: boolean = false;
+  isCdktfDragOver: boolean = false;
   isDownloading: boolean = false;
   showToolbarIntegration: boolean = false;
+  showCdktfOptions: boolean = false;
 
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   /**
    * Switch to toolbar integration mode (compact mode for when a plan is already loaded)
@@ -167,6 +222,21 @@ export class TerraformPlanFileUploadComponent {
    */
   enableFullInterface(): void {
     this.showToolbarIntegration = false;
+    this.showCdktfOptions = false;
+  }
+
+  /**
+   * Enable CDKTF upload options (shown after plan is loaded)
+   */
+  enableCdktfOptions(): void {
+    this.showCdktfOptions = true;
+  }
+
+  /**
+   * Disable CDKTF upload options
+   */
+  disableCdktfOptions(): void {
+    this.showCdktfOptions = false;
   }
 
   onFileSelected(event: any): void {
@@ -175,6 +245,16 @@ export class TerraformPlanFileUploadComponent {
       this.processFile(file).catch(error => {
         console.error('Error processing file:', error);
         this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
+      });
+    }
+  }
+
+  onCdktfFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.processCdktfFile(file).catch(error => {
+        console.error('Error processing CDKTF file:', error);
+        this.error.emit(error instanceof Error ? error.message : 'Failed to process the CDKTF file.');
       });
     }
   }
@@ -233,7 +313,7 @@ export class TerraformPlanFileUploadComponent {
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       const file = files[0];
-      this.processFile(file).catch(error => {
+      this.processDroppedFile(file).catch(error => {
         console.error('Error processing file:', error);
         this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
       });
@@ -294,10 +374,60 @@ export class TerraformPlanFileUploadComponent {
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       const file = files[0];
-      this.processFile(file).catch(error => {
+      this.processDroppedFile(file).catch(error => {
         console.error('Error processing file:', error);
         this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
       });
+    }
+  }
+
+  // CDKTF Drag and Drop Event Handlers
+  onCdktfDragEnter(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isCdktfDragOver = true;
+  }
+
+  onCdktfDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isCdktfDragOver = true;
+  }
+
+  onCdktfDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Only set isCdktfDragOver to false if we're actually leaving the drop zone
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top || event.clientY > rect.bottom) {
+      this.isCdktfDragOver = false;
+    }
+  }
+
+  onCdktfDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isCdktfDragOver = false;
+
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      this.processCdktfFile(file).catch(error => {
+        console.error('Error processing CDKTF file:', error);
+        this.error.emit(error instanceof Error ? error.message : 'Failed to process the CDKTF file.');
+      });
+    }
+  }
+
+  // File type detection and processing for dropped files
+  private async processDroppedFile(file: File): Promise<void> {
+    // Check if this might be a CDKTF file based on naming convention
+    if (file.name.toLowerCase().includes('cdktf') || file.name.toLowerCase() === 'cdktf.json') {
+      return this.processCdktfFile(file);
+    } else {
+      return this.processFile(file);
     }
   }
 
@@ -327,6 +457,8 @@ export class TerraformPlanFileUploadComponent {
             return;
           }
 
+          // Emit file name first, then plan data
+          this.planFileNameChanged.emit(file.name);
           this.planLoaded.emit(planData);
           this.cdr.detectChanges(); // Trigger change detection
           resolve();
@@ -338,6 +470,44 @@ export class TerraformPlanFileUploadComponent {
 
       reader.onerror = () => {
         reject(new Error('Error reading file. Please try again.'));
+      };
+
+      reader.readAsText(file);
+    });
+  }
+
+  // CDKTF file processing method
+  private async processCdktfFile(file: File): Promise<void> {
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      throw new Error('Please select a JSON file.');
+    }
+
+    // Validate file size (max 10MB for CDKTF files)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      throw new Error('File size is too large. Please select a file smaller than 10MB.');
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const cdktfData = JSON.parse(e.target?.result as string);
+
+          this.cdktfLoaded.emit(cdktfData);
+          this.cdktfFileNameChanged.emit(file.name);
+          this.cdr.detectChanges(); // Trigger change detection
+          resolve();
+        } catch (error) {
+          console.error('Error parsing CDKTF JSON file:', error);
+          reject(new Error('Error parsing CDKTF JSON file. Please check the file format.'));
+        }
+      };
+
+      reader.onerror = () => {
+        reject(new Error('Error reading CDKTF file. Please try again.'));
       };
 
       reader.readAsText(file);

@@ -2,20 +2,41 @@
 <app-terraform-plan-file-upload 
   *ngIf="!currentPlan"
   (planLoaded)="onPlanLoaded($event)"
+  (cdktfLoaded)="onCdktfLoaded($event)"
+  (planFileNameChanged)="onPlanFileNameChanged($event)"
+  (cdktfFileNameChanged)="onCdktfFileNameChanged($event)"
   (error)="onUploadError($event)">
 </app-terraform-plan-file-upload>
 
 <!-- Compact Upload Bar - shows when plan is loaded -->
 <div class="compact-upload-bar" *ngIf="currentPlan">
-  <app-terraform-plan-file-upload 
-    #uploadToolbar
-    (planLoaded)="onPlanLoaded($event)"
-    (error)="onUploadError($event)">
-  </app-terraform-plan-file-upload>
+  <!-- Left side - Upload controls -->
+  <div class="upload-controls">
+    <app-terraform-plan-file-upload 
+      #uploadToolbar
+      (planLoaded)="onPlanLoaded($event)"
+      (cdktfLoaded)="onCdktfLoaded($event)"
+      (planFileNameChanged)="onPlanFileNameChanged($event)"
+      (cdktfFileNameChanged)="onCdktfFileNameChanged($event)"
+      (error)="onUploadError($event)">
+    </app-terraform-plan-file-upload>
+  </div>
+
+  <!-- Right side - File Indicator -->
+  <div class="file-indicator-container">
+    <app-file-indicator
+      [planFileName]="planFileName"
+      [cdktfLoaded]="cdktfLoaded">
+    </app-file-indicator>
+  </div>
 </div>
 
 <!-- Display Component - shows when plan is loaded -->
 <app-terraform-plan-display 
   *ngIf="currentPlan"
-  [plan]="currentPlan">
+  [plan]="currentPlan"
+  [stackType]="stackType"
+  [cdkTfJson]="currentCdktfJson"
+  (cdktfStatusChanged)="onCdktfStatusChanged($event)"
+  (viewSwitchRequested)="onViewSwitchRequested($event)">
 </app-terraform-plan-display>
