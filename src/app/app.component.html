@@ -6,7 +6,7 @@
 </nav>
 <br>
 
-<div *ngIf="mode=='variables'">
+<div *ngIf="mode=='variables'" class="variables-section">
   <mat-form-field class="baseUrl">
     <mat-label>Server</mat-label>
     <mat-select [(value)]="server" (selectionChange)="reload()">
