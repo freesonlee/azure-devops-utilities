@@ -12,6 +12,12 @@
   .baseUrl {
     width: 500px;
   }
+  
+  .variables-section {
+    height: calc(100vh - 120px);
+    display: inline;
+  }
+  
   mat-drawer-container {
     height: 95%;
   }

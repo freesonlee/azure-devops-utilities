@@ -1735,4 +1735,61 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
         return 'n/a';
     }
+
+    /**
+     * Get flattened replace paths from a resource's change object
+     * Converts the 2D array string[][] into a Set<string> for efficient lookups
+     */
+    private getFlattenedReplacePaths(resource: ResourceChange): Set<string> {
+        if (!resource.change.replace_paths || resource.change.replace_paths.length === 0) {
+            return new Set<string>();
+        }
+
+        const flattenedPaths = new Set<string>();
+        for (const pathArray of resource.change.replace_paths) {
+            if (Array.isArray(pathArray)) {
+                // Join the array elements to form a property path
+                // e.g., ["principal_id"] becomes "principal_id"
+                // e.g., ["network_rules", "0", "default_action"] becomes "network_rules.0.default_action" or "network_rules[0].default_action"
+                const path = pathArray.join('.');
+                flattenedPaths.add(path);
+            }
+        }
+
+        return flattenedPaths;
+    }
+
+    /**
+     * Check if a property requires resource replacement
+     * Compares the property path against the flattened replace_paths
+     */
+    isPropertyForceReplacement(resource: ResourceChange, propertyPath: string): boolean {
+        const replacePaths = this.getFlattenedReplacePaths(resource);
+        
+        if (replacePaths.size === 0) {
+            return false;
+        }
+
+        // Check if the property path exactly matches a replace path
+        if (replacePaths.has(propertyPath)) {
+            return true;
+        }
+
+        // Also check with array index notation variations
+        // e.g., "network_rules[0].default_action" vs "network_rules.0.default_action"
+        const normalizedPath = propertyPath.replace(/\[(\d+)\]/g, '.$1');
+        if (replacePaths.has(normalizedPath)) {
+            return true;
+        }
+
+        // Check if any replace path matches when considering array indices
+        for (const replacePath of replacePaths) {
+            const normalizedReplacePath = replacePath.replace(/\[(\d+)\]/g, '.$1');
+            if (normalizedReplacePath === normalizedPath) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

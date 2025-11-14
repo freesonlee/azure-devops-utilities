@@ -396,6 +396,10 @@
                                                     <mat-panel-description>
                                                         {{ change.value.changed ? 'Modified' : (change.value.hasDrift ?
                                                         'Drift Detected' : 'Unchanged') }}
+                                                        <span *ngIf="isPropertyForceReplacement(selectedResource, change.key)" 
+                                                              class="force-replacement-indicator">
+                                                            force replacement
+                                                        </span>
                                                     </mat-panel-description>
                                                 </mat-expansion-panel-header>
 
