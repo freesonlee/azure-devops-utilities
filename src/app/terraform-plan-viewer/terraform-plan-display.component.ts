@@ -682,15 +682,8 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
         let count = 0;
         for (const [, typeGroup] of filteredModuleData) {
-            // Count regular resources
-            count += typeGroup.resources.length;
-
-            // Count resources in iterator groups
-            if (typeGroup.iterator_groups) {
-                for (const iteratorGroup of typeGroup.iterator_groups) {
-                    count += iteratorGroup.resources.length;
-                }
-            }
+            // Use the total_count which already includes both regular and iterator group resources
+            count += typeGroup.total_count;
         }
 
         return count;
@@ -1510,20 +1503,22 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
      * Get filtered module groups based on active resource filter
      */
     getFilteredModuleGroups(): any[] {
-        if (!this.activeResourceFilter) {
-            return this.moduleGroups;
-        }
-
         return this.moduleGroups
             .map(moduleGroup => {
-                const filteredResources = moduleGroup.resources.filter((resource: ResourceChange) =>
-                    this.resourceMatchesAction(resource, this.activeResourceFilter!)
-                );
+                // Calculate filtered resource count by examining all resource types in the module
+                const filteredResourcesByModuleWithIterators = this.getFilteredResourcesByModuleWithIterators();
+                const moduleResourceTypes = filteredResourcesByModuleWithIterators.get(moduleGroup.name);
+
+                let filteredResourceCount = 0;
+                if (moduleResourceTypes) {
+                    for (const [type, typeGroup] of moduleResourceTypes.entries()) {
+                        filteredResourceCount += typeGroup.total_count;
+                    }
+                }
 
                 return {
                     ...moduleGroup,
-                    resources: filteredResources,
-                    resource_count: filteredResources.length
+                    resource_count: filteredResourceCount
                 };
             })
             .filter(moduleGroup => moduleGroup.resource_count > 0);

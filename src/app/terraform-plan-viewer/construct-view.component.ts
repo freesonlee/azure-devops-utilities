@@ -20,7 +20,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
   ],
   template: `
     <div class="construct-view-container">
-      <div *ngIf="constructNode" class="construct-node">
+      <div *ngIf="constructNode && shouldShowConstruct()" class="construct-node">
         <!-- Construct Node Header -->
         <mat-expansion-panel 
           class="construct-panel"
@@ -39,19 +39,19 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
             
             <mat-panel-description class="construct-description">
               <div class="construct-stats">
-                <mat-chip class="resource-count-chip" *ngIf="constructNode.totalResourceCount > 0">
+                <mat-chip class="resource-count-chip" *ngIf="getFilteredTotalResourceCount() > 0">
                   <mat-icon>layers</mat-icon>
-                  {{ constructNode.totalResourceCount }} resources
+                  {{ getFilteredTotalResourceCount() }} resources
                 </mat-chip>
                 
-                <mat-chip class="children-count-chip" *ngIf="constructNode.children.length > 0">
+                <mat-chip class="children-count-chip" *ngIf="getVisibleChildrenCount() > 0">
                   <mat-icon>account_tree</mat-icon>
-                  {{ constructNode.children.length }} construct(s)
+                  {{ getVisibleChildrenCount() }} construct(s)
                 </mat-chip>
                 
-                <mat-chip class="direct-resources-chip" *ngIf="constructNode.directResources.length > 0">
+                <mat-chip class="direct-resources-chip" *ngIf="getFilteredDirectResources().length > 0">
                   <mat-icon>description</mat-icon>
-                  {{ constructNode.directResources.length }} direct
+                  {{ getFilteredDirectResources().length }} direct
                 </mat-chip>
               </div>
             </mat-panel-description>
@@ -60,7 +60,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
           <!-- Construct Content -->
           <div class="construct-content">
             <!-- Child Constructs (Recursive) -->
-            <div *ngIf="constructNode.children.length > 0" class="child-constructs">
+            <div *ngIf="getVisibleChildren().length > 0" class="child-constructs">
               <h4 class="section-title">
                 <mat-icon>account_tree</mat-icon>
                 Child Constructs
@@ -68,7 +68,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
               
               <div class="child-constructs-list">
                 <app-construct-view
-                  *ngFor="let childNode of constructNode.children; trackBy: trackByConstruct"
+                  *ngFor="let childNode of getVisibleChildren(); trackBy: trackByConstruct"
                   [constructNode]="childNode"
                   [selectedResource]="selectedResource"
                   [searchFilter]="searchFilter"
@@ -114,19 +114,19 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
             </div>
 
             <!-- Empty State -->
-            <div *ngIf="constructNode.children.length === 0 && constructNode.directResources.length === 0" 
+            <div *ngIf="getVisibleChildren().length === 0 && getFilteredDirectResources().length === 0" 
                  class="empty-construct">
               <mat-icon>folder_open</mat-icon>
-              <p>This construct contains no resources or child constructs</p>
+              <p>This construct contains no matching resources or child constructs</p>
             </div>
           </div>
         </mat-expansion-panel>
       </div>
 
       <!-- Root level - no construct node, just show children -->
-      <div *ngIf="!constructNode && rootChildren && rootChildren.length > 0" class="root-constructs">
+      <div *ngIf="!constructNode && getVisibleRootChildren().length > 0" class="root-constructs">
         <app-construct-view
-          *ngFor="let childNode of rootChildren; trackBy: trackByConstruct"
+          *ngFor="let childNode of getVisibleRootChildren(); trackBy: trackByConstruct"
           [constructNode]="childNode"
           [selectedResource]="selectedResource"
           [searchFilter]="searchFilter"
@@ -136,6 +136,12 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
           (constructToggled)="onChildConstructToggled($event)"
           class="root-construct-view">
         </app-construct-view>
+      </div>
+
+      <!-- No matching resources state -->
+      <div *ngIf="!constructNode && shouldShowNoMatchingResourcesMessage()" class="no-matching-resources">
+        <mat-icon>info</mat-icon>
+        <p>No resources match the current filter criteria</p>
       </div>
     </div>
   `,
@@ -335,6 +341,28 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
     .root-construct-view {
       margin-bottom: 16px;
     }
+
+    .no-matching-resources {
+      text-align: center;
+      padding: 48px 24px;
+      color: #666;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+
+    .no-matching-resources mat-icon {
+      font-size: 48px;
+      color: #adb5bd;
+      margin-bottom: 16px;
+    }
+
+    .no-matching-resources p {
+      margin: 0;
+      font-size: 1.1em;
+      color: #6c757d;
+    }
   `]
 })
 export class ConstructViewComponent implements OnChanges {
@@ -385,7 +413,7 @@ export class ConstructViewComponent implements OnChanges {
 
     // Active resource filter
     if (this.activeResourceFilter) {
-      if (!resource.change.actions.includes(this.activeResourceFilter)) {
+      if (!this.resourceMatchesAction(resource, this.activeResourceFilter)) {
         return false;
       }
     }
@@ -393,8 +421,99 @@ export class ConstructViewComponent implements OnChanges {
     return true;
   }
 
+  private resourceMatchesAction(resource: ResourceChange, action: string): boolean {
+    const actions = resource.change.actions;
+
+    // Check if this resource is actually a replace (has both delete and create, or explicit replace)
+    const isReplace = actions.includes('replace') ||
+      (actions.includes('delete') && actions.includes('create'));
+
+    // Handle replace case: both delete and create actions should match "replace" filter
+    if (action === 'replace') {
+      return isReplace;
+    }
+
+    // For create and delete actions, exclude resources that are actually being replaced
+    if (action === 'create' || action === 'delete') {
+      if (isReplace) {
+        return false; // Don't show replaced resources in create or delete sections
+      }
+    }
+
+    // For other actions, check if the specific action is included
+    return actions.includes(action);
+  }
+
   getFilteredDirectResources(): ResourceChange[] {
     return this.filteredDirectResources;
+  }
+
+  shouldShowConstruct(): boolean {
+    if (!this.constructNode) return false;
+
+    // Show the construct if it has any filtered resources (direct or in children)
+    return this.getFilteredTotalResourceCount() > 0;
+  }
+
+  getFilteredTotalResourceCount(): number {
+    if (!this.constructNode) return 0;
+
+    // Count filtered direct resources
+    const directCount = this.getFilteredDirectResources().length;
+
+    // Recursively count filtered resources from child constructs
+    const childrenCount = this.constructNode.children.reduce((sum, child) => {
+      // Create a temporary child component to calculate its filtered count
+      // This is a simplified calculation - in a real implementation, you might want to cache this
+      const childFiltered = child.directResources.filter(resource => this.matchesFilters(resource));
+      return sum + childFiltered.length + this.getChildConstructFilteredCount(child);
+    }, 0);
+
+    return directCount + childrenCount;
+  }
+
+  private getChildConstructFilteredCount(node: ConstructNode): number {
+    const directCount = node.directResources.filter(resource => this.matchesFilters(resource)).length;
+    const childrenCount = node.children.reduce((sum, child) => {
+      return sum + this.getChildConstructFilteredCount(child);
+    }, 0);
+    return directCount + childrenCount;
+  }
+
+  getVisibleChildrenCount(): number {
+    if (!this.constructNode) return 0;
+
+    // Count children that have at least one filtered resource (recursively)
+    return this.constructNode.children.filter(child => {
+      return this.getChildConstructFilteredCount(child) > 0;
+    }).length;
+  }
+
+  getVisibleChildren(): ConstructNode[] {
+    if (!this.constructNode) return [];
+
+    // Filter children to only show those with filtered resources
+    return this.constructNode.children.filter(child => {
+      return this.getChildConstructFilteredCount(child) > 0;
+    });
+  }
+
+  getVisibleRootChildren(): ConstructNode[] {
+    if (!this.rootChildren) return [];
+
+    // Filter root children to only show those with filtered resources
+    return this.rootChildren.filter(child => {
+      return this.getChildConstructFilteredCount(child) > 0;
+    });
+  }
+
+  shouldShowNoMatchingResourcesMessage(): boolean {
+    // Show the message only when we're at the root level, have root children, 
+    // but none of them are visible due to filtering, and there's an active filter
+    return !!(this.rootChildren &&
+      this.rootChildren.length > 0 &&
+      this.getVisibleRootChildren().length === 0 &&
+      (this.activeResourceFilter || (this.searchFilter && this.searchFilter.trim().length > 0)));
   }
 
   onConstructExpanded(): void {

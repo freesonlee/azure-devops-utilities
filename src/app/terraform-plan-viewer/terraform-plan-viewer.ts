@@ -52,7 +52,6 @@ export class TerraformPlanViewerComponent implements OnInit, AfterViewInit {
     this.cdktfLoaded = false;
 
     // Auto-detect if this is a CDKTF-generated plan
-    this.detectStackType(planData);
     this.cdr.detectChanges();
 
     // Enable toolbar integration mode after plan is loaded
@@ -121,32 +120,7 @@ export class TerraformPlanViewerComponent implements OnInit, AfterViewInit {
   clearCdktfData(): void {
     this.currentCdktfJson = null;
     this.cdktfLoaded = false;
-    this.stackType = this.isCdktfGeneratedPlan(this.currentPlan) ? 'cdktf' : 'terraform';
+    this.stackType = 'terraform';
     this.cdr.detectChanges();
-  }
-
-  private detectStackType(planData: any): void {
-    // Auto-detect CDKTF by looking for CDKTF-specific patterns in the plan
-    if (this.isCdktfGeneratedPlan(planData)) {
-      this.stackType = 'cdktf';
-    } else {
-      this.stackType = 'terraform';
-    }
-  }
-
-  private isCdktfGeneratedPlan(planData: any): boolean {
-    // Check for CDKTF indicators in the plan data
-    if (!planData || !planData.resource_changes) return false;
-
-    // Look for CDKTF-style resource addresses (contain construct paths)
-    return planData.resource_changes.some((resource: any) =>
-      resource.address && (
-        resource.address.includes('.') &&
-        (resource.address.split('.').length > 3 || // More than typical terraform nesting
-          resource.address.includes('cdktf_') ||
-          resource.address.match(/\.[a-zA-Z]+\d+\./) // Pattern like .construct1.
-        )
-      )
-    );
   }
 }

@@ -1356,3 +1356,26 @@
         font-size: 16px !important;
     }
 }
+
+// No matching resources message styling (for both Terraform and Construct views)
+.no-matching-resources {
+    text-align: center;
+    padding: 48px 24px;
+    color: #666;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin: 16px 0;
+
+    mat-icon {
+        font-size: 48px;
+        color: #adb5bd;
+        margin-bottom: 16px;
+    }
+
+    p {
+        margin: 0;
+        font-size: 1.1em;
+        color: #6c757d;
+    }
+}

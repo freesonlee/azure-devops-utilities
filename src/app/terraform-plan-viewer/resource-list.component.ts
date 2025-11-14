@@ -178,7 +178,7 @@ import { ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '.
       </div>
 
       <!-- No resources state -->
-      <div *ngIf="!moduleGroups || moduleGroups.length === 0" class="no-resources">
+      <div *ngIf="!moduleGroups || moduleGroups.length === 0" class="no-matching-resources">
         <mat-icon>info</mat-icon>
         <p>No resources match the current filter criteria</p>
       </div>
@@ -205,33 +205,22 @@ export class ResourceListComponent implements OnChanges {
   }
 
   private applyFilters(): void {
-    this.filteredModuleGroups = this.moduleGroups.filter(moduleGroup => {
-      if (!moduleGroup.resources || moduleGroup.resources.length === 0) {
-        return false;
-      }
+    this.filteredModuleGroups = this.moduleGroups
+      .map(moduleGroup => {
+        // Get filtered resource types for this module
+        const filteredResourceTypes = this.getModuleResourceTypes(moduleGroup);
 
-      // Apply search filter
-      if (this.searchFilter) {
-        const hasMatchingResources = moduleGroup.resources.some(resource =>
-          this.matchesSearchFilter(resource)
-        );
-        if (!hasMatchingResources) {
-          return false;
-        }
-      }
+        // Calculate total filtered resource count for the module
+        const filteredResourceCount = filteredResourceTypes.reduce((sum, resourceType) =>
+          sum + resourceType.total_count, 0);
 
-      // Apply active resource filter
-      if (this.activeResourceFilter) {
-        const hasFilteredResources = moduleGroup.resources.some(resource =>
-          resource.change.actions.includes(this.activeResourceFilter!)
-        );
-        if (!hasFilteredResources) {
-          return false;
-        }
-      }
-
-      return true;
-    });
+        // Return the module group with updated count
+        return {
+          ...moduleGroup,
+          resource_count: filteredResourceCount
+        };
+      })
+      .filter(moduleGroup => moduleGroup.resource_count > 0); // Only include modules with filtered resources
   }
 
   private matchesSearchFilter(resource: ResourceChange): boolean {
@@ -256,25 +245,64 @@ export class ResourceListComponent implements OnChanges {
     const resourceTypes = this.resourcesByModuleWithIterators.get(moduleGroup.name);
     if (!resourceTypes) return [];
 
-    return Array.from(resourceTypes.values()).filter(resourceType => {
-      // Apply filters to resource types
-      const hasMatchingResources = resourceType.resources.some(resource =>
-        this.matchesSearchFilter(resource) && this.matchesActiveFilter(resource)
-      );
-
-      const hasMatchingIteratorResources = resourceType.iterator_groups.some(group =>
-        group.resources.some(resource =>
+    return Array.from(resourceTypes.values())
+      .map(resourceType => {
+        // Filter direct resources
+        const filteredResources = resourceType.resources.filter(resource =>
           this.matchesSearchFilter(resource) && this.matchesActiveFilter(resource)
-        )
-      );
+        );
 
-      return hasMatchingResources || hasMatchingIteratorResources;
-    });
+        // Filter iterator groups and their resources
+        const filteredIteratorGroups = resourceType.iterator_groups
+          .map(group => ({
+            ...group,
+            resources: group.resources.filter(resource =>
+              this.matchesSearchFilter(resource) && this.matchesActiveFilter(resource)
+            )
+          }))
+          .filter(group => group.resources.length > 0); // Only include groups that have filtered resources
+
+        // Calculate the new total count
+        const newTotalCount = filteredResources.length +
+          filteredIteratorGroups.reduce((sum, group) => sum + group.resources.length, 0);
+
+        // Return the filtered resource type group
+        return {
+          ...resourceType,
+          resources: filteredResources,
+          iterator_groups: filteredIteratorGroups,
+          total_count: newTotalCount
+        };
+      })
+      .filter(resourceType => resourceType.total_count > 0); // Only include types that have filtered resources
   }
 
   private matchesActiveFilter(resource: ResourceChange): boolean {
     if (!this.activeResourceFilter) return true;
-    return resource.change.actions.includes(this.activeResourceFilter);
+    return this.resourceMatchesAction(resource, this.activeResourceFilter);
+  }
+
+  private resourceMatchesAction(resource: ResourceChange, action: string): boolean {
+    const actions = resource.change.actions;
+
+    // Check if this resource is actually a replace (has both delete and create, or explicit replace)
+    const isReplace = actions.includes('replace') ||
+      (actions.includes('delete') && actions.includes('create'));
+
+    // Handle replace case: both delete and create actions should match "replace" filter
+    if (action === 'replace') {
+      return isReplace;
+    }
+
+    // For create and delete actions, exclude resources that are actually being replaced
+    if (action === 'create' || action === 'delete') {
+      if (isReplace) {
+        return false; // Don't show replaced resources in create or delete sections
+      }
+    }
+
+    // For other actions, check if the specific action is included
+    return actions.includes(action);
   }
 
   onResourceSelected(resource: ResourceChange): void {
