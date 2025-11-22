@@ -93,6 +93,7 @@ export interface ResourceSummary {
   update: number;
   delete: number;
   replace: number;
+  changes: number;
   total: number;
 }
 

@@ -48,10 +48,10 @@ export class TerraformPlanService {
   getResourceSummary(): ResourceSummary {
     const plan = this.getPlan();
     if (!plan) {
-      return { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
+      return { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0 };
     }
 
-    const summary = { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
+    const summary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0 };
 
     // Count resources with changes (for create/update/delete/replace counts)
     if (plan.resource_changes) {
@@ -62,6 +62,9 @@ export class TerraformPlanService {
         if (actions.length === 1 && actions[0] === 'no-op') {
           return;
         }
+
+        // Increment changes count for any resource that has actions other than no-op
+        summary.changes++;
 
         // If a resource has both delete and create actions, it's a replace operation
         if (actions.includes('delete') && actions.includes('create')) {

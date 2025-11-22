@@ -36,6 +36,13 @@
                         <div class="stat-label">Replace</div>
                     </div>
                 </div>
+                <div class="stat-item changes clickable-stat" (click)="onStatButtonClick('changes')">
+                    <mat-icon>published_with_changes</mat-icon>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ resourceSummary.changes }}</div>
+                        <div class="stat-label">Changes</div>
+                    </div>
+                </div>
                 <div class="stat-item total clickable-stat" (click)="onStatButtonClick('total')">
                     <mat-icon>list</mat-icon>
                     <div class="stat-content">
@@ -128,6 +135,7 @@
                             <!-- Construct View (CDKTF) -->
                             <div *ngIf="showConstructView && hasConstructTree()" class="construct-view">
                                 <app-construct-view [rootChildren]="getConstructTreeRootChildren()"
+                                    [rootDirectResources]="getConstructTreeRootDirectResources()"
                                     [selectedResource]="selectedResource" [searchFilter]="resourceSearchFilter"
                                     [activeResourceFilter]="activeResourceFilter" [showFullPath]="false"
                                     (resourceSelected)="selectResource($event)"
@@ -342,6 +350,7 @@
                             </div>
 
                             <div *ngIf="selectedResource" class="resource-details">
+
                                 <!-- Resource Header -->
                                 <div class="detail-header">
                                     <h3>
@@ -351,6 +360,36 @@
                                         <mat-chip>{{ selectedResource.type }}</mat-chip>
                                         <span class="provider-name">{{ selectedResource.provider_name }}</span>
                                     </div>
+                                </div>
+
+                                <!-- Action Buttons (Normal Mode Only) -->
+                                <div class="resource-action-buttons" *ngIf="mode === 'normal'">
+                                    <button mat-stroked-button color="primary" (click)="onTargetResource()"
+                                        matTooltip="Target this specific resource for refresh">
+                                        <mat-icon>my_location</mat-icon>
+                                        Target this resource
+                                    </button>
+
+                                    <button mat-stroked-button color="primary" *ngIf="selectedResourceBelongsToBucket()"
+                                        (click)="onTargetBucket()"
+                                        [matTooltip]="'Target the entire bucket: ' + getSelectedResourceBucketName() + ' (' + getSelectedResourceBucketCount() + ' resources)'">
+                                        <mat-icon>folder_special</mat-icon>
+                                        Target "{{ getSelectedResourceBucketName() }}"
+                                    </button>
+
+                                    <button mat-stroked-button color="accent" *ngIf="isSelectedResourceToBeCreated()"
+                                        (click)="onImportState()"
+                                        matTooltip="Import existing resource into Terraform state">
+                                        <mat-icon>file_download</mat-icon>
+                                        Import
+                                    </button>
+
+                                    <button mat-stroked-button color="warn" *ngIf="isSelectedResourceToBeDeleted()"
+                                        (click)="onRemoveFromState()"
+                                        matTooltip="Remove resource from Terraform state without destroying">
+                                        <mat-icon>delete_sweep</mat-icon>
+                                        Remove from state
+                                    </button>
                                 </div>
 
                                 <!-- Change Details Section -->
@@ -396,8 +435,9 @@
                                                     <mat-panel-description>
                                                         {{ change.value.changed ? 'Modified' : (change.value.hasDrift ?
                                                         'Drift Detected' : 'Unchanged') }}
-                                                        <span *ngIf="isPropertyForceReplacement(selectedResource, change.key)" 
-                                                              class="force-replacement-indicator">
+                                                        <span
+                                                            *ngIf="isPropertyForceReplacement(selectedResource, change.key)"
+                                                            class="force-replacement-indicator">
                                                             force replacement
                                                         </span>
                                                     </mat-panel-description>

@@ -92,7 +92,8 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
                   
                   <div class="resource-header">
                     <div class="resource-address">
-                      <code>{{ resource.address }}</code>
+                      <code>{{ getResourceNameFromAddress(resource.address) }}</code>
+                      <span class="resource-cdktf-name">{{ getLastPathSegment(resource) }}</span>
                     </div>
                     <div class="resource-actions">
                       <mat-chip *ngFor="let action of resource.change.actions"
@@ -107,7 +108,6 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
                   <div class="resource-meta">
                     <span class="resource-type">{{ resource.type }}</span>
                     <span class="resource-provider">{{ resource.provider_name }}</span>
-                    <span class="construct-path">{{ getResourceConstructPath(resource) }}</span>
                   </div>
                 </div>
               </div>
@@ -124,18 +124,52 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
       </div>
 
       <!-- Root level - no construct node, just show children -->
-      <div *ngIf="!constructNode && getVisibleRootChildren().length > 0" class="root-constructs">
-        <app-construct-view
-          *ngFor="let childNode of getVisibleRootChildren(); trackBy: trackByConstruct"
-          [constructNode]="childNode"
-          [selectedResource]="selectedResource"
-          [searchFilter]="searchFilter"
-          [activeResourceFilter]="activeResourceFilter"
-          [showFullPath]="showFullPath"
-          (resourceSelected)="onResourceSelected($event)"
-          (constructToggled)="onChildConstructToggled($event)"
-          class="root-construct-view">
-        </app-construct-view>
+      <div *ngIf="!constructNode" class="root-level">
+        <!-- Root Direct Resources (resources with no construct parent) -->
+        <div *ngIf="getRootDirectResources().length > 0" class="root-direct-resources">
+          <div class="direct-resources-list">
+            <div *ngFor="let resource of getRootDirectResources(); trackBy: trackByResource"
+                 class="resource-item root-resource-item"
+                 [class.selected]="selectedResource?.address === resource.address"
+                 (click)="onResourceSelected(resource)">
+              
+              <div class="resource-header">
+                <div class="resource-address">
+                  <code>{{ getResourceNameFromAddress(resource.address) }}</code>
+                  <span class="resource-cdktf-name">{{ getLastPathSegment(resource) }}</span>
+                </div>
+                <div class="resource-actions">
+                  <mat-chip *ngFor="let action of resource.change.actions"
+                           [style.background-color]="getActionColor([action])"
+                           [style.color]="'white'" class="action-chip">
+                    <mat-icon [style.font-size]="'14px'">{{ getActionIcon([action]) }}</mat-icon>
+                    {{ action }}
+                  </mat-chip>
+                </div>
+              </div>
+
+              <div class="resource-meta">
+                <span class="resource-type">{{ resource.type }}</span>
+                <span class="resource-provider">{{ resource.provider_name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Root Constructs -->
+        <div *ngIf="getVisibleRootChildren().length > 0" class="root-constructs">
+          <app-construct-view
+            *ngFor="let childNode of getVisibleRootChildren(); trackBy: trackByConstruct"
+            [constructNode]="childNode"
+            [selectedResource]="selectedResource"
+            [searchFilter]="searchFilter"
+            [activeResourceFilter]="activeResourceFilter"
+            [showFullPath]="showFullPath"
+            (resourceSelected)="onResourceSelected($event)"
+            (constructToggled)="onChildConstructToggled($event)"
+            class="root-construct-view">
+          </app-construct-view>
+        </div>
       </div>
 
       <!-- No matching resources state -->
@@ -283,6 +317,19 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
       font-family: 'Courier New', monospace;
       font-size: 0.9em;
       color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .resource-cdktf-name {
+      background-color: #e8f5e8;
+      color: #2e7d32;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      font-weight: 500;
+      font-family: 'Courier New', monospace;
     }
 
     .resource-actions {
@@ -342,6 +389,18 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
       margin-bottom: 16px;
     }
 
+    .root-level {
+      width: 100%;
+    }
+
+    .root-direct-resources {
+      margin-bottom: 16px;
+    }
+
+    .root-resource-item {
+      border-left: 4px solid #4caf50;
+    }
+
     .no-matching-resources {
       text-align: center;
       padding: 48px 24px;
@@ -368,6 +427,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
 export class ConstructViewComponent implements OnChanges {
   @Input() constructNode: ConstructNode | null = null;
   @Input() rootChildren: ConstructNode[] = []; // For root level display
+  @Input() rootDirectResources: ResourceChange[] = []; // Root level direct resources
   @Input() selectedResource: ResourceChange | null = null;
   @Input() searchFilter: string = '';
   @Input() activeResourceFilter: string | null = null;
@@ -379,7 +439,7 @@ export class ConstructViewComponent implements OnChanges {
   private filteredDirectResources: ResourceChange[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['constructNode'] || changes['searchFilter'] || changes['activeResourceFilter']) {
+    if (changes['constructNode'] || changes['searchFilter'] || changes['activeResourceFilter'] || changes['rootDirectResources']) {
       this.applyFilters();
     }
   }
@@ -507,13 +567,21 @@ export class ConstructViewComponent implements OnChanges {
     });
   }
 
+  getRootDirectResources(): ResourceChange[] {
+    if (!this.rootDirectResources) return [];
+
+    // Apply filters to root direct resources
+    return this.rootDirectResources.filter(resource => this.matchesFilters(resource));
+  }
+
   shouldShowNoMatchingResourcesMessage(): boolean {
-    // Show the message only when we're at the root level, have root children, 
-    // but none of them are visible due to filtering, and there's an active filter
-    return !!(this.rootChildren &&
-      this.rootChildren.length > 0 &&
-      this.getVisibleRootChildren().length === 0 &&
-      (this.activeResourceFilter || (this.searchFilter && this.searchFilter.trim().length > 0)));
+    // Show the message only when we're at the root level, have content available,
+    // but nothing is visible due to filtering, and there's an active filter
+    const hasContent = (this.rootChildren && this.rootChildren.length > 0) || this.getRootDirectResources().length > 0;
+    const hasVisibleContent = this.getVisibleRootChildren().length > 0 || this.getRootDirectResources().length > 0;
+    const hasActiveFilter = !!(this.activeResourceFilter || (this.searchFilter && this.searchFilter.trim().length > 0));
+
+    return !!(hasContent && !hasVisibleContent && hasActiveFilter);
   }
 
   onConstructExpanded(): void {
@@ -549,9 +617,32 @@ export class ConstructViewComponent implements OnChanges {
   }
 
   getResourceConstructPath(resource: ResourceChange): string {
-    // Extract path from resource address or metadata
+    // Extract the full construct path including resource name from path_segments
+    const pathSegments = (resource as any).path_segments;
+    if (pathSegments && pathSegments.length > 0) {
+      // Show the full path including the resource name (last segment)
+      return pathSegments.join('/');
+    }
+
+    // Fallback to construct node path if path_segments not available
     if (this.constructNode) {
       return this.constructNode.path;
+    }
+    return '';
+  }
+
+  getResourceNameFromAddress(address: string): string {
+    // Extract resource name from address (everything after the last dot)
+    // e.g., "azurerm_resource_group.example-group" -> "example-group"
+    const parts = address.split('.');
+    return parts[parts.length - 1];
+  }
+
+  getLastPathSegment(resource: ResourceChange): string {
+    // Extract the last segment from path_segments (CDKTF name/key)
+    const pathSegments = (resource as any).path_segments;
+    if (pathSegments && pathSegments.length > 0) {
+      return pathSegments[pathSegments.length - 1];
     }
     return '';
   }

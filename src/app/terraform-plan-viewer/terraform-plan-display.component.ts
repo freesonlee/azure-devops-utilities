@@ -62,11 +62,14 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     @Input() plan: TerraformPlan | null = null;
     @Input() cdkTfJson: any = null; // CDKTF metadata from cdk.tf.json
     @Input() stackType: string = 'terraform'; // Stack type from parent component
+    @Input() mode: 'viewonly' | 'normal' = 'viewonly'; // Display mode: viewonly or normal with action buttons
+    @Input() defaultFilter: 'auto' | string = 'auto'; // Default filter: 'auto' shows 'changes' if there are changes, otherwise 'total'
 
     @Output() cdktfStatusChanged = new EventEmitter<boolean>();
     @Output() viewSwitchRequested = new EventEmitter<string>();
+    @Output() targetResourceRequested = new EventEmitter<string>();
 
-    resourceSummary: ResourceSummary = { create: 0, update: 0, delete: 0, replace: 0, total: 0 };
+    resourceSummary: ResourceSummary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0 };
     resourcesByType: Map<string, ResourceChange[]> = new Map();
     resourceTypeGroups: Map<string, ResourceTypeGroup> = new Map();
     moduleGroups: ModuleGroup[] = [];
@@ -123,6 +126,8 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['plan'] && changes['plan'].currentValue) {
             this.loadPlanData();
+            // Apply default filter when plan changes
+            this.applyDefaultFilter();
             // If CDKTF is already loaded, rebuild the construct tree
             if (this.cdkTfJson) {
                 this.buildConstructTree();
@@ -138,6 +143,23 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
             // CDKTF was cleared
             this.cdktfStatusChanged.emit(false);
             this.showConstructView = false;
+        }
+    }
+
+    private applyDefaultFilter(): void {
+        if (this.defaultFilter === 'auto') {
+            // Auto mode: show 'changes' if there are changes, otherwise show 'total' (null)
+            if (this.resourceSummary.changes > 0) {
+                this.activeResourceFilter = 'changes';
+            } else {
+                this.activeResourceFilter = null; // null means show all (total)
+            }
+        } else if (this.defaultFilter && this.defaultFilter !== 'total') {
+            // Explicit filter specified
+            this.activeResourceFilter = this.defaultFilter;
+        } else {
+            // 'total' or empty means show all
+            this.activeResourceFilter = null;
         }
     }
 
@@ -184,21 +206,41 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
     private extractResourcePaths(): ResourceChange[] {
         if (!this.plan?.resource_changes || !this.cdkTfJson) {
+            console.log('DEBUG: extractResourcePaths - missing plan or cdkTfJson', {
+                hasPlan: !!this.plan?.resource_changes,
+                hasCdkTfJson: !!this.cdkTfJson
+            });
             return [];
         }
+
+        console.log('DEBUG: extractResourcePaths - processing resources', {
+            resourceCount: this.plan.resource_changes.length,
+            cdkTfKeys: Object.keys(this.cdkTfJson)
+        });
 
         const resourcesWithPaths: ResourceChange[] = [];
 
         for (const resource of this.plan.resource_changes) {
             // Extract path from CDKTF metadata
             const path = this.getResourcePathFromMetadata(resource.address);
+            console.log('DEBUG: resource path extraction', {
+                address: resource.address,
+                extractedPath: path
+            });
+
             if (path) {
+                const pathSegments = path.split('/').filter(segment => segment.length > 0);
                 const resourceWithPath = {
                     ...resource,
-                    path_segments: path.split('/').filter(segment => segment.length > 0)
+                    path_segments: pathSegments
                 };
+                console.log('DEBUG: resource with path', {
+                    address: resource.address,
+                    pathSegments: pathSegments
+                });
                 resourcesWithPaths.push(resourceWithPath);
             } else {
+                console.log('DEBUG: resource without path', { address: resource.address });
                 // No path found, put in root
                 resourcesWithPaths.push(resource);
             }
@@ -244,81 +286,89 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     private extractPathFromComment(comment: any): string | null {
         // CDKTF includes construct paths in the // comment field
         // The path format is typically like "stack_name/construct1/construct2" 
-        // We need to extract the construct path (excluding the stack name)
+        // We need to return the full path INCLUDING the stack name
 
         if (typeof comment === 'object' && comment.path) {
             const fullPath = comment.path;
-
-            // Split path and remove the first segment (stack name)
-            const segments = fullPath.split('/').filter((s: string) => s.length > 0);
-            if (segments.length > 1) {
-                const constructPath = segments.slice(1).join('/');
-                return constructPath;
-            } else {
-                return null; // Resource is directly under the root stack
-            }
+            console.log('DEBUG: extractPathFromComment - object path', { fullPath });
+            return fullPath; // Return the full path
         }
 
         if (typeof comment === 'string' && comment.includes('/')) {
             // Sometimes the path might be a string directly
-            const segments = comment.split('/').filter(s => s.length > 0);
-            if (segments.length > 1) {
-                const constructPath = segments.slice(1).join('/');
-                return constructPath;
-            } else {
-                return null;
-            }
+            console.log('DEBUG: extractPathFromComment - string path', { comment });
+            return comment; // Return the full path
         }
 
+        console.log('DEBUG: extractPathFromComment - no path found', { comment });
         return null;
     }
 
     private createConstructTree(resourcesWithPaths: ResourceChange[]): ConstructNode | null {
+        console.log('DEBUG: createConstructTree - starting', {
+            resourceCount: resourcesWithPaths.length,
+            resources: resourcesWithPaths.map(r => ({ address: r.address, path_segments: (r as any).path_segments }))
+        });
+
         const pathMap = new Map<string, ConstructNode>();
         const rootChildren: ConstructNode[] = [];
 
-        // Group resources by path
-        const resourcesByPath = new Map<string, ResourceChange[]>();
+        // Group resources by construct path (excluding resource name)
+        const resourcesByConstructPath = new Map<string, ResourceChange[]>();
 
         for (const resource of resourcesWithPaths) {
             const pathSegments = (resource as any).path_segments;
             if (pathSegments && pathSegments.length > 0) {
-                // Build full path and all parent paths
-                let currentPath = '';
-                for (let i = 0; i < pathSegments.length; i++) {
-                    currentPath = i === 0 ? pathSegments[i] : `${currentPath}/${pathSegments[i]}`;
+                // The last segment is the resource name, not a construct
+                // Only create construct nodes for segments before the last one
+                const constructSegments = pathSegments.slice(0, -1);
 
-                    if (!pathMap.has(currentPath)) {
-                        const node: ConstructNode = {
-                            path: currentPath,
-                            name: pathSegments[i],
-                            depth: i,
-                            children: [],
-                            directResources: [],
-                            totalResourceCount: 0,
-                            isExpanded: false // Keep constructs collapsed by default
-                        };
-                        pathMap.set(currentPath, node);
+                if (constructSegments.length >= 2) {
+                    // Has actual constructs (beyond just stack name): build construct hierarchy
+                    // Skip the first segment (stack name) and create constructs for the rest
+                    let currentPath = '';
+                    for (let i = 1; i < constructSegments.length; i++) {
+                        const segmentName = constructSegments[i];
+                        currentPath = i === 1 ? segmentName : `${currentPath}/${segmentName}`;
+
+                        if (!pathMap.has(currentPath)) {
+                            const node: ConstructNode = {
+                                path: currentPath,
+                                name: segmentName,
+                                depth: i - 1, // Adjust depth since we skip stack name
+                                children: [],
+                                directResources: [],
+                                totalResourceCount: 0,
+                                isExpanded: false // Keep constructs collapsed by default
+                            };
+                            pathMap.set(currentPath, node);
+                        }
                     }
-                }
 
-                // Add resource to its direct path
-                const resourcePath = pathSegments.join('/');
-                if (!resourcesByPath.has(resourcePath)) {
-                    resourcesByPath.set(resourcePath, []);
+                    // Add resource to its construct parent path (excluding stack name)
+                    const constructPath = constructSegments.slice(1).join('/');
+                    if (!resourcesByConstructPath.has(constructPath)) {
+                        resourcesByConstructPath.set(constructPath, []);
+                    }
+                    resourcesByConstructPath.get(constructPath)!.push(resource);
+                } else {
+                    // Only stack name or no constructs - this is a root-level resource
+                    if (!resourcesByConstructPath.has('')) {
+                        resourcesByConstructPath.set('', []);
+                    }
+                    resourcesByConstructPath.get('')!.push(resource);
                 }
-                resourcesByPath.get(resourcePath)!.push(resource);
             } else {
                 // Resource with no path - add to root
-                if (!resourcesByPath.has('')) {
-                    resourcesByPath.set('', []);
+                if (!resourcesByConstructPath.has('')) {
+                    resourcesByConstructPath.set('', []);
                 }
-                resourcesByPath.get('')!.push(resource);
+                resourcesByConstructPath.get('')!.push(resource);
             }
         }
 
-        // Assign resources to nodes and build hierarchy
-        for (const [path, resources] of resourcesByPath) {
+        // Assign resources to construct nodes and build hierarchy
+        for (const [path, resources] of resourcesByConstructPath) {
             if (path === '') {
                 // Handle root resources - they don't have a construct node
                 continue;
@@ -334,14 +384,17 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
         for (const [path, node] of pathMap) {
             const pathSegments = path.split('/');
             if (pathSegments.length === 1) {
-                // Root level node
+                // Root level construct (directly under stack)
                 rootChildren.push(node);
             } else {
-                // Find parent
+                // Find parent construct
                 const parentPath = pathSegments.slice(0, -1).join('/');
                 const parent = pathMap.get(parentPath);
                 if (parent) {
                     parent.children.push(node);
+                } else {
+                    // Parent doesn't exist, this should be a root level construct
+                    rootChildren.push(node);
                 }
             }
         }
@@ -350,22 +403,54 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
         this.calculateTotalResourceCounts(rootChildren);
 
         // If we have multiple root children, create a virtual root
-        if (rootChildren.length > 1) {
+        console.log('DEBUG: createConstructTree - final result', {
+            rootChildrenCount: rootChildren.length,
+            rootDirectResourcesCount: resourcesByConstructPath.get('')?.length || 0,
+            pathMapSize: pathMap.size,
+            rootChildren: rootChildren.map(c => ({ name: c.name, path: c.path, directResourceCount: c.directResources.length }))
+        });
+
+        const rootDirectResources = resourcesByConstructPath.get('') || [];
+
+        if (rootChildren.length > 1 || (rootChildren.length >= 1 && rootDirectResources.length > 0)) {
+            // Multiple root children OR single root child with root direct resources
+            // Create virtual root to contain both
             const virtualRoot: ConstructNode = {
                 path: '',
                 name: 'Constructs',
                 depth: -1,
                 children: rootChildren,
-                directResources: resourcesByPath.get('') || [],
+                directResources: rootDirectResources,
                 totalResourceCount: 0,
                 isExpanded: true
             };
             this.calculateTotalResourceCounts([virtualRoot]);
+            console.log('DEBUG: returning virtual root', {
+                totalResources: virtualRoot.totalResourceCount,
+                childrenCount: rootChildren.length,
+                directResourcesCount: rootDirectResources.length
+            });
             return virtualRoot;
         } else if (rootChildren.length === 1) {
+            console.log('DEBUG: returning single root', { name: rootChildren[0].name });
             return rootChildren[0];
+        } else if (rootDirectResources.length > 0) {
+            // Only root direct resources, create a minimal root
+            const rootOnlyNode: ConstructNode = {
+                path: '',
+                name: 'Root Resources',
+                depth: -1,
+                children: [],
+                directResources: rootDirectResources,
+                totalResourceCount: 0,
+                isExpanded: true
+            };
+            this.calculateTotalResourceCounts([rootOnlyNode]);
+            console.log('DEBUG: returning root-only node', { directResourceCount: rootOnlyNode.directResources.length });
+            return rootOnlyNode;
         }
 
+        console.log('DEBUG: returning null - no tree to build');
         return null;
     }
 
@@ -399,7 +484,18 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     }
 
     hasConstructTree(): boolean {
-        return this.isCdktfStack() && !!this.constructTree;
+        const result = this.isCdktfStack() && !!this.constructTree;
+        console.log('DEBUG: hasConstructTree', {
+            isCdktfStack: this.isCdktfStack(),
+            hasConstructTree: !!this.constructTree,
+            result: result,
+            constructTreeInfo: this.constructTree ? {
+                name: this.constructTree.name,
+                childrenCount: this.constructTree.children.length,
+                directResourceCount: this.constructTree.directResources.length
+            } : null
+        });
+        return result;
     }
 
     getConstructTreeRootChildren(): ConstructNode[] {
@@ -411,6 +507,18 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
         } else {
             // Single root, return it as an array
             return [this.constructTree];
+        }
+    }
+
+    getConstructTreeRootDirectResources(): ResourceChange[] {
+        if (!this.constructTree) return [];
+
+        if (this.constructTree.depth === -1) {
+            // Virtual root, return its direct resources
+            return this.constructTree.directResources;
+        } else {
+            // Single root, it shouldn't have direct resources at the top level
+            return [];
         }
     }
 
@@ -464,6 +572,8 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     }
 
     getActionColor(actions: string[]): string {
+        // Check for changes filter
+        if (actions.includes('changes')) return '#F8DFB4';
         // Check for replace first (both delete and create, or explicit replace)
         if (actions.includes('replace') || (actions.includes('delete') && actions.includes('create'))) {
             return '#9c27b0';
@@ -614,6 +724,11 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     private resourceMatchesAction(resource: ResourceChange, action: string): boolean {
         const actions = resource.change.actions;
 
+        // Handle "changes" filter: show all resources that have actions other than no-op
+        if (action === 'changes') {
+            return !(actions.length === 1 && actions[0] === 'no-op');
+        }
+
         // Check if this resource is actually a replace (has both delete and create, or explicit replace)
         const isReplace = actions.includes('replace') ||
             (actions.includes('delete') && actions.includes('create'));
@@ -733,6 +848,104 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
     isResourceSelected(resource: ResourceChange): boolean {
         return this.selectedResource?.address === resource.address;
+    }
+
+    /**
+     * Check if the selected resource belongs to a bucket (has iterator index)
+     */
+    selectedResourceBelongsToBucket(): boolean {
+        if (!this.selectedResource) return false;
+        // Check if address contains [0], [1], etc. or ["key"]
+        return /\[\d+\]|\["[^"]+"\]/.test(this.selectedResource.address);
+    }
+
+    /**
+     * Get the bucket base address for the selected resource
+     */
+    getSelectedResourceBucketName(): string {
+        if (!this.selectedResource) return '';
+        // Remove the iterator suffix [0], ["key"], etc.
+        return this.selectedResource.address.replace(/\[\d+\]|\["[^"]+"\]$/, '');
+    }
+
+    /**
+     * Get the count of resources in the selected resource's bucket
+     */
+    getSelectedResourceBucketCount(): number {
+        if (!this.selectedResource) return 0;
+        const bucketName = this.getSelectedResourceBucketName();
+
+        // Count all resources that match the bucket pattern
+        let count = 0;
+        for (const resources of this.resourcesByType.values()) {
+            for (const resource of resources) {
+                // Check if this resource belongs to the same bucket
+                const resourceBucketName = resource.address.replace(/\[\d+\]|\["[^"]+"\]$/, '');
+                if (resourceBucketName === bucketName) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Check if selected resource is going to be created
+     */
+    isSelectedResourceToBeCreated(): boolean {
+        if (!this.selectedResource) return false;
+        return this.selectedResource.change.actions.includes('create') &&
+            !this.selectedResource.change.actions.includes('delete');
+    }
+
+    /**
+     * Check if selected resource is going to be deleted
+     */
+    isSelectedResourceToBeDeleted(): boolean {
+        if (!this.selectedResource) return false;
+        return this.selectedResource.change.actions.includes('delete') &&
+            !this.selectedResource.change.actions.includes('create');
+    }
+
+    /**
+     * Target this specific resource for refresh
+     */
+    onTargetResource(): void {
+        if (!this.selectedResource?.address) {
+            this.snackBar.open('No resource selected', 'Close', { duration: 3000 });
+            return;
+        }
+        console.log('Target resource:', this.selectedResource.address);
+        this.targetResourceRequested.emit(this.selectedResource.address);
+    }
+
+    /**
+     * Target the entire bucket/module for refresh
+     */
+    onTargetBucket(): void {
+        const bucketName = this.getSelectedResourceBucketName();
+        if (!bucketName) {
+            this.snackBar.open('No bucket selected', 'Close', { duration: 3000 });
+            return;
+        }
+        console.log('Target bucket:', bucketName);
+        this.targetResourceRequested.emit(bucketName);
+    }
+
+    /**
+     * Placeholder for importing state
+     */
+    onImportState(): void {
+        console.log('Import state for:', this.selectedResource?.address);
+        this.snackBar.open('Import state - Feature coming soon!', 'Close', { duration: 3000 });
+    }
+
+    /**
+     * Placeholder for removing from state
+     */
+    onRemoveFromState(): void {
+        console.log('Remove from state:', this.selectedResource?.address);
+        this.snackBar.open('Remove from state - Feature coming soon!', 'Close', { duration: 3000 });
     }
 
     clearExpandedResources(): void {
@@ -1765,7 +1978,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
      */
     isPropertyForceReplacement(resource: ResourceChange, propertyPath: string): boolean {
         const replacePaths = this.getFlattenedReplacePaths(resource);
-        
+
         if (replacePaths.size === 0) {
             return false;
         }

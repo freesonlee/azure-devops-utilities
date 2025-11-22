@@ -82,6 +82,11 @@
         color: #8e24aa;
     }
 
+    &.changes {
+        background-color: #fffde7;
+        color: #f9a825;
+    }
+
     &.total {
         background-color: #e3f2fd;
         color: #1976d2;
@@ -96,7 +101,7 @@
 // Split layout container - Updated with fixed left panel width
 .split-container {
     display: flex;
-    height: calc(100vh - 280px);
+    //height: calc(100vh - 280px);
     min-height: 600px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
@@ -1272,6 +1277,29 @@
             &:hover .toggle-track {
                 background-color: #bbb;
             }
+        }
+    }
+}
+
+// Resource Action Buttons
+.resource-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+
+    button {
+        font-size: 13px;
+        padding: 0 12px;
+        height: 32px;
+
+        mat-icon {
+            margin-right: 4px;
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
         }
     }
 }
