@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TerraformPlanFileUploadComponent } from './terraform-plan-file-upload.component';
 import { TerraformPlanDisplayComponent } from './terraform-plan-display.component';
@@ -122,5 +122,42 @@ export class TerraformPlanViewerComponent implements OnInit, AfterViewInit {
     this.cdktfLoaded = false;
     this.stackType = 'terraform';
     this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle paste events anywhere on the component
+   * If a URL is pasted, attempt to load it as a plan JSON
+   */
+  @HostListener('paste', ['$event'])
+  onPaste(event: ClipboardEvent): void {
+    // Get the pasted text from clipboard
+    const pastedText = event.clipboardData?.getData('text/plain');
+
+    if (!pastedText) {
+      return;
+    }
+
+    const trimmedText = pastedText.trim();
+
+    // Check if the pasted text is a valid URL
+    if (this.uploadToolbar && this.isValidUrl(trimmedText)) {
+      // Prevent default paste behavior
+      event.preventDefault();
+
+      // Use the upload component's URL handling
+      this.uploadToolbar.handleUrlPaste(trimmedText);
+    }
+  }
+
+  /**
+   * Check if a string is a valid HTTP/HTTPS URL
+   */
+  private isValidUrl(text: string): boolean {
+    try {
+      const url = new URL(text);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
   }
 }

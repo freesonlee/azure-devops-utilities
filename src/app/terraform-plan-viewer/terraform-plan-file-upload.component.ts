@@ -604,4 +604,12 @@ export class TerraformPlanFileUploadComponent {
       this.cdr.detectChanges(); // Trigger change detection
     }
   }
+
+  /**
+   * Public method to handle URL paste from parent component
+   * This allows the TerraformPlanViewer to trigger URL loading from paste events
+   */
+  public async handleUrlPaste(url: string): Promise<void> {
+    return this.handleUrlDrop(url);
+  }
 }
