@@ -12,42 +12,42 @@
                     <mat-icon>add_circle</mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.create }}</div>
-                        <div class="stat-label">Create</div>
+                        <div class="stat-label">Create<span *ngIf="getImportingCountForAction('create') > 0"> ({{ getImportingCountForAction('create') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item update clickable-stat" (click)="onStatButtonClick('update')">
                     <mat-icon>edit</mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.update }}</div>
-                        <div class="stat-label">Update</div>
+                        <div class="stat-label">Update<span *ngIf="getImportingCountForAction('update') > 0"> ({{ getImportingCountForAction('update') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item delete clickable-stat" (click)="onStatButtonClick('delete')">
                     <mat-icon>delete</mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.delete }}</div>
-                        <div class="stat-label">Delete</div>
+                        <div class="stat-label">Delete<span *ngIf="getImportingCountForAction('delete') > 0"> ({{ getImportingCountForAction('delete') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item replace clickable-stat" (click)="onStatButtonClick('replace')">
                     <mat-icon>swap_horiz</mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.replace }}</div>
-                        <div class="stat-label">Replace</div>
+                        <div class="stat-label">Replace<span *ngIf="getImportingCountForAction('replace') > 0"> ({{ getImportingCountForAction('replace') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item changes clickable-stat" (click)="onStatButtonClick('changes')">
                     <mat-icon>published_with_changes</mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.changes }}</div>
-                        <div class="stat-label">Changes</div>
+                        <div class="stat-label">Changes<span *ngIf="getImportingCountForAction('changes') > 0"> ({{ getImportingCountForAction('changes') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item total clickable-stat" (click)="onStatButtonClick('total')">
                     <mat-icon>list</mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.total }}</div>
-                        <div class="stat-label">Total</div>
+                        <div class="stat-label">Total<span *ngIf="getImportingCountForAction('total') > 0"> ({{ getImportingCountForAction('total') }} Importing)</span></div>
                     </div>
                 </div>
             </div>
@@ -531,16 +531,17 @@
                                           propDiff.before !== null &&
                                           propDiff.before !== undefined &&
                                           !isComplexValue(propDiff.before)
-                                        " class="simple-value">{{ formatSensitiveValue(propDiff.before, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before') }}</code>
+                                        " class="simple-value">{{ formatPropertyValue(propDiff.before, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before') }}</code>
                                                                             <div class="sensitive-value-actions"
-                                                                                *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path)) && propDiff.before !== null && propDiff.before !== undefined">
+                                                                                *ngIf="propDiff.before !== null && propDiff.before !== undefined">
                                                                                 <button mat-icon-button
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(propDiff.before, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before')"
-                                                                                    matTooltip="Copy sensitive value to clipboard">
+                                                                                    matTooltip="Copy value to clipboard">
                                                                                     <mat-icon>content_copy</mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
+                                                                                    *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path))"
                                                                                     class="sensitive-toggle-btn"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
@@ -572,16 +573,17 @@
                                           propDiff.current !== null &&
                                           propDiff.current !== undefined &&
                                           !isComplexValue(propDiff.current)
-                                        " class="simple-value">{{ formatSensitiveValue(propDiff.current, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current') }}</code>
+                                        " class="simple-value">{{ formatPropertyValue(propDiff.current, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current') }}</code>
                                                                             <div class="sensitive-value-actions"
-                                                                                *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path)) && propDiff.current !== null && propDiff.current !== undefined">
+                                                                                *ngIf="propDiff.current !== null && propDiff.current !== undefined">
                                                                                 <button mat-icon-button
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(propDiff.current, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current')"
-                                                                                    matTooltip="Copy sensitive value to clipboard">
+                                                                                    matTooltip="Copy value to clipboard">
                                                                                     <mat-icon>content_copy</mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
+                                                                                    *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path))"
                                                                                     class="sensitive-toggle-btn"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current') ? 'Hide sensitive value' : 'Show sensitive value'">
@@ -598,9 +600,16 @@
                                                                     <div class="property-after-value">
                                                                         <div class="value-display after-value">
                                                                             <div *ngIf="
-                                          propDiff.after === null || propDiff.after === undefined
+                                          (propDiff.after === null || propDiff.after === undefined) &&
+                                          !isPropertyUnknown(selectedResource, buildFullPropertyPath(change.key, propDiff.path))
                                         " class="null-value">
                                                                                 <em>null</em>
+                                                                            </div>
+                                                                            <div *ngIf="
+                                          (propDiff.after === null || propDiff.after === undefined) &&
+                                          isPropertyUnknown(selectedResource, buildFullPropertyPath(change.key, propDiff.path))
+                                        " class="unknown-value">
+                                                                                <em>(known after apply)</em>
                                                                             </div>
                                                                             <pre *ngIf="
                                           propDiff.after !== null &&
@@ -611,16 +620,17 @@
                                           propDiff.after !== null &&
                                           propDiff.after !== undefined &&
                                           !isComplexValue(propDiff.after)
-                                        " class="simple-value">{{ formatSensitiveValue(propDiff.after, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after') }}</code>
+                                        " class="simple-value">{{ formatPropertyValue(propDiff.after, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after') }}</code>
                                                                             <div class="sensitive-value-actions"
-                                                                                *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path)) && propDiff.after !== null && propDiff.after !== undefined">
+                                                                                *ngIf="propDiff.after !== null && propDiff.after !== undefined">
                                                                                 <button mat-icon-button
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(propDiff.after, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after')"
-                                                                                    matTooltip="Copy sensitive value to clipboard">
+                                                                                    matTooltip="Copy value to clipboard">
                                                                                     <mat-icon>content_copy</mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
+                                                                                    *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path))"
                                                                                     class="sensitive-toggle-btn"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
@@ -667,19 +677,20 @@
                                                                         </div>
                                                                         <div class="value-container before-value">
                                                                             <pre *ngIf="isComplexValue(change.value.before)"
-                                                                                class="json-content">{{ formatSensitiveValue(change.value.before, selectedResource, change.key, 'before') }}</pre>
+                                                                                class="json-content">{{ formatPropertyValue(change.value.before, selectedResource, change.key, 'before') }}</pre>
                                                                             <code
                                                                                 *ngIf="!isComplexValue(change.value.before)"
-                                                                                class="simple-value">{{ formatSensitiveValue(change.value.before, selectedResource, change.key, 'before') }}</code>
+                                                                                class="simple-value">{{ formatPropertyValue(change.value.before, selectedResource, change.key, 'before') }}</code>
                                                                             <div class="sensitive-value-actions"
-                                                                                *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.before !== null && change.value.before !== undefined">
+                                                                                *ngIf="change.value.before !== null && change.value.before !== undefined">
                                                                                 <button mat-icon-button
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(change.value.before, selectedResource, change.key, 'before')"
-                                                                                    matTooltip="Copy sensitive value to clipboard">
+                                                                                    matTooltip="Copy value to clipboard">
                                                                                     <mat-icon>content_copy</mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
+                                                                                    *ngIf="isPropertySensitive(selectedResource, change.key)"
                                                                                     class="sensitive-toggle-btn"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'before')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
@@ -703,19 +714,20 @@
                                                                         <div class="value-container current-value"
                                                                             [class.drifted]="change.value.hasDrift">
                                                                             <pre *ngIf="isComplexValue(change.value.current)"
-                                                                                class="json-content">{{ formatSensitiveValue(change.value.current, selectedResource, change.key, 'current') }}</pre>
+                                                                                class="json-content">{{ formatPropertyValue(change.value.current, selectedResource, change.key, 'current') }}</pre>
                                                                             <code
                                                                                 *ngIf="!isComplexValue(change.value.current)"
-                                                                                class="simple-value">{{ formatSensitiveValue(change.value.current, selectedResource, change.key, 'current') }}</code>
+                                                                                class="simple-value">{{ formatPropertyValue(change.value.current, selectedResource, change.key, 'current') }}</code>
                                                                             <div class="sensitive-value-actions"
-                                                                                *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.current !== null && change.value.current !== undefined">
+                                                                                *ngIf="change.value.current !== null && change.value.current !== undefined">
                                                                                 <button mat-icon-button
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(change.value.current, selectedResource, change.key, 'current')"
-                                                                                    matTooltip="Copy sensitive value to clipboard">
+                                                                                    matTooltip="Copy value to clipboard">
                                                                                     <mat-icon>content_copy</mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
+                                                                                    *ngIf="isPropertySensitive(selectedResource, change.key)"
                                                                                     class="sensitive-toggle-btn"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'current')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'current') ? 'Hide sensitive value' : 'Show sensitive value'">
@@ -743,19 +755,20 @@
                                                                         </div>
                                                                         <div class="value-container after-value">
                                                                             <pre *ngIf="isComplexValue(change.value.after)"
-                                                                                class="json-content">{{ formatSensitiveValue(change.value.after, selectedResource, change.key, 'after') }}</pre>
+                                                                                class="json-content">{{ formatPropertyValue(change.value.after, selectedResource, change.key, 'after') }}</pre>
                                                                             <code
                                                                                 *ngIf="!isComplexValue(change.value.after)"
-                                                                                class="simple-value">{{ formatSensitiveValue(change.value.after, selectedResource, change.key, 'after') }}</code>
+                                                                                class="simple-value">{{ formatPropertyValue(change.value.after, selectedResource, change.key, 'after') }}</code>
                                                                             <div class="sensitive-value-actions"
-                                                                                *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.after !== null && change.value.after !== undefined">
+                                                                                *ngIf="change.value.after !== null && change.value.after !== undefined">
                                                                                 <button mat-icon-button
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(change.value.after, selectedResource, change.key, 'after')"
-                                                                                    matTooltip="Copy sensitive value to clipboard">
+                                                                                    matTooltip="Copy value to clipboard">
                                                                                     <mat-icon>content_copy</mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
+                                                                                    *ngIf="isPropertySensitive(selectedResource, change.key)"
                                                                                     class="sensitive-toggle-btn"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
@@ -781,21 +794,30 @@
                                                     <div class="value-container">
                                                         <pre *ngIf="isComplexValue(change.value.after)"
                                                             class="json-content">{{
-                              formatSensitiveValue(change.value.after, selectedResource, change.key, 'after')
+                              formatPropertyValue(change.value.after, selectedResource, change.key, 'after')
                             }}</pre>
                                                         <code *ngIf="!isComplexValue(change.value.after)"
                                                             class="simple-value">{{
-                              formatSensitiveValue(change.value.after, selectedResource, change.key, 'after')
+                              formatPropertyValue(change.value.after, selectedResource, change.key, 'after')
                             }}</code>
-                                                        <button
-                                                            *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.after !== null && change.value.after !== undefined"
-                                                            mat-icon-button class="sensitive-toggle-btn"
-                                                            (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
-                                                            [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                            <mat-icon>{{ isSensitiveValueVisible(selectedResource,
-                                                                change.key, 'after') ? 'visibility_off' : 'visibility'
-                                                                }}</mat-icon>
-                                                        </button>
+                                                        <div class="sensitive-value-actions"
+                                                            *ngIf="change.value.after !== null && change.value.after !== undefined">
+                                                            <button mat-icon-button
+                                                                class="sensitive-copy-btn"
+                                                                (click)="copySensitiveValueToClipboard(change.value.after, selectedResource, change.key, 'after')"
+                                                                matTooltip="Copy value to clipboard">
+                                                                <mat-icon>content_copy</mat-icon>
+                                                            </button>
+                                                            <button mat-icon-button
+                                                                *ngIf="isPropertySensitive(selectedResource, change.key)"
+                                                                class="sensitive-toggle-btn"
+                                                                (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
+                                                                [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
+                                                                <mat-icon>{{ isSensitiveValueVisible(selectedResource,
+                                                                    change.key, 'after') ? 'visibility_off' : 'visibility'
+                                                                    }}</mat-icon>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </mat-expansion-panel>
@@ -831,20 +853,22 @@
                                                     <div class="value-container">
                                                         <pre *ngIf="isComplexValue(change.value.after)"
                                                             class="json-content">{{
-                              formatSensitiveValue(change.value.after, selectedResource, change.key, 'after')
+                              formatPropertyValue(change.value.after, selectedResource, change.key, 'after')
                             }}</pre>
                                                         <code *ngIf="!isComplexValue(change.value.after)"
                                                             class="simple-value">{{
-                              formatSensitiveValue(change.value.after, selectedResource, change.key, 'after')
+                              formatPropertyValue(change.value.after, selectedResource, change.key, 'after')
                             }}</code>
                                                         <div class="sensitive-value-actions"
-                                                            *ngIf="isPropertySensitive(selectedResource, change.key) && change.value.after !== null && change.value.after !== undefined">
+                                                            *ngIf="change.value.after !== null && change.value.after !== undefined">
                                                             <button mat-icon-button class="sensitive-copy-btn"
                                                                 (click)="copySensitiveValueToClipboard(change.value.after, selectedResource, change.key, 'after')"
-                                                                matTooltip="Copy sensitive value to clipboard">
+                                                                matTooltip="Copy value to clipboard">
                                                                 <mat-icon>content_copy</mat-icon>
                                                             </button>
-                                                            <button mat-icon-button class="sensitive-toggle-btn"
+                                                            <button mat-icon-button
+                                                                *ngIf="isPropertySensitive(selectedResource, change.key)"
+                                                                class="sensitive-toggle-btn"
                                                                 (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
                                                                 [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
                                                                 <mat-icon>{{ isSensitiveValueVisible(selectedResource,
@@ -951,6 +975,17 @@
                             <th mat-header-cell *matHeaderCellDef>Value</th>
                             <td mat-cell *matCellDef="let variable">
                                 <code class="value-code">{{ variable.value | json }}</code>
+                            </td>
+                        </ng-container>
+
+                        <ng-container matColumnDef="copy">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let variable">
+                                <button mat-icon-button class="copy-variable-btn"
+                                    (click)="copyVariableValue(variable.value)"
+                                    matTooltip="Copy variable value">
+                                    <mat-icon>content_copy</mat-icon>
+                                </button>
                             </td>
                         </ng-container>
 

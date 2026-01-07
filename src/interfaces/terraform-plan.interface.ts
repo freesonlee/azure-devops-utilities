@@ -68,6 +68,7 @@ export interface Change {
   before_sensitive?: boolean | Record<string, any>;
   after_sensitive?: boolean | Record<string, any>;
   replace_paths?: string[][]; // Paths that cause this resource to be replaced
+  importing?: boolean; // Resource is being imported (same level as before/after)
 }
 
 export interface OutputChange {
@@ -95,6 +96,7 @@ export interface ResourceSummary {
   replace: number;
   changes: number;
   total: number;
+  importing: number; // Count of resources being imported
 }
 
 export interface ModuleGroup {

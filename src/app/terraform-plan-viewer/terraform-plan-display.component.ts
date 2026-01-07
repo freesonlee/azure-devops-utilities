@@ -68,8 +68,10 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     @Output() cdktfStatusChanged = new EventEmitter<boolean>();
     @Output() viewSwitchRequested = new EventEmitter<string>();
     @Output() targetResourceRequested = new EventEmitter<string>();
+    @Output() importStateRequested = new EventEmitter<ResourceChange>();
+    @Output() removeFromStateRequested = new EventEmitter<ResourceChange>();
 
-    resourceSummary: ResourceSummary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0 };
+    resourceSummary: ResourceSummary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0, importing: 0 };
     resourcesByType: Map<string, ResourceChange[]> = new Map();
     resourceTypeGroups: Map<string, ResourceTypeGroup> = new Map();
     moduleGroups: ModuleGroup[] = [];
@@ -107,7 +109,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     // Selected resource for right panel display
     selectedResource: ResourceChange | null = null;
 
-    displayedColumnsVariables: string[] = ['key', 'type', 'value'];
+    displayedColumnsVariables: string[] = ['key', 'type', 'value', 'copy'];
     displayedColumnsOutputs: string[] = ['key', 'type', 'sensitive', 'value'];
     displayedColumnsResources: string[] = ['address', 'type', 'actions', 'provider'];
 
@@ -124,13 +126,18 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['plan'] && changes['plan'].currentValue) {
-            this.loadPlanData();
-            // Apply default filter when plan changes
-            this.applyDefaultFilter();
-            // If CDKTF is already loaded, rebuild the construct tree
-            if (this.cdkTfJson) {
-                this.buildConstructTree();
+        if (changes['plan']) {
+            if (changes['plan'].currentValue) {
+                this.loadPlanData();
+                // Apply default filter when plan changes
+                this.applyDefaultFilter();
+                // If CDKTF is already loaded, rebuild the construct tree
+                if (this.cdkTfJson) {
+                    this.buildConstructTree();
+                }
+            } else {
+                // Plan was cleared/set to null - reset all data
+                this.resetPlanData();
             }
         }
 
@@ -185,6 +192,36 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
         this.clearExpandedResources();
 
 
+    }
+
+    private resetPlanData(): void {
+        // Reset all plan data to empty/default state
+        this.resourceSummary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0, importing: 0 };
+        this.resourcesByType = new Map();
+        this.resourceTypeGroups = new Map();
+        this.moduleGroups = [];
+        this.resourcesByModule = new Map();
+        this.resourcesByModuleWithIterators = new Map();
+        this.allVariables = [];
+        this.filteredVariables.data = [];
+        this.allOutputs = [];
+        this.filteredOutputs.data = [];
+        this.outputGroups = new Map();
+
+        // Clear filters
+        this.activeResourceFilter = null;
+        this.resourceSearchFilter = '';
+        this.variableNameFilter = '';
+        this.variableValueFilter = '';
+        this.outputNameFilter = '';
+
+        // Clear expanded states
+        this.clearExpandedResources();
+
+        // Clear construct view data
+        this.constructTree = null;
+        this.showConstructView = false;
+        this.pathSegmentGroups = [];
     }
 
     private buildConstructTree(): void {
@@ -773,6 +810,25 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
             }, 0);
     }
 
+    getImportingCountForAction(action: string): number {
+        if (!this.plan || !this.plan.resource_changes) {
+            return 0;
+        }
+
+        return this.plan.resource_changes.filter(resource => {
+            // Check if resource is importing
+            if (!resource.change.importing) {
+                return false;
+            }
+
+            // Check if resource matches the action filter
+            if (action === 'total') {
+                return true; // For total, count all importing resources
+            }
+            return this.resourceMatchesAction(resource, action);
+        }).length;
+    }
+
     trackByResourceType(index: number, item: any): string {
         return item.key;
     }
@@ -933,19 +989,27 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     }
 
     /**
-     * Placeholder for importing state
+     * Import state for the selected resource
      */
     onImportState(): void {
-        console.log('Import state for:', this.selectedResource?.address);
-        this.snackBar.open('Import state - Feature coming soon!', 'Close', { duration: 3000 });
+        if (!this.selectedResource?.address) {
+            this.snackBar.open('No resource selected', 'Close', { duration: 3000 });
+            return;
+        }
+        console.log('Import state for:', this.selectedResource.address);
+        this.importStateRequested.emit(this.selectedResource);
     }
 
     /**
-     * Placeholder for removing from state
+     * Remove the selected resource from state
      */
     onRemoveFromState(): void {
-        console.log('Remove from state:', this.selectedResource?.address);
-        this.snackBar.open('Remove from state - Feature coming soon!', 'Close', { duration: 3000 });
+        if (!this.selectedResource?.address) {
+            this.snackBar.open('No resource selected', 'Close', { duration: 3000 });
+            return;
+        }
+        console.log('Remove from state:', this.selectedResource.address);
+        this.removeFromStateRequested.emit(this.selectedResource);
     }
 
     clearExpandedResources(): void {
@@ -1854,9 +1918,24 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     }
 
     /**
-     * Format a value for display, masking it if sensitive
+     * Format a value for display, masking it if sensitive or showing "(known after apply)" if unknown
+     * 
+     * Precedence order:
+     * 1. If valueType is 'after' and property is unknown -> show "(known after apply)"
+     * 2. If property is sensitive and masked -> show masked value (asterisks)
+     * 3. Otherwise -> show actual value
+     * 
+     * Note: Unknown values take precedence over sensitive masking. If a property is both unknown
+     * and sensitive, it will display "(known after apply)" rather than asterisks, since the actual
+     * value doesn't exist yet and will only be known after the apply operation completes.
      */
     formatSensitiveValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): string {
+        // Check if the property value is unknown (only for 'after' values)
+        // This takes precedence because unknown values don't exist yet
+        if (valueType === 'after' && this.isPropertyUnknown(resource, propertyPath)) {
+            return '(known after apply)';
+        }
+
         const sensitivity = this.sensitivityService.isResourcePropertySensitive(resource, propertyPath);
         const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
 
@@ -1876,6 +1955,52 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     isPropertySensitive(resource: ResourceChange, propertyPath: string): boolean {
         const sensitivity = this.sensitivityService.isResourcePropertySensitive(resource, propertyPath);
         return sensitivity.beforeSensitive || sensitivity.afterSensitive;
+    }
+
+    /**
+     * Check if a property value is unknown (will be known after apply)
+     */
+    isPropertyUnknown(resource: ResourceChange, propertyPath: string): boolean {
+        return this.sensitivityService.isResourcePropertyUnknown(resource, propertyPath);
+    }
+
+    /**
+     * Format a property value with proper handling of unknown and sensitive properties.
+     * This is the recommended method to use when displaying resource property values in the template.
+     * 
+     * Priority order:
+     * 1. If value is null/undefined AND property is unknown -> show "(known after apply)"
+     * 2. If value is null/undefined -> show "null" 
+     * 3. If property is unknown (after values only) -> show "(known after apply)"
+     * 4. If property is sensitive and masked -> show masked value (asterisks)
+     * 5. Otherwise -> show actual value
+     * 
+     * Note: A property cannot be both sensitive and unknown. Unknown takes precedence.
+     */
+    formatPropertyValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): string {
+        // Check if the property is unknown first (only for 'after' and null/undefined values)
+        if (valueType === 'after' && this.isPropertyUnknown(resource, propertyPath)) {
+            return '(known after apply)';
+        }
+
+        // If value is null/undefined, return 'null'
+        if (value === null || value === undefined) {
+            return 'null';
+        }
+
+        // Check if property is sensitive and should be masked
+        const sensitivity = this.sensitivityService.isResourcePropertySensitive(resource, propertyPath);
+        const isSensitive = valueType === 'after' ? sensitivity.afterSensitive : sensitivity.beforeSensitive;
+
+        if (isSensitive && this.isSensitiveValueMasked(resource, propertyPath, valueType)) {
+            // Get the actual length of the value when formatted
+            const actualValue = this.formatChangeValue(value);
+            // Return asterisks matching the actual length
+            return '*'.repeat(actualValue.length);
+        }
+
+        // Return the formatted value
+        return this.formatChangeValue(value);
     }
 
     /**
@@ -1915,6 +2040,31 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
                 duration: 3000,
                 horizontalPosition: 'right',
                 verticalPosition: 'top'
+            });
+        }
+    }
+
+    /**
+     * Copy variable value to clipboard
+     */
+    copyVariableValue(value: any): void {
+        // Format the value as JSON string
+        const formattedValue = typeof value === 'string' ? value : JSON.stringify(value);
+
+        // Copy to clipboard
+        const success = this.clipboard.copy(formattedValue);
+
+        if (success) {
+            this.snackBar.open('Variable value copied to clipboard', 'Close', {
+                duration: 3000,
+                horizontalPosition: 'center',
+                verticalPosition: 'bottom'
+            });
+        } else {
+            this.snackBar.open('Failed to copy to clipboard', 'Close', {
+                duration: 3000,
+                horizontalPosition: 'center',
+                verticalPosition: 'bottom'
             });
         }
     }

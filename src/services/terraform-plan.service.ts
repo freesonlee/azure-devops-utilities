@@ -48,15 +48,20 @@ export class TerraformPlanService {
   getResourceSummary(): ResourceSummary {
     const plan = this.getPlan();
     if (!plan) {
-      return { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0 };
+      return { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0, importing: 0 };
     }
 
-    const summary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0 };
+    const summary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0, importing: 0 };
 
     // Count resources with changes (for create/update/delete/replace counts)
     if (plan.resource_changes) {
       plan.resource_changes.forEach(change => {
         const actions = change.change.actions;
+
+        // Count importing resources (regardless of action)
+        if (change.change.importing) {
+          summary.importing++;
+        }
 
         // Skip no-op resources - they don't require any changes
         if (actions.length === 1 && actions[0] === 'no-op') {
