@@ -356,6 +356,11 @@
                                     <h3>
                                         <code>{{ selectedResource.address }}</code>
                                     </h3>
+                                    <!-- Add this section for moved resources -->
+                                    <div *ngIf="selectedResource.previous_address" class="moved-info">
+                                        <mat-icon class="moved-icon">drive_file_move</mat-icon>
+                                        <span class="moved-text">moved from <code>{{ selectedResource.previous_address }}</code></span>
+                                    </div>
                                     <div class="resource-info-bar">
                                         <mat-chip>{{ selectedResource.type }}</mat-chip>
                                         <span class="provider-name">{{ selectedResource.provider_name }}</span>

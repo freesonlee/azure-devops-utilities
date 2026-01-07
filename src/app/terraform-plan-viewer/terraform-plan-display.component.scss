@@ -304,6 +304,39 @@
     }
 }
 
+// Moved resource info styling
+.moved-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    padding: 8px 12px;
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+    border-radius: 4px;
+    font-size: 14px;
+
+    .moved-icon {
+        color: #2196f3;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+    }
+
+    .moved-text {
+        color: #1976d2;
+        font-weight: 500;
+
+        code {
+            background-color: #bbdefb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+            color: #0d47a1;
+        }
+    }
+}
+
 // Change details styling
 .change-details {
     h4 {

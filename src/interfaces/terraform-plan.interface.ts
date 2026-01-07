@@ -51,6 +51,7 @@ export interface Resource {
 
 export interface ResourceChange {
   address: string;
+  previous_address?: string; // For moved resources
   mode: string;
   type: string;
   name: string;
