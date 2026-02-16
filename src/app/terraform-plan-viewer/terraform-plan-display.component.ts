@@ -102,6 +102,9 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     // Track visibility of sensitive values (key format: "resourceAddress.propertyPath")
     sensitiveValuesVisible: Set<string> = new Set<string>();
 
+    // IaC Tool detection (Terraform vs OpenTofu)
+    iacToolName: string = 'Terraform'; // Default to Terraform
+
     // Cache for change calculations to prevent recalculation during change detection
     private changeFieldsCache = new Map<string, { [key: string]: { before: any, after: any, changed: boolean } }>();
     private changeFieldsWithDriftCache = new Map<string, { [key: string]: { before: any, current: any, after: any, changed: boolean, hasDrift: boolean } }>();
@@ -173,6 +176,9 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     private loadPlanData(): void {
         if (!this.plan) return;
 
+        // Detect IaC tool (Terraform vs OpenTofu) from plan
+        this.detectIacTool();
+
         // Load the plan into the service
         this.terraformService.loadPlan(this.plan);
 
@@ -194,8 +200,53 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
     }
 
+    /**
+     * Detect IaC tool (Terraform vs OpenTofu) from provider sources in the plan
+     * If any provider is from opentofu.org, it's OpenTofu; otherwise it's Terraform
+     */
+    private detectIacTool(): void {
+        if (!this.plan) {
+            this.iacToolName = 'Terraform';
+            return;
+        }
+
+        try {
+            // Check configuration.provider_config for provider sources
+            const providerConfig = (this.plan as any).configuration?.provider_config;
+            if (providerConfig) {
+                // Check all providers for opentofu.org registry
+                for (const providerKey in providerConfig) {
+                    const provider = providerConfig[providerKey];
+                    const fullName = provider.full_name || '';
+
+                    if (fullName.includes('opentofu.org')) {
+                        this.iacToolName = 'OpenTofu';
+                        return;
+                    }
+                }
+            }
+
+            // If no opentofu.org providers found, check resource provider_name as fallback
+            const resources = this.plan.resource_changes || [];
+            for (const resource of resources) {
+                const providerName = (resource as any).provider_name || '';
+                if (providerName.includes('opentofu.org')) {
+                    this.iacToolName = 'OpenTofu';
+                    return;
+                }
+            }
+
+            // Default to Terraform if no OpenTofu indicators found
+            this.iacToolName = 'Terraform';
+        } catch (error) {
+            console.warn('Error detecting IaC tool from plan:', error);
+            this.iacToolName = 'Terraform'; // Fallback to Terraform on error
+        }
+    }
+
     private resetPlanData(): void {
         // Reset all plan data to empty/default state
+        this.iacToolName = 'Terraform'; // Reset to default
         this.resourceSummary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0, importing: 0 };
         this.resourcesByType = new Map();
         this.resourceTypeGroups = new Map();
