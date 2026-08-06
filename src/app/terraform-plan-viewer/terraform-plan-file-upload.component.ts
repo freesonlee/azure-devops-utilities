@@ -1,6 +1,5 @@
-import { Component, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { Component, Output, EventEmitter, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,6 +7,29 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
+
+interface PlanFileHandle {
+  getFile(): Promise<File>;
+}
+
+interface PlanDroppedFileHandle extends PlanFileHandle {
+  kind?: string;
+}
+
+interface PlanDataTransferItemWithFileSystemHandle extends DataTransferItem {
+  getAsFileSystemHandle?: () => Promise<PlanDroppedFileHandle | undefined>;
+}
+
+interface PlanFilePickerHost {
+  showOpenFilePicker?: (options?: {
+    types?: Array<{
+      description: string;
+      accept: Record<string, string[]>;
+    }>;
+    excludeAcceptAllOption?: boolean;
+    multiple?: boolean;
+  }) => Promise<PlanFileHandle[]>;
+}
 
 @Component({
   selector: 'app-terraform-plan-file-upload',
@@ -37,7 +59,7 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
         <span class="toolbar-drop-text">Drop file or URL to switch</span>
       </div>
       
-      <button mat-raised-button color="accent" (click)="fileInput.click()">
+      <button mat-raised-button color="accent" (click)="openPlanFilePicker(fileInput)">
         <mat-icon>upload_file</mat-icon>
         Load Plan JSON
       </button>
@@ -86,7 +108,7 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
         <mat-icon>cloud</mat-icon>
         <span>Welcome to Terraform Plan Viewer</span>
         <span class="spacer"></span>
-        <button mat-raised-button color="accent" (click)="fileInput.click()">
+        <button mat-raised-button color="accent" (click)="openPlanFilePicker(fileInput)">
           <mat-icon>upload_file</mat-icon>
           Load Plan JSON
         </button>
@@ -164,7 +186,7 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
           </div>
         </mat-card-content>
         <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="fileInput.click()">
+          <button mat-raised-button color="primary" (click)="openPlanFilePicker(fileInput)">
             <mat-icon>upload_file</mat-icon>
             Choose Plan JSON
           </button>
@@ -190,7 +212,7 @@ import { TerraformPlan } from '../../interfaces/terraform-plan.interface';
   `,
   styleUrls: ['./terraform-plan-file-upload.component.scss']
 })
-export class TerraformPlanFileUploadComponent {
+export class TerraformPlanFileUploadComponent implements OnDestroy {
   @Output() planLoaded = new EventEmitter<TerraformPlan>();
   @Output() cdktfLoaded = new EventEmitter<any>();
   @Output() error = new EventEmitter<string>();
@@ -205,10 +227,21 @@ export class TerraformPlanFileUploadComponent {
   showToolbarIntegration: boolean = false;
   showCdktfOptions: boolean = false;
 
+  private readonly planFileWatchIntervalMs = 1000;
+  private planFileWatchTimeoutId?: ReturnType<typeof setTimeout>;
+  private watchedPlanFileHandle?: PlanFileHandle;
+  private watchedPlanFileLastModified = 0;
+  private isPlanReloadPromptOpen = false;
+  private isDestroyed = false;
+
   constructor(
-    private http: HttpClient,
     private cdr: ChangeDetectorRef
   ) { }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
+    this.stopWatchingPlanFile();
+  }
 
   /**
    * Switch to toolbar integration mode (compact mode for when a plan is already loaded)
@@ -240,11 +273,14 @@ export class TerraformPlanFileUploadComponent {
   }
 
   onFileSelected(event: any): void {
-    const file = event.target.files[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (file) {
-      this.processFile(file).catch(error => {
+      this.loadPlanFile(file).catch(error => {
         console.error('Error processing file:', error);
         this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
+      }).finally(() => {
+        input.value = '';
       });
     }
   }
@@ -257,6 +293,156 @@ export class TerraformPlanFileUploadComponent {
         this.error.emit(error instanceof Error ? error.message : 'Failed to process the CDKTF file.');
       });
     }
+  }
+
+  async openPlanFilePicker(fileInput: HTMLInputElement): Promise<void> {
+    const showOpenFilePicker = (window as unknown as PlanFilePickerHost).showOpenFilePicker;
+
+    if (!showOpenFilePicker) {
+      fileInput.click();
+      return;
+    }
+
+    try {
+      const [handle] = await showOpenFilePicker.call(window, {
+        types: [
+          {
+            description: 'JSON files',
+            accept: {
+              'application/json': ['.json']
+            }
+          }
+        ],
+        excludeAcceptAllOption: false,
+        multiple: false
+      });
+
+      if (!handle) {
+        return;
+      }
+
+      const file = await handle.getFile();
+      await this.loadPlanFile(file, handle);
+    } catch (error) {
+      if (this.isFilePickerCancel(error)) {
+        return;
+      }
+
+      console.error('Error selecting plan file:', error);
+      this.error.emit(error instanceof Error ? error.message : 'Failed to select the plan JSON file.');
+    }
+  }
+
+  private async loadPlanFile(file: File, fileHandle?: PlanFileHandle): Promise<void> {
+    await this.processFile(file);
+
+    if (this.isDestroyed) {
+      return;
+    }
+
+    if (fileHandle) {
+      this.startWatchingPlanFile(fileHandle, file.lastModified);
+    } else {
+      this.stopWatchingPlanFile();
+    }
+  }
+
+  private startWatchingPlanFile(fileHandle: PlanFileHandle, lastModified: number): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    this.stopWatchingPlanFile();
+
+    this.watchedPlanFileHandle = fileHandle;
+    this.watchedPlanFileLastModified = lastModified;
+    this.schedulePlanFileWatchCheck();
+  }
+
+  private stopWatchingPlanFile(): void {
+    if (this.planFileWatchTimeoutId) {
+      clearTimeout(this.planFileWatchTimeoutId);
+    }
+
+    this.planFileWatchTimeoutId = undefined;
+    this.watchedPlanFileHandle = undefined;
+    this.watchedPlanFileLastModified = 0;
+    this.isPlanReloadPromptOpen = false;
+  }
+
+  private schedulePlanFileWatchCheck(): void {
+    if (this.isDestroyed || !this.watchedPlanFileHandle || this.planFileWatchTimeoutId) {
+      return;
+    }
+
+    this.planFileWatchTimeoutId = setTimeout(() => {
+      this.planFileWatchTimeoutId = undefined;
+      void this.checkWatchedPlanFileForChanges();
+    }, this.planFileWatchIntervalMs);
+  }
+
+  private async checkWatchedPlanFileForChanges(): Promise<void> {
+    const watchedHandle = this.watchedPlanFileHandle;
+    if (!watchedHandle) {
+      return;
+    }
+
+    if (this.isPlanReloadPromptOpen) {
+      this.schedulePlanFileWatchCheck();
+      return;
+    }
+
+    try {
+      let changedFile: File;
+      try {
+        changedFile = await watchedHandle.getFile();
+      } catch (error) {
+        console.error('Error reading watched plan file:', error);
+        this.stopWatchingPlanFile();
+        this.error.emit('Unable to watch the plan file for changes. Please reload it manually.');
+        return;
+      }
+
+      if (this.watchedPlanFileHandle !== watchedHandle || changedFile.lastModified <= this.watchedPlanFileLastModified) {
+        return;
+      }
+
+      this.isPlanReloadPromptOpen = true;
+      const shouldReload = window.confirm(`The plan JSON file "${changedFile.name}" changed. Reload it now?`);
+      this.isPlanReloadPromptOpen = false;
+
+      let latestFile = changedFile;
+      try {
+        latestFile = await watchedHandle.getFile();
+      } catch (error) {
+        console.error('Error reading changed plan file:', error);
+        this.stopWatchingPlanFile();
+        this.error.emit('Unable to reload the changed plan file. Please reload it manually.');
+        return;
+      }
+
+      if (this.watchedPlanFileHandle !== watchedHandle) {
+        return;
+      }
+
+      if (shouldReload) {
+        await this.processFile(latestFile);
+      }
+
+      this.watchedPlanFileLastModified = latestFile.lastModified;
+    } catch (error) {
+      this.isPlanReloadPromptOpen = false;
+      console.error('Error reloading watched plan file:', error);
+      this.error.emit(error instanceof Error ? error.message : 'Failed to reload the changed plan JSON file.');
+    } finally {
+      if (this.watchedPlanFileHandle === watchedHandle) {
+        this.schedulePlanFileWatchCheck();
+      }
+    }
+  }
+
+  private isFilePickerCancel(error: unknown): boolean {
+    return (error as { name?: string } | undefined)?.name === 'AbortError';
   }
 
   // Drag and Drop Event Handlers
@@ -289,35 +475,10 @@ export class TerraformPlanFileUploadComponent {
     event.stopPropagation();
     this.isDragOver = false;
 
-    const items = event.dataTransfer?.items;
-    if (items) {
-      // Check for text/URL first
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-
-        if (item.kind === 'string' && (item.type === 'text/plain' || item.type === 'text/uri-list')) {
-          item.getAsString((text: string) => {
-            const trimmedText = text.trim();
-            if (this.isValidUrl(trimmedText)) {
-              this.handleUrlDrop(trimmedText);
-            } else {
-              this.error.emit('Invalid URL. Please drop a valid HTTP/HTTPS link to a JSON file.');
-            }
-          });
-          return;
-        }
-      }
-    }
-
-    // Fall back to file handling
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      this.processDroppedFile(file).catch(error => {
-        console.error('Error processing file:', error);
-        this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
-      });
-    }
+    this.processPlanDrop(event).catch(error => {
+      console.error('Error processing file:', error);
+      this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
+    });
   }
 
   // Toolbar Drag and Drop Event Handlers
@@ -350,35 +511,10 @@ export class TerraformPlanFileUploadComponent {
     event.stopPropagation();
     this.isToolbarDragOver = false;
 
-    const items = event.dataTransfer?.items;
-    if (items) {
-      // Check for text/URL first
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-
-        if (item.kind === 'string' && (item.type === 'text/plain' || item.type === 'text/uri-list')) {
-          item.getAsString((text: string) => {
-            const trimmedText = text.trim();
-            if (this.isValidUrl(trimmedText)) {
-              this.handleUrlDrop(trimmedText);
-            } else {
-              this.error.emit('Invalid URL. Please drop a valid HTTP/HTTPS link to a JSON file.');
-            }
-          });
-          return;
-        }
-      }
-    }
-
-    // Fall back to file handling
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      this.processDroppedFile(file).catch(error => {
-        console.error('Error processing file:', error);
-        this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
-      });
-    }
+    this.processPlanDrop(event).catch(error => {
+      console.error('Error processing file:', error);
+      this.error.emit(error instanceof Error ? error.message : 'Failed to process the file.');
+    });
   }
 
   // CDKTF Drag and Drop Event Handlers
@@ -421,13 +557,81 @@ export class TerraformPlanFileUploadComponent {
     }
   }
 
+  private async processPlanDrop(event: DragEvent): Promise<void> {
+    const items = event.dataTransfer?.items;
+    if (items) {
+      // Check for text/URL first
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (item.kind === 'string' && (item.type === 'text/plain' || item.type === 'text/uri-list')) {
+          item.getAsString((text: string) => {
+            const trimmedText = text.trim();
+            if (this.isValidUrl(trimmedText)) {
+              this.handleUrlDrop(trimmedText);
+            } else {
+              this.error.emit('Invalid URL. Please drop a valid HTTP/HTTPS link to a JSON file.');
+            }
+          });
+          return;
+        }
+      }
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          await this.processDroppedFileItem(item);
+          return;
+        }
+      }
+    }
+
+    // Fall back for browsers that expose dropped files only through FileList.
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      await this.processDroppedFile(files[0]);
+    }
+  }
+
+  private async processDroppedFileItem(item: DataTransferItem): Promise<void> {
+    const fileHandle = await this.getDroppedFileHandle(item);
+    if (fileHandle) {
+      const file = await fileHandle.getFile();
+      await this.processDroppedFile(file, fileHandle);
+      return;
+    }
+
+    const file = item.getAsFile();
+    if (file) {
+      await this.processDroppedFile(file);
+    }
+  }
+
+  private async getDroppedFileHandle(item: DataTransferItem): Promise<PlanFileHandle | undefined> {
+    const getAsFileSystemHandle = (item as PlanDataTransferItemWithFileSystemHandle).getAsFileSystemHandle;
+    if (!getAsFileSystemHandle) {
+      return undefined;
+    }
+
+    const handle = await getAsFileSystemHandle.call(item);
+    if (!handle) {
+      return undefined;
+    }
+
+    if (handle.kind && handle.kind !== 'file') {
+      throw new Error('Please drop a JSON file, not a folder.');
+    }
+
+    return handle;
+  }
+
   // File type detection and processing for dropped files
-  private async processDroppedFile(file: File): Promise<void> {
+  private async processDroppedFile(file: File, fileHandle?: PlanFileHandle): Promise<void> {
     // Check if this might be a CDKTF file based on naming convention
     if (file.name.toLowerCase().includes('cdktf') || file.name.toLowerCase() === 'cdktf.json') {
       return this.processCdktfFile(file);
     } else {
-      return this.processFile(file);
+      return this.loadPlanFile(file, fileHandle);
     }
   }
 
@@ -594,7 +798,7 @@ export class TerraformPlanFileUploadComponent {
       console.log('Downloading file from URL:', url);
 
       const file = await this.downloadFileFromUrl(url);
-      await this.processFile(file);
+      await this.loadPlanFile(file);
 
     } catch (error) {
       console.error('Error processing URL:', error);

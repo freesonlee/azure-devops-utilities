@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener } from '@angular/core';
+import { Component, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TerraformPlanFileUploadComponent } from './terraform-plan-file-upload.component';
 import { TerraformPlanDisplayComponent } from './terraform-plan-display.component';
@@ -16,7 +16,7 @@ import { FileIndicatorComponent } from './file-indicator.component';
   templateUrl: './terraform-plan-viewer.html',
   styleUrl: './terraform-plan-viewer.scss'
 })
-export class TerraformPlanViewerComponent implements OnInit, AfterViewInit {
+export class TerraformPlanViewerComponent implements AfterViewInit {
   // Current plan data for the orchestrator
   currentPlan: any = null;
   currentCdktfJson: any = null;
@@ -32,10 +32,6 @@ export class TerraformPlanViewerComponent implements OnInit, AfterViewInit {
     private cdr: ChangeDetectorRef
   ) { }
 
-  ngOnInit(): void {
-    // Component starts with no plan loaded - upload component will be shown
-  }
-
   ngAfterViewInit(): void {
     // Enable toolbar integration mode if a plan is loaded
     if (this.currentPlan && this.uploadToolbar) {
@@ -50,8 +46,8 @@ export class TerraformPlanViewerComponent implements OnInit, AfterViewInit {
     // Reset CDKTF data when new plan is loaded
     this.currentCdktfJson = null;
     this.cdktfLoaded = false;
+    this.stackType = 'terraform';
 
-    // Auto-detect if this is a CDKTF-generated plan
     this.cdr.detectChanges();
 
     // Enable toolbar integration mode after plan is loaded
