@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { TerraformPlanService } from './terraform-plan.service';
-import { ResourceChange } from '../interfaces/terraform-plan.interface';
+import { ResourceChange, TerraformPlan } from '../interfaces/terraform-plan.interface';
 import { TerraformSensitivityService } from './terraform-sensitivity.service';
 
 describe('TerraformPlanService - Sensitive Property Detection', () => {
@@ -13,6 +13,58 @@ describe('TerraformPlanService - Sensitive Property Detection', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  describe('TerraformPlanService - Resource Summary', () => {
+    let planService: TerraformPlanService;
+
+    beforeEach(() => {
+      TestBed.configureTestingModule({});
+      planService = TestBed.inject(TerraformPlanService);
+    });
+
+    it('should include moved resources in the total count', () => {
+      const plan: TerraformPlan = {
+        format_version: '1.2',
+        terraform_version: '1.6.0',
+        variables: {},
+        planned_values: {
+          outputs: {},
+          root_module: {
+            resources: [{
+              address: 'aws_s3_bucket.example',
+              mode: 'managed',
+              type: 'aws_s3_bucket',
+              name: 'example',
+              provider_name: 'aws',
+              schema_version: 0,
+              values: {},
+              sensitive_values: {}
+            }]
+          }
+        },
+        resource_changes: [{
+          address: 'aws_s3_bucket.example',
+          previous_address: 'aws_s3_bucket.old',
+          mode: 'managed',
+          type: 'aws_s3_bucket',
+          name: 'example',
+          provider_name: 'aws',
+          change: {
+            actions: ['move'],
+            before: {},
+            after: {}
+          }
+        }],
+        output_changes: {}
+      };
+
+      planService.loadPlan(plan);
+      const summary = planService.getResourceSummary();
+
+      expect(summary.changes).toBe(0);
+      expect(summary.total).toBe(2);
+    });
   });
 
   describe('isPropertySensitive', () => {

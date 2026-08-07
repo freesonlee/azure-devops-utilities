@@ -1,6 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -56,7 +57,7 @@ import { ConstructViewComponent } from './construct-view.component';
     templateUrl: './terraform-plan-display.component.html',
     styleUrl: './terraform-plan-display.component.scss'
 })
-export class TerraformPlanDisplayComponent implements OnChanges {
+export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     @ViewChild('tabGroup') tabGroup!: MatTabGroup;
     @Input() plan: TerraformPlan | null = null;
     @Input() cdkTfJson: any = null; // CDKTF metadata from cdk.tf.json
@@ -118,10 +119,14 @@ export class TerraformPlanDisplayComponent implements OnChanges {
     constructor(
         private terraformService: TerraformPlanService,
         private sensitivityService: TerraformSensitivityService,
+        private http: HttpClient,
         private cdr: ChangeDetectorRef,
         private clipboard: Clipboard,
         private snackBar: MatSnackBar
     ) { }
+
+    ngOnInit(): void {
+    }
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['plan']) {
@@ -191,6 +196,8 @@ export class TerraformPlanDisplayComponent implements OnChanges {
 
         // Clear the cache and expanded states when new data is loaded
         this.clearExpandedResources();
+
+
     }
 
     /**
@@ -566,7 +573,7 @@ export class TerraformPlanDisplayComponent implements OnChanges {
 
     hasConstructTree(): boolean {
         const result = this.isCdktfStack() && !!this.constructTree;
-        console.log('DEBUG: hasConstructTree', {
+        console.debug('DEBUG: hasConstructTree', {
             isCdktfStack: this.isCdktfStack(),
             hasConstructTree: !!this.constructTree,
             result: result,
