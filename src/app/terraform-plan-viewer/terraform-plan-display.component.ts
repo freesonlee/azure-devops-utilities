@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, AfterViewInit, SimpleChanges, ViewChild, ElementRef, HostListener, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -57,8 +57,10 @@ import { ConstructViewComponent } from './construct-view.component';
     templateUrl: './terraform-plan-display.component.html',
     styleUrl: './terraform-plan-display.component.scss'
 })
-export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
+export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterViewInit {
     @ViewChild('tabGroup') tabGroup!: MatTabGroup;
+    @ViewChild('splitContainer') splitContainerRef?: ElementRef<HTMLElement>;
+    @ViewChild('leftPanel') leftPanelRef?: ElementRef<HTMLElement>;
     @Input() plan: TerraformPlan | null = null;
     @Input() cdkTfJson: any = null; // CDKTF metadata from cdk.tf.json
     @Input() stackType: string = 'terraform'; // Stack type from parent component
@@ -112,6 +114,14 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     // Selected resource for right panel display
     selectedResource: ResourceChange | null = null;
 
+    // Right panel "floats" as a fixed overlay once its docked position scrolls above the viewport, and re-docks when scrolled back
+    isRightPanelFloating: boolean = false;
+    floatingPanelTop: number = 0;
+    floatingPanelLeft: number = 0;
+    floatingPanelWidth: number = 0;
+    floatingPanelHeight: number = 0;
+    private floatingUpdateScheduled: boolean = false;
+
     displayedColumnsVariables: string[] = ['key', 'type', 'value', 'copy'];
     displayedColumnsOutputs: string[] = ['key', 'type', 'sensitive', 'value'];
     displayedColumnsResources: string[] = ['address', 'type', 'actions', 'provider'];
@@ -126,6 +136,53 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
     ) { }
 
     ngOnInit(): void {
+    }
+
+    ngAfterViewInit(): void {
+        this.updateRightPanelFloating();
+    }
+
+    @HostListener('window:scroll')
+    @HostListener('window:resize')
+    onWindowScrollOrResize(): void {
+        if (this.floatingUpdateScheduled) return;
+        this.floatingUpdateScheduled = true;
+        requestAnimationFrame(() => {
+            this.floatingUpdateScheduled = false;
+            this.updateRightPanelFloating();
+        });
+    }
+
+    /**
+     * Detaches the right panel into a fixed overlay once its docked position would scroll
+     * out of view, and re-docks it once the split container scrolls back into place.
+     */
+    private updateRightPanelFloating(): void {
+        const splitEl = this.splitContainerRef?.nativeElement;
+        const leftEl = this.leftPanelRef?.nativeElement;
+        if (!splitEl || !leftEl) return;
+
+        // Hidden (e.g. a different tab is active) - keep docked and skip measuring
+        if (!splitEl.offsetParent) {
+            this.isRightPanelFloating = false;
+            return;
+        }
+
+        const topBarEl = document.querySelector('.compact-upload-bar') as HTMLElement | null;
+        // Use the bar's own layout height rather than its live (possibly unstuck) rect
+        const topOffset = topBarEl ? topBarEl.offsetHeight : 0;
+
+        const containerRect = splitEl.getBoundingClientRect();
+        const leftRect = leftEl.getBoundingClientRect();
+
+        this.floatingPanelTop = topOffset;
+        this.floatingPanelLeft = leftRect.right;
+        this.floatingPanelWidth = containerRect.right - leftRect.right;
+        this.floatingPanelHeight = window.innerHeight - topOffset;
+
+        this.isRightPanelFloating = !!this.selectedResource &&
+            containerRect.top < topOffset &&
+            containerRect.bottom > topOffset;
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -951,6 +1008,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges {
 
     selectResource(resource: ResourceChange): void {
         this.selectedResource = resource;
+        requestAnimationFrame(() => this.updateRightPanelFloating());
     }
 
     isResourceSelected(resource: ResourceChange): boolean {

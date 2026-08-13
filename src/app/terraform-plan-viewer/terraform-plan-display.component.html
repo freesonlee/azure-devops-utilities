@@ -105,9 +105,9 @@
                     </div>
 
                     <!-- Split Layout Container -->
-                    <div class="split-container">
+                    <div class="split-container" #splitContainer>
                         <!-- Left Panel - Resource List -->
-                        <div class="left-panel">
+                        <div class="left-panel" #leftPanel>
 
                             <!-- View Toggle (for CDKTF stacks) -->
                             <div class="view-toggle-container" *ngIf="isCdktfStack()">
@@ -342,7 +342,11 @@
                         </div>
 
                         <!-- Right Panel - Resource Details -->
-                        <div class="right-panel">
+                        <div class="right-panel" [class.floating]="isRightPanelFloating"
+                            [style.top.px]="isRightPanelFloating ? floatingPanelTop : null"
+                            [style.left.px]="isRightPanelFloating ? floatingPanelLeft : null"
+                            [style.width.px]="isRightPanelFloating ? floatingPanelWidth : null"
+                            [style.height.px]="isRightPanelFloating ? floatingPanelHeight : null">
                             <div *ngIf="!selectedResource" class="no-selection">
                                 <mat-icon class="large-icon">info</mat-icon>
                                 <h3>Select a Resource</h3>

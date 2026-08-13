@@ -233,6 +233,7 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
   private watchedPlanFileLastModified = 0;
   private isPlanReloadPromptOpen = false;
   private isDestroyed = false;
+  private canUseFileWatch = false;
 
   constructor(
     private cdr: ChangeDetectorRef
@@ -298,7 +299,7 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
   async openPlanFilePicker(fileInput: HTMLInputElement): Promise<void> {
     const showOpenFilePicker = (window as unknown as PlanFilePickerHost).showOpenFilePicker;
 
-    if (!showOpenFilePicker) {
+    if (!showOpenFilePicker || this.isVsCodeIntegratedBrowser()) {
       fileInput.click();
       return;
     }
@@ -321,8 +322,16 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
         return;
       }
 
-      const file = await handle.getFile();
-      await this.loadPlanFile(file, handle);
+      try {
+        const file = await handle.getFile();
+        await this.loadPlanFile(file, handle);
+        return;
+      } catch (error) {
+        this.canUseFileWatch = false;
+        this.stopWatchingPlanFile();
+        fileInput.click();
+        return;
+      }
     } catch (error) {
       if (this.isFilePickerCancel(error)) {
         return;
@@ -340,7 +349,7 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
       return;
     }
 
-    if (fileHandle) {
+    if (fileHandle && this.canUseFileWatch) {
       this.startWatchingPlanFile(fileHandle, file.lastModified);
     } else {
       this.stopWatchingPlanFile();
@@ -348,7 +357,8 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
   }
 
   private startWatchingPlanFile(fileHandle: PlanFileHandle, lastModified: number): void {
-    if (this.isDestroyed) {
+    if (this.isDestroyed || !this.canUseFileWatch) {
+      this.stopWatchingPlanFile();
       return;
     }
 
@@ -398,6 +408,7 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
         changedFile = await watchedHandle.getFile();
       } catch (error) {
         console.error('Error reading watched plan file:', error);
+        this.canUseFileWatch = false;
         this.stopWatchingPlanFile();
         this.error.emit('Unable to watch the plan file for changes. Please reload it manually.');
         return;
@@ -558,6 +569,14 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
   }
 
   private async processPlanDrop(event: DragEvent): Promise<void> {
+    if (this.isVsCodeIntegratedBrowser()) {
+      const files = event.dataTransfer?.files;
+      if (files && files.length > 0) {
+        await this.processDroppedFile(files[0]);
+      }
+      return;
+    }
+
     const items = event.dataTransfer?.items;
     if (items) {
       // Check for text/URL first
@@ -602,27 +621,66 @@ export class TerraformPlanFileUploadComponent implements OnDestroy {
     }
 
     const file = item.getAsFile();
-    if (file) {
-      await this.processDroppedFile(file);
+    if (!file) {
+      return;
     }
+
+    await this.processDroppedFile(file);
+  }
+
+  private isVsCodeIntegratedBrowser(): boolean {
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    return /Code\//i.test(userAgent) || /Electron\//i.test(userAgent);
+  }
+
+  private supportsFileSystemHandles(): boolean {
+    if (this.isVsCodeIntegratedBrowser()) {
+      return false;
+    }
+
+    const hasWindowApi = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
+    const hasItemApi = typeof DataTransferItem !== 'undefined'
+      && typeof (DataTransferItem.prototype as PlanDataTransferItemWithFileSystemHandle).getAsFileSystemHandle === 'function';
+
+    return hasWindowApi && hasItemApi;
   }
 
   private async getDroppedFileHandle(item: DataTransferItem): Promise<PlanFileHandle | undefined> {
+    if (!this.supportsFileSystemHandles()) {
+      this.canUseFileWatch = false;
+      return undefined;
+    }
+
     const getAsFileSystemHandle = (item as PlanDataTransferItemWithFileSystemHandle).getAsFileSystemHandle;
-    if (!getAsFileSystemHandle) {
+    if (typeof getAsFileSystemHandle !== 'function') {
+      this.canUseFileWatch = false;
       return undefined;
     }
 
-    const handle = await getAsFileSystemHandle.call(item);
-    if (!handle) {
+    try {
+      const handle = await getAsFileSystemHandle.call(item);
+      if (!handle) {
+        this.canUseFileWatch = false;
+        return undefined;
+      }
+
+      if (handle.kind && handle.kind !== 'file') {
+        throw new Error('Please drop a JSON file, not a folder.');
+      }
+
+      try {
+        await handle.getFile();
+        this.canUseFileWatch = true;
+        return handle;
+      } catch (error) {
+        this.canUseFileWatch = false;
+        this.stopWatchingPlanFile();
+        return undefined;
+      }
+    } catch (error) {
+      this.canUseFileWatch = false;
       return undefined;
     }
-
-    if (handle.kind && handle.kind !== 'file') {
-      throw new Error('Please drop a JSON file, not a folder.');
-    }
-
-    return handle;
   }
 
   // File type detection and processing for dropped files

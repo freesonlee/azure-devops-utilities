@@ -126,6 +126,14 @@
     background-color: white;
     min-width: 0; // Allow panel to shrink when needed
 
+    // Detached into a fixed overlay while its docked position is scrolled out of view
+    &.floating {
+        position: fixed;
+        z-index: 60;
+        border-left: 1px solid #e0e0e0;
+        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+    }
+
     .no-selection {
         display: flex;
         flex-direction: column;
@@ -158,6 +166,35 @@
         padding: 20px;
         height: 100%;
         overflow-y: auto;
+        position: relative;
+
+        .detail-header,
+        .resource-action-buttons,
+        .change-details > h4,
+        .unchanged-resource-details > .section-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #fff;
+        }
+
+        .detail-header {
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .change-details > h4 {
+            padding-bottom: 12px;
+            margin: 0 0 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .unchanged-resource-details > .section-header {
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
     }
 }
 
