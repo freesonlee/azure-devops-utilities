@@ -108,6 +108,9 @@ interface PlanFilePickerHost {
         <mat-icon>cloud</mat-icon>
         <span>Welcome to Terraform Plan Viewer</span>
         <span class="spacer"></span>
+        <a mat-button="" href="https://github.com/freesonlee/terraform-plan-viewer-cli/releases/latest" target="_blank" rel="noopener noreferrer" style="margin-right: 12px; color: #fff;">
+          Get CLI
+        </a>
         <button mat-raised-button color="accent" (click)="openPlanFilePicker(fileInput)">
           <mat-icon>upload_file</mat-icon>
           Load Plan JSON
@@ -191,6 +194,10 @@ interface PlanFilePickerHost {
             Choose Plan JSON
           </button>
         </mat-card-actions>
+        <a mat-button="" href="https://github.com/freesonlee/terraform-plan-viewer-cli/releases/latest" target="_blank" rel="noopener noreferrer" style="
+            margin-left:  20px;
+            padding-bottom: 10px;
+            width: 110px;">Get CLI Version</a>
       </mat-card>
 
       <!-- Hidden file input -->
