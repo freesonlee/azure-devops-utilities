@@ -194,7 +194,7 @@ interface PlanFilePickerHost {
             Choose Plan JSON
           </button>
         </mat-card-actions>
-        <a mat-button="" href="https://github.com/freesonlee/terraform-plan-viewer-cli/releases/latest" target="_blank" rel="noopener noreferrer" style="
+        <a href="https://github.com/freesonlee/terraform-plan-viewer-cli/releases/latest" target="_blank" rel="noopener noreferrer" style="
             margin-left:  20px;
             padding-bottom: 10px;
             width: 110px;">Get CLI Version</a>
