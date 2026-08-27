@@ -61,6 +61,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     @ViewChild('tabGroup') tabGroup!: MatTabGroup;
     @ViewChild('splitContainer') splitContainerRef?: ElementRef<HTMLElement>;
     @ViewChild('leftPanel') leftPanelRef?: ElementRef<HTMLElement>;
+    @ViewChild('rightPanel') rightPanelRef?: ElementRef<HTMLElement>;
     @Input() plan: TerraformPlan | null = null;
     @Input() cdkTfJson: any = null; // CDKTF metadata from cdk.tf.json
     @Input() stackType: string = 'terraform'; // Stack type from parent component
@@ -120,6 +121,8 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     floatingPanelLeft: number = 0;
     floatingPanelWidth: number = 0;
     floatingPanelHeight: number = 0;
+    // Height reserved by a placeholder while floating, so the page's scroll height never changes when toggling
+    dockedPanelHeight: number = 0;
     private floatingUpdateScheduled: boolean = false;
 
     displayedColumnsVariables: string[] = ['key', 'type', 'value', 'copy'];
@@ -156,16 +159,27 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     /**
      * Detaches the right panel into a fixed overlay once its docked position would scroll
      * out of view, and re-docks it once the split container scrolls back into place.
+     *
+     * A placeholder reserves the panel's last docked height while floating so removing it
+     * from flow never changes the page's scroll height - otherwise a short left panel would
+     * cause the page height (and thus scroll position) to jump every time floating toggled,
+     * producing an infinite dock/float flicker.
      */
     private updateRightPanelFloating(): void {
         const splitEl = this.splitContainerRef?.nativeElement;
         const leftEl = this.leftPanelRef?.nativeElement;
-        if (!splitEl || !leftEl) return;
+        const rightEl = this.rightPanelRef?.nativeElement;
+        if (!splitEl || !leftEl || !rightEl) return;
 
         // Hidden (e.g. a different tab is active) - keep docked and skip measuring
         if (!splitEl.offsetParent) {
             this.isRightPanelFloating = false;
             return;
+        }
+
+        // Capture the panel's natural height while docked, before it can be removed from flow
+        if (!this.isRightPanelFloating) {
+            this.dockedPanelHeight = rightEl.offsetHeight;
         }
 
         const topBarEl = document.querySelector('.compact-upload-bar') as HTMLElement | null;
@@ -180,9 +194,19 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
         this.floatingPanelWidth = containerRect.right - leftRect.right;
         this.floatingPanelHeight = window.innerHeight - topOffset;
 
-        this.isRightPanelFloating = !!this.selectedResource &&
-            containerRect.top < topOffset &&
-            containerRect.bottom > topOffset;
+        if (!this.selectedResource) {
+            this.isRightPanelFloating = false;
+            return;
+        }
+
+        // Hysteresis: require crossing a few px past the threshold to switch state,
+        // so the toggle doesn't chatter right at the boundary
+        const hysteresis = 8;
+        if (this.isRightPanelFloating) {
+            this.isRightPanelFloating = containerRect.top < topOffset + hysteresis && containerRect.bottom > topOffset;
+        } else {
+            this.isRightPanelFloating = containerRect.top < topOffset - hysteresis && containerRect.bottom > topOffset;
+        }
     }
 
     ngOnChanges(changes: SimpleChanges): void {

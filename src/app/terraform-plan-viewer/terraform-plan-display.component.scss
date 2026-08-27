@@ -198,6 +198,12 @@
     }
 }
 
+// Reserves the right panel's docked width/height while it floats
+.right-panel-spacer {
+    flex: 1;
+    min-width: 0;
+}
+
 // Resource list styling
 .resource-list {
     padding: 0;

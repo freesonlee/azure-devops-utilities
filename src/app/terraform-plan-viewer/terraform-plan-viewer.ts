@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener } from '@angular/core';
+import { Component, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TerraformPlanFileUploadComponent } from './terraform-plan-file-upload.component';
 import { TerraformPlanDisplayComponent } from './terraform-plan-display.component';
@@ -16,7 +16,7 @@ import { FileIndicatorComponent } from './file-indicator.component';
   templateUrl: './terraform-plan-viewer.html',
   styleUrl: './terraform-plan-viewer.scss'
 })
-export class TerraformPlanViewerComponent implements AfterViewInit {
+export class TerraformPlanViewerComponent implements AfterViewInit, OnDestroy {
   // Current plan data for the orchestrator
   currentPlan: any = null;
   currentCdktfJson: any = null;
@@ -26,6 +26,10 @@ export class TerraformPlanViewerComponent implements AfterViewInit {
   planFileName: string | null = null;
   cdktfLoaded: boolean = false;
 
+  private readonly openerMessageListener = (event: MessageEvent): void => {
+    this.handleMessageEvent(event);
+  };
+
   @ViewChild('uploadToolbar') uploadToolbar?: TerraformPlanFileUploadComponent;
 
   constructor(
@@ -33,12 +37,60 @@ export class TerraformPlanViewerComponent implements AfterViewInit {
   ) { }
 
   ngAfterViewInit(): void {
+    if (window.opener) {
+      window.addEventListener('message', this.openerMessageListener);
+    }
+
     // Enable toolbar integration mode if a plan is loaded
     if (this.currentPlan && this.uploadToolbar) {
       this.uploadToolbar.enableToolbarIntegration();
       this.uploadToolbar.enableCdktfOptions();
       this.cdr.detectChanges();
     }
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('message', this.openerMessageListener);
+  }
+
+  handleMessageEvent(event: MessageEvent): void {
+    const opener = window.opener;
+    if (opener && event.source !== opener) {
+      return;
+    }
+
+    const payload = event.data;
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
+
+    const isPlanEnvelope = payload.type === 'terraform-plan' || payload.type === 'plan-json';
+    const candidatePlan = isPlanEnvelope ? (payload.plan ?? payload) : (payload.plan ?? payload);
+    const fileName = typeof payload.fileName === 'string' ? payload.fileName : null;
+
+    if (!this.isValidPlanPayload(candidatePlan)) {
+      return;
+    }
+
+    this.onPlanLoaded(candidatePlan);
+    if (fileName) {
+      this.planFileName = fileName;
+    }
+    this.cdr.detectChanges();
+  }
+
+  private isValidPlanPayload(plan: unknown): plan is Record<string, any> {
+    if (!plan || typeof plan !== 'object') {
+      return false;
+    }
+
+    const candidate = plan as Record<string, any>;
+    return Boolean(
+      candidate['format_version'] ||
+      candidate['terraform_version'] ||
+      candidate['resource_changes'] ||
+      candidate['planned_values']
+    );
   }
 
   onPlanLoaded(planData: any): void {

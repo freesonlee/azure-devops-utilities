@@ -342,7 +342,7 @@
                         </div>
 
                         <!-- Right Panel - Resource Details -->
-                        <div class="right-panel" [class.floating]="isRightPanelFloating"
+                        <div class="right-panel" #rightPanel [class.floating]="isRightPanelFloating"
                             [style.top.px]="isRightPanelFloating ? floatingPanelTop : null"
                             [style.left.px]="isRightPanelFloating ? floatingPanelLeft : null"
                             [style.width.px]="isRightPanelFloating ? floatingPanelWidth : null"
@@ -894,6 +894,9 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Reserves the docked height/width while the right panel floats, so page height stays stable -->
+                        <div class="right-panel-spacer" *ngIf="isRightPanelFloating"
+                            [style.height.px]="dockedPanelHeight"></div>
                     </div>
                 </div>
             </mat-tab>
