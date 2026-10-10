@@ -1,148 +1,149 @@
-<nav>
-  <button mat-raised-button routerLink="/variables">Variable Group Editor</button>
-  <button mat-raised-button routerLink="/profiles">Pipeline Profiles</button>
-  <button mat-raised-button routerLink="/planviewer">Terraform Plan Viewer</button>
-  &nbsp;&nbsp;<a href="https://github.com/freesonlee/azure-devops-utilities/issues/new" target="_blank">Report Issue</a>
-</nav>
-<br>
+<header class="appbar">
+  <a class="brand" routerLink="/variables"><span class="brand-mark"><mat-icon>layers</mat-icon></span>DevOps Utilities</a>
+  <nav class="app-nav" aria-label="Tools">
+    <a routerLink="/variables" routerLinkActive="active" ariaCurrentWhenActive="page">Variable groups</a>
+    <a routerLink="/profiles" routerLinkActive="active" ariaCurrentWhenActive="page">Pipeline profiles</a>
+    <a routerLink="/planviewer" routerLinkActive="active" ariaCurrentWhenActive="page">Terraform plans</a>
+  </nav>
+  <a class="report-issue" href="https://github.com/freesonlee/azure-devops-utilities/issues/new" target="_blank" rel="noopener noreferrer">Report an issue <mat-icon>open_in_new</mat-icon></a>
+</header>
 
-<div *ngIf="mode=='variables'" class="variables-section">
-  <mat-form-field class="baseUrl">
-    <mat-label>Server</mat-label>
-    <mat-select [(value)]="server" (selectionChange)="reload()">
-      <mat-option *ngFor="let svr of servers" [value]="svr">
-        {{svr.host}}
-      </mat-option>
-    </mat-select>
-  </mat-form-field>
+<main *ngIf="mode=='variables'" class="variables-section">
+  <div class="page-heading">
+    <div><h1>Variable Group Editor</h1><p>Shared configuration, organized for every pipeline.</p></div>
+    <div class="save-area">
+      <span class="change-summary" aria-live="polite"><span class="status-dot" *ngIf="hasChange"></span>{{hasChange ? pendingChangeCount + ' unsaved ' + (pendingChangeCount === 1 ? 'change' : 'changes') : 'No pending changes'}}</span>
+      <button class="ui-button primary" (click)="openSaveDialog()" #saveButton [disabled]="!hasChange || isLoading"><mat-icon>check</mat-icon>Save changes</button>
+    </div>
+  </div>
 
-  <button mat-raised-button (click)="openSettings()">Settings</button>
-  <button mat-raised-button (click)="reload()" [disabled]="!server">Reload</button>
-  <button mat-raised-button (click)="openSaveDialog()" color="warn" #saveButton [disabled]="!hasChange">Save Changes</button>
-  <br><br>
+  <section class="connection-bar" aria-label="Server connection">
+    <span class="server-icon"><mat-icon>dns</mat-icon></span>
+    <mat-form-field class="baseUrl" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Server / project</mat-label>
+      <mat-select [(value)]="server" (selectionChange)="onServerChange()" [disabled]="isLoading" placeholder="Choose a server">
+        <mat-option *ngFor="let svr of servers" [value]="svr">{{svr.host}}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <span class="connection-status" *ngIf="hasLoadedGroups && !loadError"><span class="status-dot"></span>Groups loaded</span>
+    <button class="ui-button reload-button" (click)="reload()" [disabled]="!server || isLoading" aria-label="Reload"><mat-icon [class.spinning]="isLoading">refresh</mat-icon><span>{{isLoading ? 'Loading…' : 'Reload'}}</span></button>
+    <button class="ui-button settings-button" (click)="openSettings()" aria-label="Settings"><mat-icon>settings</mat-icon><span>Settings</span></button>
+  </section>
 
-  <mat-drawer-container autosize>
-    <mat-drawer mode="side" opened>
-      <button mat-raised-button (click)="newGroup()">Create new group</button>
-      <mat-action-list>
-        <mat-list-item *ngFor="let grp of variableGroups" [ngClass]="grp.hasBad ? 'badRow' : (grp.hasChange?'dirtyRow':'')">
-          <button mat-list-item (click)="loadVariable(grp)">{{grp.name}}</button>
-        </mat-list-item>
-      </mat-action-list>
-    </mat-drawer>
-    
-    <mat-drawer-content>
-      <div class="sticky">
-        <mat-form-field *ngIf="variableGroup" class="variableGroupNameInput">
-          <input matInput [(ngModel)]="variableGroup!.name">
-        </mat-form-field>
-        
-        <button mat-raised-button (click)="newVariable()" *ngIf="variableGroup">Add New</button>
-        <button mat-raised-button (click)="cloneGroup()" *ngIf="variableGroup">Clone group</button>
-        <button mat-raised-button color="warn" (click)="deleteGroup()" *ngIf="variableGroup && false">Delete Group</button>
-        &nbsp;&nbsp;<a href="{{variableGroup ? getVariableGroupHistoryUrl(variableGroup) : '#'}}" target="_blank" *ngIf="variableGroup">History</a>
+  <div class="load-error" *ngIf="loadError" role="alert"><mat-icon>error_outline</mat-icon>{{loadError}}</div>
+  <div class="mobile-group-picker" *ngIf="server">
+    <label for="mobile-group">Variable group</label>
+    <select id="mobile-group" [ngModel]="variableGroup" (ngModelChange)="loadVariable($event)" [disabled]="!variableGroups.length">
+      <option [ngValue]="undefined" disabled>Choose a group</option>
+      <option *ngFor="let grp of variableGroups" [ngValue]="grp">{{grp.name}}{{grp.hasChange ? ' •' : ''}}</option>
+    </select>
+    <button class="icon-button" (click)="newGroup()" [disabled]="isLoading" aria-label="Create new group"><mat-icon>add</mat-icon></button>
+  </div>
+
+  <div class="workspace">
+    <aside class="group-sidebar" aria-label="Variable groups">
+      <div class="sidebar-heading"><h2>Variable groups <span class="count">{{variableGroups.length}}</span></h2><button class="icon-button" (click)="newGroup()" [disabled]="!server || isLoading" aria-label="Create new group" title="Create new group"><mat-icon>add</mat-icon></button></div>
+      <label class="search-field"><mat-icon>search</mat-icon><input type="search" [(ngModel)]="groupSearch" placeholder="Find a group…" aria-label="Find a variable group"></label>
+      <div class="group-list">
+        <button *ngFor="let grp of visibleVariableGroups" class="group-button" [class.selected]="variableGroup === grp" [attr.aria-pressed]="variableGroup === grp" (click)="loadVariable(grp)" [attr.title]="grp.name">
+          <mat-icon>folder_open</mat-icon><span class="group-name">{{grp.name}}</span>
+          <span *ngIf="grp.hasBad" class="group-status" aria-label="Contains invalid variables" title="Contains invalid variables"><mat-icon>error_outline</mat-icon></span>
+          <span *ngIf="!grp.hasBad && grp.hasChange" class="status-dot" aria-label="Unsaved changes" title="Unsaved changes"></span>
+        </button>
+        <div class="sidebar-empty" *ngIf="!visibleVariableGroups.length"><mat-icon>folder_open</mat-icon><p>{{groupSearch ? 'No matching groups' : 'No groups loaded'}}</p><span *ngIf="!groupSearch">{{server ? 'Reload to load your groups.' : 'Configure a server to get started.'}}</span></div>
       </div>
-      
-      <table mat-table [dataSource]="variables" multiTemplateDataRows>
-        <ng-container matColumnDef="isSecret">
-          <th mat-header-cell *matHeaderCellDef>Secret</th>
-          <td mat-cell *matCellDef="let variable" class="secretCell">
-            <mat-checkbox class="variableIsSecret" [(ngModel)]="variable.isSecret" (change)="checkChange(variable)">
-              <mat-icon>lock</mat-icon>
-            </mat-checkbox>
-          </td>
-        </ng-container>
+      <div class="sidebar-footer"><button class="ui-button" (click)="newGroup()" [disabled]="!server || isLoading"><mat-icon>add</mat-icon>Create new group</button></div>
+    </aside>
 
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Name</th>
-          <td mat-cell *matCellDef="let variable" width="350px">
-            <mat-form-field class="variableNameInput">
-              <input type="text" matInput [(ngModel)]="variable.name" spellcheck="false" (change)="checkChange(variable)">
-            </mat-form-field>
-          </td>
-        </ng-container>
+    <section class="editor-panel" aria-label="Variable editor" [attr.aria-busy]="isLoading">
+      <ng-container *ngIf="variableGroup; else noGroup">
+        <div class="editor-heading">
+          <div class="group-title-area">
+            <input class="group-title-input" aria-label="Variable group name" [(ngModel)]="variableGroup.name" (ngModelChange)="checkChangeGroup(variableGroup)" placeholder="Variable group name">
+            <div class="group-meta"><span>{{variables.length}} {{variables.length === 1 ? 'variable' : 'variables'}}</span><span>{{secretCount}} {{secretCount === 1 ? 'secret' : 'secrets'}}</span><span>{{variableGroup.id ? 'Group #' + variableGroup.id : 'New group'}}</span></div>
+          </div>
+          <div class="group-actions">
+            <a class="ui-button text-button history-button" [href]="getVariableGroupHistoryUrl(variableGroup)" target="_blank" rel="noopener noreferrer" *ngIf="variableGroup.id" aria-label="History"><mat-icon>history</mat-icon><span>History</span></a>
+            <button class="ui-button clone-button" (click)="cloneGroup()" aria-label="Clone group"><mat-icon>content_copy</mat-icon><span>Clone group</span></button>
+            <button class="ui-button add-button" (click)="newVariable()" aria-label="Add variable"><mat-icon>add</mat-icon><span>Add variable</span></button>
+          </div>
+        </div>
+        <div class="table-toolbar">
+          <label class="search-field"><mat-icon>search</mat-icon><input type="search" [(ngModel)]="variableSearch" placeholder="Search variables…" aria-label="Search variables"></label>
+          <button class="ui-button text-button description-toggle" (click)="descColHiding=!descColHiding" [attr.aria-pressed]="!descColHiding"><mat-icon>{{descColHiding ? 'visibility_off' : 'visibility'}}</mat-icon>{{descColHiding ? 'Show descriptions' : 'Hide descriptions'}}</button>
+        </div>
+        <div class="table-scroll">
+          <table mat-table [dataSource]="visibleVariables" multiTemplateDataRows class="variables-table" [class.descriptions-hidden]="descColHiding">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Variable name</th>
+              <td mat-cell *matCellDef="let variable">
+                <div class="name-editor">
+                  <label class="secret-toggle" [class.is-secret]="variable.isSecret" [attr.title]="variable.isSecret ? 'Secret variable' : 'Make variable secret'">
+                    <input type="checkbox" [(ngModel)]="variable.isSecret" (ngModelChange)="checkChange(variable)" [attr.aria-label]="'Secret: ' + (variable.name || 'new variable')">
+                    <mat-icon>{{variable.isSecret ? 'lock' : 'lock_open'}}</mat-icon>
+                  </label>
+                  <input class="cell-input variableNameInput" type="text" [(ngModel)]="variable.name" spellcheck="false" (change)="checkChange(variable)" [attr.aria-label]="'Name: ' + (variable.name || 'new variable')" [attr.aria-invalid]="variable.isBad" placeholder="VARIABLE_NAME">
+                </div>
+                <span class="row-badge invalid" *ngIf="variable.isBad && !variable.markForDeletion">{{variable.name ? 'Duplicate name' : 'Name required'}}</span>
+                <span class="row-badge pending" *ngIf="variable.markForDeletion">Pending deletion</span>
+                <span class="row-badge modified" [class.new-variable]="!variable.original" *ngIf="variable.hasChanged && !variable.isBad && !variable.markForDeletion">{{variable.original ? 'Modified' : 'New variable'}}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="value">
+              <th mat-header-cell *matHeaderCellDef>Value</th>
+              <td mat-cell *matCellDef="let variable">
+                <input class="cell-input variableValueInput" [type]="variable.isSecret ? 'password' : 'text'" [(ngModel)]="variable.value" autocomplete="off" spellcheck="false" (change)="checkChange(variable)" [attr.aria-label]="'Value: ' + (variable.name || 'new variable')" [placeholder]="variable.isSecret ? 'Secret value (unchanged)' : 'Enter a value'" [matTooltip]="generateDescription(variable)" matTooltipClass="matmline-tooltip">
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="desc">
+              <th mat-header-cell *matHeaderCellDef>Description</th>
+              <td mat-cell *matCellDef="let variable"><input class="cell-input description-input" type="text" [(ngModel)]="variable.desc" spellcheck="false" (change)="checkChange(variable)" [attr.aria-label]="'Description: ' + (variable.name || 'new variable')" placeholder="Add a description"></td>
+            </ng-container>
+            <ng-container matColumnDef="expand">
+              <th mat-header-cell *matHeaderCellDef><span class="sr-only">Details</span></th>
+              <td mat-cell *matCellDef="let variable"><button class="icon-button" [attr.aria-label]="'Details: ' + (variable.name || 'new variable')" [attr.aria-expanded]="expandedVariable === variable" (click)="expandedVariable = expandedVariable === variable ? undefined : variable" title="Edit multiline value and description"><mat-icon>{{expandedVariable === variable ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}}</mat-icon></button></td>
+            </ng-container>
+            <ng-container matColumnDef="action">
+              <th mat-header-cell *matHeaderCellDef><span class="sr-only">Actions</span></th>
+              <td mat-cell *matCellDef="let variable">
+                <button class="icon-button delete-button" (click)="deleteVariable(variable)" *ngIf="!variable.hasChanged && !variable.markForDeletion" [attr.aria-label]="'Delete: ' + variable.name" title="Mark for deletion"><mat-icon>delete_outline</mat-icon></button>
+                <button class="icon-button" (click)="undoVariable(variable)" *ngIf="variable.hasChanged || variable.markForDeletion" [attr.aria-label]="'Undo: ' + (variable.name || 'new variable')" title="Undo changes"><mat-icon>undo</mat-icon></button>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="details">
+              <td mat-cell *matCellDef="let variable" [attr.colspan]="variableColumns.length">
+                <div class="variable-details" *ngIf="expandedVariable === variable">
+                  <div class="multiline-editor">
+                    <label class="detail-label">Multiline value
+                      <select class="newline-select" [(ngModel)]="variable.mlType" (ngModelChange)="variable.value=evaluateVariable(variable.mlType, variable.mlSource);checkChange(variable)" [attr.aria-label]="'Newline handling: ' + variable.name"><option value="|">Keep newlines</option><option value=">">Replace newlines with spaces</option></select>
+                    </label>
+                    <textarea class="detail-input" [value]="variable.mlSource" (input)="onMultiLineValueChange(variable, $event)" rows="4" spellcheck="false" [attr.aria-label]="'Multiline value: ' + variable.name" *ngIf="!variable.isSecret; else secretMultiline"></textarea>
+                    <ng-template #secretMultiline><input class="detail-input" type="password" [value]="variable.mlSource" (input)="onMultiLineValueChange(variable, $event)" autocomplete="off" [attr.aria-label]="'Multiline value: ' + variable.name"><p class="secret-hint">Secret values stay masked.</p></ng-template>
+                  </div>
+                  <label class="multiline-editor"><span class="detail-label">Long description</span><textarea class="detail-input description-input" [value]="variable.description" (input)="updateDescription(variable, $event)" rows="4" [attr.aria-label]="'Long description: ' + variable.name"></textarea></label>
+                </div>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="variableColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: variableColumns" [class.badRow]="row.isBad && !row.markForDeletion" [class.dirtyRow]="row.hasChanged && !row.isBad && !row.markForDeletion" [class.newRow]="!row.original && !row.isBad && !row.markForDeletion" [class.deleted]="row.markForDeletion"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['details']" class="detail-row"></tr>
+          </table>
+          <div class="table-empty" *ngIf="!visibleVariables.length"><mat-icon>manage_search</mat-icon><p>{{variableSearch ? 'No matching variables' : 'This group has no variables yet'}}</p><button class="ui-button add-button" *ngIf="!variableSearch" (click)="newVariable()"><mat-icon>add</mat-icon>Add variable</button></div>
+        </div>
+        <div class="table-footer"><span>{{visibleVariables.length}} of {{variables.length}} variables</span><span><mat-icon>lock_outline</mat-icon>Secret values stay masked</span></div>
+      </ng-container>
+      <ng-template #noGroup>
+        <div class="empty-state">
+          <span class="empty-icon"><mat-icon>{{isLoading ? 'sync' : (!server ? 'dns' : 'folder_open')}}</mat-icon></span>
+          <h2>{{isLoading ? 'Loading variable groups' : (!server ? 'Connect your Azure DevOps project' : (variableGroups.length ? 'Choose a variable group' : 'Load your variable groups'))}}</h2>
+          <p>{{!server ? 'Configure a server to manage your shared pipeline configuration.' : (variableGroups.length ? 'Select a group from the list to view and edit its variables.' : 'Load groups from your selected Azure DevOps server to get started.')}}</p>
+          <button class="ui-button primary" (click)="openSettings()" *ngIf="!server"><mat-icon>add</mat-icon>Configure server</button>
+          <button class="ui-button primary" (click)="reload()" *ngIf="server && !variableGroups.length" [disabled]="isLoading"><mat-icon>refresh</mat-icon>{{isLoading ? 'Loading…' : 'Load groups'}}</button>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+</main>
 
-        <ng-container matColumnDef="action">
-          <td mat-cell *matCellDef="let variable" width="10px">
-            <button mat-icon-button color="warn" (click)="deleteVariable(variable)" *ngIf="!variable.hasChanged && !variable.markForDeletion">
-              <mat-icon>delete_forever</mat-icon>
-            </button>    
-            <button mat-icon-button (click)="undoVariable(variable)" *ngIf="variable.hasChanged || variable.markForDeletion">
-              <mat-icon>undo</mat-icon>
-            </button>         
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="expand">
-          <th mat-header-cell *matHeaderCellDef aria-label="row actions">&nbsp;</th>
-          <td mat-cell *matCellDef="let variable" width="10px">
-            <button mat-icon-button aria-label="multiple line" (click)="(expandedVariable = expandedVariable === variable ? null : variable); $event.stopPropagation()">
-              <mat-icon *ngIf="expandedVariable !== variable">keyboard_arrow_down</mat-icon>
-              <mat-icon *ngIf="expandedVariable === variable">keyboard_arrow_up</mat-icon>
-            </button>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="value">
-          <th mat-header-cell *matHeaderCellDef>Value</th>
-          <td mat-cell *matCellDef="let variable" [ngClass]="descColHiding?'variableValueCell':'variableValueCell-wide'">
-            <mat-form-field class="variableValueInput" [matTooltip]="generateDescription(variable)" matTooltipClass="matmline-tooltip">
-              <input type="text" matInput [(ngModel)]="variable.value" spellcheck="false" *ngIf="!variable.isSecret" (change)="checkChange(variable)">
-              <input type="password" matInput [(ngModel)]="variable.value" spellcheck="false" *ngIf="variable.isSecret" (change)="checkChange(variable)">
-            </mat-form-field>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="desc">
-          <th mat-header-cell *matHeaderCellDef>
-            <span style="position: relative; top: -10px;">Description</span>
-            <span>
-              <button mat-icon-button aria-label="hide" *ngIf="!descColHiding" (click)="descColHiding=true"><mat-icon style="position: relative;top: -3px">chevron_right</mat-icon></button>
-              <button mat-icon-button aria-label="show description" *ngIf="descColHiding" (click)="descColHiding=false"><mat-icon style="position: relative;top: -3px">chevron_left</mat-icon></button>
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let variable" [ngClass]="descColHiding?'descValue-hide':'descValue'">
-            <mat-form-field class="variableValueInput">
-              <input type="text" matInput [(ngModel)]="variable.desc" spellcheck="false" (change)="checkChange(variable)">
-            </mat-form-field>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="multilineValue">
-          <td mat-cell *matCellDef="let variable" [attr.colspan]="3">
-            <div class="example-element-detail" [@detailExpand]="variable == expandedVariable ? 'expanded' : 'collapsed'">
-              <mat-select hideSingleSelectionIndicator="true" class="mloption" [(value)]="variable.mlType" (valueChange)="variable.value=evaluateVariable(variable.mlType, mlinput.value);checkChange(variable)">
-                <mat-option value="|" class="mloption-item">Keep newlines</mat-option>
-                <mat-option value=">" class="mloption-item">Replace newlines with spaces</mat-option>
-              </mat-select>
-
-              <mat-form-field class="value-multiline-input">
-                <textarea class="ta-ml-input" matInput cdkTextareaAutosize #mlinput [value]="variable.mlSource" cdkAutosizeMaxRows="5" (input)="onMultiLineValueChange(variable, $event)"></textarea>
-              </mat-form-field>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="multilineDescription">
-          <td mat-cell *matCellDef="let variable" [attr.colspan]="2">
-            <div class="example-element-detail" [@detailExpand]="variable == expandedVariable ? 'expanded' : 'collapsed'">
-              Long description
-              <mat-form-field class="value-multiline-input">
-                <textarea class="ta-ml-input" matInput cdkTextareaAutosize [value]="variable.description" cdkAutosizeMaxRows="5" (input)="updateDescription(variable, $event)"></textarea>
-              </mat-form-field>
-            </div>
-          </td>
-        </ng-container>
-      
-        <tr mat-header-row *matHeaderRowDef="['isSecret', 'name', 'value', 'desc']"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['isSecret','name','value', 'desc', 'expand', 'action'];" 
-          [ngClass]="row.isBad ? 'badRow' : (row.hasChanged ? 'dirtyRow': (row.markForDeletion ? 'deleted':'' ) )"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['multilineValue', 'multilineDescription']" class="example-detail-row"></tr>
-      </table>
-    </mat-drawer-content>
-  </mat-drawer-container>
-</div>
-
-<pipeline-list *ngIf="mode=='pipelines' && server" #pipelineComp [server]="server!"></pipeline-list>
-
+<pipeline-list *ngIf="mode=='pipelines'" #pipelineComp [server]="server!" [servers]="servers" (serverChange)="server=$event; onServerChange()" (settingsRequested)="openSettings()"></pipeline-list>
 <app-terraform-plan-viewer *ngIf="mode=='terraform'"></app-terraform-plan-viewer>

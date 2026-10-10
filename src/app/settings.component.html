@@ -1,9 +1,12 @@
-<div class="container">
-  <mat-form-field class="baseUrl" class="settingsEditor">
-   
-    <textarea matInput [(ngModel)]="settings" rows="100" cdkFocusInitial></textarea>
-    
+<h2 mat-dialog-title>Server settings</h2>
+<mat-dialog-content>
+  <p>Configure your Azure DevOps servers and variable history using JSON.</p>
+  <mat-form-field class="settingsEditor" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Server configuration</mat-label>
+    <textarea matInput [(ngModel)]="settings" rows="16" spellcheck="false" cdkFocusInitial></textarea>
   </mat-form-field>
-  <button mat-raised-button [mat-dialog-close]="settings" >Save</button>
-  <button mat-raised-button (click)="dialogRef.close()">Cancel</button>
-</div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="dialogRef.close()">Cancel</button>
+  <button mat-flat-button [mat-dialog-close]="settings">Save settings</button>
+</mat-dialog-actions>

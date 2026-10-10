@@ -40,7 +40,43 @@ export class AppComponent {
   @ViewChild('pipelineComp')
   pipelineComp!: PipelineComponent;
   expandedVariable?: Variable;
-  descColHiding = true;
+  descColHiding = false;
+  groupSearch = '';
+  variableSearch = '';
+  isLoading = false;
+  hasLoadedGroups = false;
+  loadError = '';
+  private originalGroupNames = new WeakMap<VariableGroup, string>();
+  private readonly columnsWithDescription = ['name', 'value', 'desc', 'expand', 'action'];
+  private readonly columnsWithoutDescription = ['name', 'value', 'expand', 'action'];
+
+  get variableColumns() {
+    return this.descColHiding ? this.columnsWithoutDescription : this.columnsWithDescription;
+  }
+
+  get visibleVariableGroups() {
+    const search = this.groupSearch.trim().toLowerCase();
+    return search ? this.variableGroups.filter(group => group.name.toLowerCase().includes(search)) : this.variableGroups;
+  }
+
+  get visibleVariables() {
+    const search = this.variableSearch.trim().toLowerCase();
+    // Search names and descriptions; do not expose secret values through search results.
+    return search ? this.variables.filter(variable =>
+      [variable.name, variable.desc, variable.description].some(text => text?.toLowerCase().includes(search))) : this.variables;
+  }
+
+  get secretCount() {
+    return this.variables.filter(variable => variable.isSecret && !variable.markForDeletion).length;
+  }
+
+  get pendingChangeCount() {
+    return this.variableGroups.reduce((total, group) => {
+      const changes = group.variablesForView?.filter(variable => variable.hasChanged || variable.markForDeletion).length ?? 0;
+      const renamed = this.originalGroupNames.has(group) && this.originalGroupNames.get(group) !== group.name;
+      return total + changes + (renamed ? 1 : 0) + (!changes && !renamed && group.hasChange ? 1 : 0);
+    }, 0);
+  }
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
 
@@ -102,31 +138,64 @@ export class AppComponent {
   }
 
   async reload() {
+    if (!this.server || this.isLoading) return;
+    this.isLoading = true;
+    this.loadError = '';
+    try {
+      localStorage.setItem('lastServer', this.server.host);
 
-    localStorage.setItem('lastServer', this.server!.host);
-
-    if (this.mode == 'pipelines') {
-      await new Promise(r => setTimeout(r, 10));
-      await this.pipelineComp.reload();
-      return;
-    }
-
-    const response = await firstValueFrom(this.httpClient.get(`${this.server!.host}/_apis/distributedtask/variablegroups`, this.getRequestOptions())) as ListResponse<VariableGroup>;
-
-    this.variableGroups = response.value.sort((g1, g2) => g1.name.toUpperCase() > g2.name.toUpperCase() ? 1 : -1);
-    this.hasChange = false;
-    if (this.variableGroup?.id) {
-      const selectedGroup = this.variableGroups.find(g => g.id == this.variableGroup?.id);
-      if (selectedGroup) {
-        this.loadVariable(selectedGroup);
+      if (this.mode == 'pipelines') {
+        await new Promise(r => setTimeout(r, 10));
+        await this.pipelineComp.reload();
+        return;
       }
+
+      const response = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/distributedtask/variablegroups`, this.getRequestOptions())) as ListResponse<VariableGroup>;
+
+      this.variableGroups = response.value.sort((g1, g2) => g1.name.toUpperCase() > g2.name.toUpperCase() ? 1 : -1);
+      this.hasChange = false;
+      this.hasLoadedGroups = true;
+      if (this.variableGroup?.id) {
+        const selectedGroup = this.variableGroups.find(g => g.id == this.variableGroup?.id);
+        if (selectedGroup) {
+          await this.loadVariable(selectedGroup);
+        } else {
+          this.variableGroup = undefined;
+          this.variables = [];
+        }
+      } else {
+        this.variableGroup = undefined;
+        this.variables = [];
+      }
+    } catch {
+      this.loadError = 'Could not load variable groups. Check your server settings and access token, then try again.';
+      this.hasLoadedGroups = false;
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  onServerChange() {
+    this.variableGroup = undefined;
+    this.variableGroups = [];
+    this.variables = [];
+    this.expandedVariable = undefined;
+    this.hasChange = false;
+    this.hasLoadedGroups = false;
+    this.groupSearch = '';
+    this.variableSearch = '';
+    if (this.mode === 'variables') {
+      this.reload();
+    } else if (this.server) {
+      localStorage.setItem('lastServer', this.server.host);
     }
   }
 
   async newGroup() {
-    if (this.variableGroups.length === 0) {
+    if (!this.server || this.isLoading) return;
+    if (!this.hasLoadedGroups) {
       await this.reload();
-
+      if (this.loadError) return;
     }
     this.variableGroups.push((this.variableGroup = {
       id: undefined,
@@ -145,11 +214,15 @@ export class AppComponent {
       description: "",
       desc: "",
       isSecret: false,
-      hasChanged: false,
+      hasChanged: true,
       isBad: true,
       markForDeletion: false,
       mlSource: ''
     }];
+    this.groupSearch = '';
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.checkChangeGroup(this.variableGroup);
   }
 
   async cloneGroup() {
@@ -158,11 +231,19 @@ export class AppComponent {
       name: this.variableGroup?.name + " Clone",
       description: '',
       desc: "",
-      variablesForView: this.variableGroup!.variablesForView,
+      variablesForView: this.variableGroup!.variablesForView.map(variable => ({
+        ...variable,
+        original: variable.original ? { ...variable.original } : undefined
+      })),
       hasBad: false,
       hasChange: true,
       variables: {}
     }));
+    this.variables = this.variableGroup.variablesForView;
+    this.groupSearch = '';
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.checkChangeGroup(this.variableGroup);
     this.hasChange = true;
   }
 
@@ -171,7 +252,13 @@ export class AppComponent {
   }
 
   async loadVariable(grp: VariableGroup) {
+    if (!this.originalGroupNames.has(grp) && grp.id) {
+      this.originalGroupNames.set(grp, grp.name);
+    }
+    const hasCachedVariables = !!grp.variablesForView;
     this.variableGroup = grp;
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
 
     this.variables = grp.variablesForView ?? (grp.variablesForView = Object.keys(grp.variables).map(k => {
       const vars = grp.variables[k];
@@ -194,7 +281,7 @@ export class AppComponent {
       return vars;
     }));
 
-    await this.loadMore(grp);
+    if (!hasCachedVariables && grp.id) await this.loadMore(grp);
 
   }
 
@@ -212,7 +299,7 @@ export class AppComponent {
         `${this.server!.host}/_apis/git/repositories/${this.server!.repository}/items?path=${path}${variableGroup.name}.json&versionDescriptor.version=${this.server!.branch}`,
         h));
 
-      this.variables.forEach(v => {
+      variableGroup.variablesForView.forEach(v => {
         v.mlType = snapshot.variables[v.name]?.mlType ?? '|'
         v.original!.mlValue = v.mlSource = snapshot.variables[v.name]?.mlSource ?? '';
         v.description = v.original!.description = snapshot.variables[v.name]?.description ?? '';
@@ -244,11 +331,16 @@ export class AppComponent {
   }
 
   checkChangeGroup(group: VariableGroup) {
-    group.hasChange = this.variables.findIndex(v => v.hasChanged || v.markForDeletion) >= 0;
+    const variables = group.variablesForView;
+    group.hasChange = !group.id || this.originalGroupNames.get(group) !== group.name || variables.some(v => v.hasChanged || v.markForDeletion);
     this.hasChange = this.variableGroups.findIndex(g => g.hasChange) >= 0;
     group.hasBad = false;
     const uniqueNames = new Map<string, Variable>();
-    this.variables.forEach(v => {
+    variables.forEach(v => {
+      if (v.markForDeletion) {
+        v.isBad = false;
+        return;
+      }
 
       if (!v.name) {
         v.isBad = true;
@@ -452,8 +544,8 @@ export class AppComponent {
       desc: ''
     };
     this.variables.push(newVar);
-    this.variableGroup!.hasBad = true;
-
+    this.variableSearch = '';
+    this.checkChangeGroup(this.variableGroup!);
     this.table.renderRows();
   }
 
@@ -489,11 +581,15 @@ export class AppComponent {
     }
 
     this.checkChange(variable);
+    this.table.renderRows();
   }
 
   openSettings() {
     const diagRef = this.dialog.open(SettingsComponent, {
-      data: JSON.stringify(this.servers, null, 2)
+      data: JSON.stringify(this.servers, null, 2),
+      width: '760px',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: 'calc(100dvh - 32px)'
     });
 
     diagRef.afterClosed().subscribe(result => {

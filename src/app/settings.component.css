@@ -1,11 +1,8 @@
-.container {
-    width: 1220px
-}
-
-.baseUrl {
-    width: 500px;
-  }
-  .settingsEditor {
-    width: 1200px;
-    height: 800px;
-  }
+:host { display: block; }
+h2 { color: #172238; }
+p { font-size: 13px; color: #64748b; margin: 0 0 18px; line-height: 1.6; }
+.settingsEditor { width: 100%; }
+textarea { font: 12px/1.6 Consolas, "SFMono-Regular", monospace; resize: vertical; }
+mat-dialog-actions { padding: 16px 24px; border-top: 1px solid #e5eaf2; }
+button[mat-flat-button] { background: #2563eb; color: white; }
+@media (max-width: 600px) { textarea { font-size: 11px; } }

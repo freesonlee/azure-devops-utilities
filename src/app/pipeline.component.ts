@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { Observable, first, firstValueFrom, from, map, pipe, startWith } from 'rxjs';
 import { ListResponse, Parameter, Pipeline, PipelineVariable, Server, Variable, VariableData, VariableGroup } from './Models';
 import { TestBed } from '@angular/core/testing';
@@ -29,6 +29,8 @@ import { ClipboardModule } from '@angular/cdk/clipboard';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { state, style, trigger } from '@angular/animations';
+
+class GitHubBranchLoadError extends Error { }
 
 @Component({
   selector: 'pipeline-list',
@@ -85,8 +87,33 @@ export class PipelineComponent {
   resolvedFailure: { [key: string]: string } = {};
   stringParaControl: { [key: string]: FormControl } = {};
   expandedVariable?: PipelineVariable;
+  profileSearch = '';
+  profilePipelineSearch = '';
+  isLoading = false;
+  isLoadingConfig = false;
+  isRunning = false;
+  loadError = '';
+  configurationError = '';
 
   @Input() server!: Server;
+  @Input() servers: Server[] = [];
+  @Output() serverChange = new EventEmitter<Server>();
+  @Output() settingsRequested = new EventEmitter<void>();
+
+  get visibleProfiles() {
+    const search = this.profileSearch.trim().toLowerCase();
+    return search ? this.profiles.filter(profile => profile.name.toLowerCase().includes(search)) : this.profiles;
+  }
+
+  get visibleProfilePipelines() {
+    const pipelines = this.profile?.pipelines ?? [];
+    const search = this.profilePipelineSearch.trim().toLowerCase();
+    return search ? pipelines.filter(pipeline => pipeline.name?.toLowerCase().includes(search)) : pipelines;
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['server'] && !changes['server'].firstChange) this.reload();
+  }
 
   @ViewChild(MatTable) table!: MatTable<Variable>;
   @ViewChild(MatExpansionPanel) branchSelect!: MatExpansionPanel;
@@ -100,34 +127,45 @@ export class PipelineComponent {
   }
 
   async ngOnInit() {
-    await this.reload();
-
     this.filteredPipelines = this.pipelineControl.valueChanges.pipe(
       startWith(''),
-      map(value => this.pipelines!.filter(p => p.fullName!.toLowerCase().includes(value!.toLowerCase()))),
+      map(value => (this.pipelines ?? []).filter(p => p.fullName!.toLowerCase().includes((value ?? '').toLowerCase()))),
 
     );
+    await this.reload();
   }
 
   async reload() {
-    const profiles = localStorage.getItem(`profiles-${this.server.host}`);
-    if (profiles) {
-      this.profiles = JSON.parse(profiles).map((p: Profile) => Profile.load(p));
-    }
-
-    const response = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/pipelines`, this.getRequestOptions())) as ListResponse<Pipeline>;
-    response.value.forEach(p => p.fullName = p.folder == '\\' ? p.name : (p.folder.substring(1) + '\\' + p.name));
-    this.pipelines = response.value.sort((v1, v2) => (v1.fullName! < v2.fullName!) ? -1 : 1);
-    if (this.selectedPipeline) {
-      this.selectedPipeline = undefined;
-    }
-    if (this.profile) {
-      this.profile = undefined;
-    }
+    if (this.isLoading) return;
+    this.profile = undefined;
+    this.selectedPipeline = undefined;
     this.stages = [];
+    this.parameters = [];
+    this.profiles = [];
+    this.pipelines = [];
+    this.loadError = '';
+    this.configurationError = '';
+    this.profileSearch = '';
+    this.profilePipelineSearch = '';
+    if (!this.server) return;
+    this.isLoading = true;
+    try {
+      const profiles = localStorage.getItem(`profiles-${this.server.host}`);
+      if (profiles) {
+        this.profiles = JSON.parse(profiles).map((p: Profile) => Profile.load(p));
+      }
+
+      const response = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/pipelines`, this.getRequestOptions())) as ListResponse<Pipeline>;
+      response.value.forEach(p => p.fullName = p.folder == '\\' ? p.name : (p.folder.substring(1) + '\\' + p.name));
+      this.pipelines = response.value.sort((v1, v2) => (v1.fullName! < v2.fullName!) ? -1 : 1);
+    } catch {
+      this.loadError = 'Could not load pipelines. Check your server settings and access token, then try again.';
+    } finally {
+      this.isLoading = false;
+    }
   }
   branchBlur() {
-    this.branchSelect.close();
+    this.branchSelect?.close();
     if (this.branchControl.value && this.selectedPipeline!.configurations.branch != this.branchControl.value) {
       this.selectedPipeline!.configurations.branch = this.branchControl.value;
       this.parameters = [];
@@ -144,16 +182,17 @@ export class PipelineComponent {
   }
 
   async loadBranches() {
+    this.filteredBranches = undefined;
     const pipelineDef = this.selectedPipeline!.pipelineDef ?? (this.selectedPipeline!.pipelineDef = this.pipelines!.find(p => p.id == this.selectedPipeline!.pipelineId! || p.fullName == this.selectedPipeline!.name));
     if (!pipelineDef) {
       throw 'pipeline not found';
     }
-    if (!pipelineDef.defaultBranch) {
+    // Cache successful branch lists, not metadata: a failed request must remain retryable.
+    if (pipelineDef.branches === undefined) {
       const response: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/build/definitions/${pipelineDef.id}`, this.getRequestOptions()));
       pipelineDef.defaultBranch = response.repository.defaultBranch.replace('refs/heads/', '');
       pipelineDef.repositoryId = response.repository.id;
       pipelineDef.repositoryProject = new URL(response.repository.url).pathname.split('/')[2];
-      pipelineDef.defaultBranch = response.repository.defaultBranch.replace('refs/heads/', '');
       pipelineDef.projectId = response.project.id;
       pipelineDef.yamlFilename = response.process.yamlFilename;
       if (response.variables) {
@@ -163,35 +202,29 @@ export class PipelineComponent {
       }
 
       if (response.repository.type === 'GitHub') {
-
-        let bodyContent = {
-          "contributionIds": [
-            "ms.vss-build-web.git-branch-data-provider"
-          ],
-          "dataProviderContext": {
-            "properties": {
-              "connectionId": response.repository.properties.connectedServiceId,
-              "sourceProvider": "GitHub",
-              "repository": response.repository.id,
-              "sourcePage": {
-                "url": response.url,
-                "routeId": "ms.vss-build-web.pipeline-details-route",
-                "routeValues": {
-                  "project": response.project.name,
-                  "viewname": "details",
-                  "controller": "ContributedPage",
-                  "action": "Execute"
-                }
-              }
-            }
-          }
-        };
-
-        let branchResponse: any = await firstValueFrom(this.httpClient.post(`${this.server.host}/../_apis/Contribution/HierarchyQuery/project/${response.project.id}?api-version=5.0-preview.1`,
-          bodyContent, this.getRequestOptions()));
-
-        pipelineDef.branches = branchResponse["dataProviders"]["ms.vss-build-web.git-branch-data-provider"]["branches"];
-
+        const connectionId = response.repository.properties?.connectedServiceId;
+        if (!connectionId) {
+          throw new GitHubBranchLoadError('This GitHub pipeline has no service connection ID. Check its repository settings in Azure DevOps, then retry.');
+        }
+        const query = new URLSearchParams({
+          serviceEndpointId: connectionId,
+          repository: response.repository.id,
+          'api-version': '7.1'
+        });
+        const projectUrl = this.server.host.replace(/\/+$/, '');
+        let branchResponse: string[] | ListResponse<string>;
+        try {
+          branchResponse = await firstValueFrom(this.httpClient.get<string[] | ListResponse<string>>(
+            `${projectUrl}/_apis/sourceProviders/GitHub/branches?${query}`, this.getRequestOptions()));
+        } catch {
+          throw new GitHubBranchLoadError('Could not list GitHub branches. Check your Azure DevOps access token and GitHub service connection permissions, then retry.');
+        }
+        // Azure DevOps collection responses can be wrapped in a count/value envelope.
+        const branches = Array.isArray(branchResponse) ? branchResponse : branchResponse?.value;
+        if (!Array.isArray(branches) || !branches.every(branch => typeof branch === 'string')) {
+          throw new GitHubBranchLoadError('Azure DevOps returned an unexpected GitHub branch list. Try reloading the pipelines.');
+        }
+        pipelineDef.branches = branches.map(branch => branch.replace(/^refs\/heads\//, ''));
       } else if (response.repository.type === 'TfsGit') {
 
         const refsResponse: any = await firstValueFrom(this.httpClient.get(`${this.server.host}/_apis/git/repositories/${response.repository.id}/refs?filter=heads`, this.getRequestOptions()));
@@ -206,20 +239,28 @@ export class PipelineComponent {
 
     this.filteredBranches = this.branchControl.valueChanges.pipe(
       startWith(''),
-      map(value => this.pipelines!.find(p => p.id == this.selectedPipeline!.pipelineId!)?.branches?.filter(b => b.toLowerCase().includes(value!.toLowerCase())) ?? [])
+      map(value => (pipelineDef.branches ?? []).filter(branch => branch.toLowerCase().includes((value ?? '').toLowerCase())))
     );
 
     return pipelineDef;
   }
 
   async pipelineSelected(pipelineName: string) {
-    this.selectedPipeline!.name = pipelineName;
-    this.selectedPipeline!.setPipeline(this.pipelines!.find(p => p.fullName == pipelineName)!);
-    const pipelineDef = await this.loadBranches();
-    this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
-    this.stages = [];
-    await this.loadParameterAndResources();
-    //this.selectedPipeline!.setParameterSelection(this.parameters);
+    if (this.isLoadingConfig) return;
+    this.isLoadingConfig = true;
+    this.configurationError = '';
+    try {
+      this.selectedPipeline!.name = pipelineName;
+      this.selectedPipeline!.setPipeline(this.pipelines!.find(p => p.fullName == pipelineName)!);
+      const pipelineDef = await this.loadBranches();
+      this.selectedPipeline!.configurations.branch = pipelineDef.defaultBranch!;
+      this.stages = [];
+      await this.loadParameterAndResources();
+    } catch (error) {
+      this.configurationError = this.configurationErrorMessage(error);
+    } finally {
+      this.isLoadingConfig = false;
+    }
   }
 
   async loadParameters() {
@@ -328,24 +369,37 @@ export class PipelineComponent {
   async loadProfile(profile: Profile) {
     this.profile = profile;
     this.selectedPipeline = undefined;
+    this.profilePipelineSearch = '';
+    this.configurationError = '';
+    this.stages = [];
+    this.parameters = [];
   }
 
   newProfile() {
+    if (!this.server) return;
     const name = prompt('Enter new profile name');
     if (!name) {
       return;
     }
     this.profiles.push(this.profile = new Profile(name));
+    this.profileSearch = '';
+    this.selectedPipeline = undefined;
   }
 
   newProfilePipeline() {
+    if (!this.profile) return;
     this.profile!.pipelines.push(this.selectedPipeline = new ProfilePipeline());
     this.selectedPipeline.isNew = true;
     this.parameters = [];
+    this.pipelineControl.setValue('');
+    this.profilePipelineSearch = '';
+    this.stages = [];
+    this.expandedVariable = undefined;
+    this.configurationError = '';
   }
 
   canSave() {
-    if (!this.selectedPipeline) {
+    if (!this.selectedPipeline?.pipelineId || !this.selectedPipeline.configurations.branch || this.isLoadingConfig || this.configurationError) {
       return false;
     }
 
@@ -434,15 +488,52 @@ export class PipelineComponent {
   }
 
   async pipelineDefSelected(pipeline: ProfilePipeline) {
-    this.selectedPipeline = pipeline;
-    this.stages = [];
-    this.parameters = [];
-    this.isStagePanelOpen = this.isVariablePanelOpen = false;
-    const pipelineDef = await this.loadBranches();
-    await this.loadParameterAndResources();
+    if (this.isLoadingConfig) return;
+    this.isLoadingConfig = true;
+    this.configurationError = '';
+    this.expandedVariable = undefined;
+    try {
+      this.selectedPipeline = pipeline;
+      this.stages = [];
+      this.parameters = [];
+      this.isStagePanelOpen = this.isVariablePanelOpen = false;
+      const pipelineDef = await this.loadBranches();
+      await this.loadParameterAndResources();
+      pipeline.loadVariables(pipelineDef.variables!);
+    } catch (error) {
+      this.configurationError = this.configurationErrorMessage(error);
+    } finally {
+      this.isLoadingConfig = false;
+    }
+  }
 
-    pipeline.loadVariables(pipelineDef.variables!);
-    //this.selectedPipeline.setParameterSelection(this.parameters);
+  addVariable() {
+    this.selectedPipeline?.addNewVariable();
+    this.isVariablePanelOpen = true;
+    this.table?.renderRows();
+  }
+
+  private configurationErrorMessage(error: unknown) {
+    return error instanceof GitHubBranchLoadError ? error.message :
+      'Could not load this pipeline configuration. Check the selected pipeline and branch, then try again.';
+  }
+
+  parametersChanged() {
+    this.isStagePanelOpen = false;
+    this.stagePanel?.close();
+    this.stages = [];
+  }
+
+  async runSelectedPipeline() {
+    if (!this.canSave() || this.isRunning) return;
+    this.isRunning = true;
+    try {
+      await this.runPipeline(this.selectedPipeline, true);
+    } catch {
+      this._snackBar.open('Could not queue this pipeline. Check its configuration and try again.', 'Close');
+    } finally {
+      this.isRunning = false;
+    }
   }
 
   deletePipeline() {

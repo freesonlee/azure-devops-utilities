@@ -11,6 +11,19 @@ The update history will be commited to the repository that you put in the settin
 
 The history doesn't have secret variable value saved. 
 
+## Local UI checks
+
+Start the application with `npm start`, then run `npm run ui:check` in another terminal.
+Install the browser once with `npx playwright install chromium`.
+The Playwright checks use an isolated browser session and mocked Azure DevOps data,
+cover editing and responsive layouts, and save screenshots in
+`/tmp/azure-devops-variable-editor-ui` (or the system temporary directory on other platforms).
+Set `UI_BASE_URL` to inspect another local port or `UI_SCREENSHOT_DIR` to choose the screenshot directory.
+
+Run `npm run ui:check:profiles` for Pipeline Profiles checks and screenshots.
+These checks mock Azure DevOps, including pipeline previews and queued runs;
+they never run real pipelines. Screenshots default to `/tmp/azure-devops-pipeline-profiles-ui`.
+
 ## Pipeline
 You can create profile and add one or more pipeline to it. You can then define parameter values and variables for each pipeline in the profile. 
 

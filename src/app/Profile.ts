@@ -164,6 +164,10 @@ export class ProfilePipeline {
                 if (pipelineVar.allowOverride) {
                     pipelineVar.value = sv.value;
                 } else {
+                    // Re-selecting a pipeline should not turn an unchanged default into an override.
+                    if (sv.factoryValue !== undefined && sv.value === sv.factoryValue) {
+                        return;
+                    }
                     this.configurations.variables.push(sv);
                     sv.nameExists = true;
                 }
