@@ -9,7 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../../interfaces/terraform-plan.interface';
+import { ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '../models/terraform-plan.interface';
 
 @Component({
   selector: 'app-resource-list',

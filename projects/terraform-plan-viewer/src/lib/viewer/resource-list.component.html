@@ -7,12 +7,12 @@
       <mat-expansion-panel class="module-panel" expanded="true">
         <mat-expansion-panel-header>
           <mat-panel-title class="module-title">
-            <mat-icon>extension</mat-icon>
+            <mat-icon svgIcon="tf-viewer:extension"></mat-icon>
             {{ moduleGroup.display_name }}
           </mat-panel-title>
           <mat-panel-description class="module-description">
             <mat-chip class="resource-count-chip">
-              <mat-icon>layers</mat-icon>
+              <mat-icon svgIcon="tf-viewer:layers"></mat-icon>
               {{ moduleGroup.resource_count }} resources
             </mat-chip>
           </mat-panel-description>
@@ -30,11 +30,11 @@
                   </mat-panel-title>
                   <mat-panel-description class="resource-type-description">
                     <mat-chip class="resource-count-chip">
-                      <mat-icon>layers</mat-icon>
+                      <mat-icon svgIcon="tf-viewer:layers"></mat-icon>
                       {{ resourceType.total_count }} resources
                     </mat-chip>
                     <mat-chip class="iterator-groups-chip" *ngIf="resourceType.iterator_groups.length > 0">
-                      <mat-icon>view_list</mat-icon>
+                      <mat-icon svgIcon="tf-viewer:view_list"></mat-icon>
                       {{ resourceType.iterator_groups.length }} groups
                     </mat-chip>
                   </mat-panel-description>
@@ -45,7 +45,7 @@
                   <div *ngFor="let resource of resourceType.resources; trackBy: trackByResource"
                        class="resource-item"
                        [class.selected]="selectedResource?.address === resource.address"
-                       (click)="onResourceSelected(resource)">
+                       (click)="onResourceSelected(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="onResourceSelected(resource)" (keydown.space)="$event.preventDefault(); onResourceSelected(resource)">
                     <div class="resource-header">
                       <div class="resource-address">
                         <code>{{ resource.address }}</code>
@@ -54,7 +54,7 @@
                         <mat-chip *ngFor="let action of resource.change.actions"
                                  [style.background-color]="getActionColor([action])"
                                  [style.color]="'white'" class="action-chip">
-                          <mat-icon [style.font-size]="'14px'">{{ getActionIcon([action]) }}</mat-icon>
+                          <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                           {{ action }}
                         </mat-chip>
                       </div>
@@ -76,7 +76,7 @@
                       <div *ngFor="let resource of iteratorGroup.resources; trackBy: trackByResource"
                            class="resource-item iterator-resource-item"
                            [class.selected]="selectedResource?.address === resource.address"
-                           (click)="onResourceSelected(resource)">
+                           (click)="onResourceSelected(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="onResourceSelected(resource)" (keydown.space)="$event.preventDefault(); onResourceSelected(resource)">
                         <div class="resource-header">
                           <div class="resource-address">
                             <code>{{ resource.address }}</code>
@@ -85,7 +85,7 @@
                             <mat-chip *ngFor="let action of resource.change.actions"
                                      [style.background-color]="getActionColor([action])"
                                      [style.color]="'white'" class="action-chip">
-                              <mat-icon [style.font-size]="'14px'">{{ getActionIcon([action]) }}</mat-icon>
+                              <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                               {{ action }}
                             </mat-chip>
                           </div>
@@ -102,9 +102,7 @@
                       <mat-expansion-panel class="iterator-group-panel">
                         <mat-expansion-panel-header>
                           <mat-panel-title class="iterator-group-title">
-                            <mat-icon class="iterator-icon">
-                              {{ iteratorGroup.iterator_type === 'count' ? 'format_list_numbered' : 'view_list' }}
-                            </mat-icon>
+                            <mat-icon class="iterator-icon" [svgIcon]="'tf-viewer:' + (iteratorGroup.iterator_type === 'count' ? 'format_list_numbered' : 'view_list')"></mat-icon>
                             <code>{{ iteratorGroup.base_address }}</code>
                           </mat-panel-title>
                           <mat-panel-description class="iterator-group-description">
@@ -116,7 +114,7 @@
                           <div *ngFor="let resource of iteratorGroup.resources; trackBy: trackByResource"
                                class="resource-item iterator-resource-item"
                                [class.selected]="selectedResource?.address === resource.address"
-                               (click)="onResourceSelected(resource)">
+                               (click)="onResourceSelected(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="onResourceSelected(resource)" (keydown.space)="$event.preventDefault(); onResourceSelected(resource)">
                             <div class="resource-header">
                               <div class="resource-address">
                                 <code>{{ resource.address }}</code>
@@ -125,7 +123,7 @@
                                 <mat-chip *ngFor="let action of resource.change.actions"
                                          [style.background-color]="getActionColor([action])"
                                          [style.color]="'white'" class="action-chip">
-                                  <mat-icon [style.font-size]="'14px'">{{ getActionIcon([action]) }}</mat-icon>
+                                  <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                                   {{ action }}
                                 </mat-chip>
                               </div>
@@ -150,7 +148,7 @@
 
   <!-- No resources state -->
   <div *ngIf="!moduleGroups || moduleGroups.length === 0" class="no-matching-resources">
-    <mat-icon>info</mat-icon>
+    <mat-icon svgIcon="tf-viewer:info"></mat-icon>
     <p>No resources match the current filter criteria</p>
   </div>
 </div>

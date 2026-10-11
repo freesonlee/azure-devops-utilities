@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, IteratorGroup, ResourceTypeGroup, PathSegmentGroup, ResourceWithPath } from '../interfaces/terraform-plan.interface';
+import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, IteratorGroup, ResourceTypeGroup, PathSegmentGroup, ResourceWithPath } from '../models/terraform-plan.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +12,7 @@ export class TerraformPlanService {
 
 
   loadPlan(planData: TerraformPlan, cdkTfJson?: any): void {
+    planData = { ...planData, resource_changes: planData.resource_changes?.map(change => ({ ...change })) ?? [] };
     // Enhance resource changes with module information
     if (planData.resource_changes) {
       planData.resource_changes.forEach(change => {
@@ -53,8 +54,6 @@ export class TerraformPlanService {
 
     const summary = { create: 0, update: 0, delete: 0, replace: 0, changes: 0, total: 0, importing: 0 };
 
-    const hasMovedResource = (change: ResourceChange): boolean => Boolean(change.previous_address);
-    let movedResourceCount = 0;
 
     // Count resources with changes (for create/update/delete/replace counts)
     if (plan.resource_changes) {
@@ -67,11 +66,8 @@ export class TerraformPlanService {
         }
 
         const isNoOp = actions.length === 1 && actions[0] === 'no-op';
-        const isMoved = hasMovedResource(change);
+        const isMoved = Boolean(change.previous_address);
 
-        if (isMoved) {
-          movedResourceCount++;
-        }
 
         // Skip no-op resources - they don't require any changes
         if (isNoOp && !isMoved) {
@@ -99,13 +95,11 @@ export class TerraformPlanService {
       });
     }
 
-    // Count ALL resources in the plan (including those with no changes), plus moved resources
-    // that are tracked separately in resource_changes.
-    if (plan.planned_values?.root_module?.resources) {
-      summary.total = plan.planned_values.root_module.resources.length + movedResourceCount;
-    } else if (plan.resource_changes) {
-      // Fallback: count all resources in resource_changes if planned_values not available
-      summary.total = plan.resource_changes.length;
+    summary.total = plan.resource_changes?.length ?? 0;
+    if (!summary.total && plan.planned_values?.root_module) {
+      const countResources = (module: import('../models/terraform-plan.interface').RootModule): number =>
+        (module.resources?.length ?? 0) + (module.child_modules ?? []).reduce((total, child) => total + countResources(child), 0);
+      summary.total = countResources(plan.planned_values.root_module);
     }
 
     return summary;

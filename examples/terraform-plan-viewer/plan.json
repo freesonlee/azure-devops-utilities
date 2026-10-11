@@ -1,0 +1,306 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.0",
+  "variables": {
+    "environment": {
+      "value": "demo"
+    }
+  },
+  "planned_values": {
+    "outputs": {
+      "endpoint": {
+        "sensitive": false,
+        "type": "string",
+        "value": "https://example.invalid"
+      },
+      "credential": {
+        "sensitive": true,
+        "type": "string",
+        "value": "SYNTHETIC_OUTPUT_SECRET"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "azurerm_resource_group.platform",
+          "mode": "managed",
+          "type": "azurerm_resource_group",
+          "name": "platform",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "platform-demo",
+            "location": "eastus",
+            "tags": {
+              "environment": "demo",
+              "owner": "platform"
+            },
+            "connection_string": "SYNTHETIC_AFTER_SECRET"
+          },
+          "sensitive_values": {
+            "connection_string": true
+          }
+        },
+        {
+          "address": "azurerm_storage_account.assets",
+          "mode": "managed",
+          "type": "azurerm_storage_account",
+          "name": "assets",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "demoplanassets",
+            "location": "eastus",
+            "id": null
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "null_resource.application",
+          "mode": "managed",
+          "type": "null_resource",
+          "name": "application",
+          "provider_name": "registry.terraform.io/hashicorp/null",
+          "schema_version": 0,
+          "values": {
+            "id": null,
+            "triggers": {
+              "revision": "2"
+            }
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "null_resource.unchanged",
+          "mode": "managed",
+          "type": "null_resource",
+          "name": "unchanged",
+          "provider_name": "registry.terraform.io/hashicorp/null",
+          "schema_version": 0,
+          "values": {
+            "id": "unchanged"
+          },
+          "sensitive_values": {}
+        }
+      ],
+      "child_modules": [
+        {
+          "address": "module.network",
+          "resources": [
+            {
+              "address": "module.network.null_resource.network",
+              "mode": "managed",
+              "type": "null_resource",
+              "name": "network",
+              "provider_name": "registry.terraform.io/hashicorp/null",
+              "schema_version": 0,
+              "values": {
+                "id": "network"
+              },
+              "sensitive_values": {}
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "azurerm_resource_group.platform",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "platform",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "name": "platform-demo",
+          "location": "eastus",
+          "tags": {
+            "environment": "demo"
+          },
+          "connection_string": "SYNTHETIC_BEFORE_SECRET"
+        },
+        "after": {
+          "name": "platform-demo",
+          "location": "eastus",
+          "tags": {
+            "environment": "demo",
+            "owner": "platform"
+          },
+          "connection_string": "SYNTHETIC_AFTER_SECRET"
+        },
+        "before_sensitive": {
+          "connection_string": true
+        },
+        "after_sensitive": {
+          "connection_string": true
+        }
+      }
+    },
+    {
+      "address": "azurerm_storage_account.assets",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "assets",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "demoplanassets",
+          "location": "eastus",
+          "id": null
+        },
+        "after_unknown": {
+          "id": true
+        }
+      }
+    },
+    {
+      "address": "null_resource.legacy",
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "legacy",
+      "provider_name": "registry.terraform.io/hashicorp/null",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "id": "legacy",
+          "triggers": {
+            "revision": "1"
+          }
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "null_resource.application",
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "application",
+      "provider_name": "registry.terraform.io/hashicorp/null",
+      "change": {
+        "actions": [
+          "delete",
+          "create"
+        ],
+        "before": {
+          "id": "app",
+          "triggers": {
+            "revision": "1"
+          }
+        },
+        "after": {
+          "id": null,
+          "triggers": {
+            "revision": "2"
+          }
+        },
+        "replace_paths": [
+          [
+            "triggers",
+            "revision"
+          ]
+        ],
+        "after_unknown": {
+          "id": true
+        }
+      }
+    },
+    {
+      "address": "module.network.null_resource.network",
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "network",
+      "provider_name": "registry.terraform.io/hashicorp/null",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "network"
+        },
+        "after": {
+          "id": "network"
+        }
+      },
+      "previous_address": "module.old_network.null_resource.network"
+    },
+    {
+      "address": "null_resource.unchanged",
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "unchanged",
+      "provider_name": "registry.terraform.io/hashicorp/null",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "unchanged"
+        },
+        "after": {
+          "id": "unchanged"
+        }
+      }
+    }
+  ],
+  "resource_drift": [
+    {
+      "address": "azurerm_resource_group.platform",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "platform",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "name": "platform-demo",
+          "location": "eastus",
+          "tags": {
+            "environment": "demo"
+          }
+        },
+        "after": {
+          "name": "platform-demo",
+          "location": "eastus",
+          "tags": {
+            "environment": "demo",
+            "changed_outside_terraform": "yes"
+          }
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "endpoint": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "https://example.invalid",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "credential": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "SYNTHETIC_OUTPUT_SECRET",
+      "after_unknown": false,
+      "before_sensitive": true,
+      "after_sensitive": true
+    }
+  }
+}

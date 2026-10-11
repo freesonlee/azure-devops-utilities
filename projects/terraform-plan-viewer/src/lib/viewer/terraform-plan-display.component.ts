@@ -1,7 +1,6 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, AfterViewInit, SimpleChanges, ViewChild, ElementRef, HostListener, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, AfterViewInit, SimpleChanges, ViewChild, ElementRef, HostListener, Inject, PLATFORM_ID, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,10 +19,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { TerraformPlanService } from '../../services/terraform-plan.service';
-import { TerraformSensitivityService } from '../../services/terraform-sensitivity.service';
-import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup, PathSegmentGroup, ConstructNode } from '../../interfaces/terraform-plan.interface';
+import { TerraformPlanService } from '../services/terraform-plan.service';
+import { TerraformSensitivityService } from '../services/terraform-sensitivity.service';
+import { TerraformPlan, ResourceSummary, ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup, PathSegmentGroup, ConstructNode } from '../models/terraform-plan.interface';
 import * as Diff from 'diff';
+import { ViewerIconsService } from '../icons/viewer-icons.service';
+import { TerraformResourceFilter } from '../models/viewer-options';
 import { ResourceListComponent } from './resource-list.component';
 import { ConstructViewComponent } from './construct-view.component';
 
@@ -57,7 +58,7 @@ import { ConstructViewComponent } from './construct-view.component';
     templateUrl: './terraform-plan-display.component.html',
     styleUrl: './terraform-plan-display.component.scss'
 })
-export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterViewInit {
+export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
     @ViewChild('tabGroup') tabGroup!: MatTabGroup;
     @ViewChild('splitContainer') splitContainerRef?: ElementRef<HTMLElement>;
     @ViewChild('leftPanel') leftPanelRef?: ElementRef<HTMLElement>;
@@ -66,8 +67,13 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     @Input() cdkTfJson: any = null; // CDKTF metadata from cdk.tf.json
     @Input() stackType: string = 'terraform'; // Stack type from parent component
     @Input() mode: 'viewonly' | 'normal' = 'viewonly'; // Display mode: viewonly or normal with action buttons
-    @Input() defaultFilter: 'auto' | string = 'auto'; // Default filter: 'auto' shows 'changes' if there are changes, otherwise 'total'
+    @Input() layout: 'embedded' | 'page' = 'embedded';
+    @Input() viewportTopOffset = 0;
+    @Input() allowSensitiveReveal = true;
+    @Input() defaultFilter: TerraformResourceFilter = 'auto'; // Default filter: 'auto' shows 'changes' if there are changes, otherwise 'total'
 
+    @Output() resourceSelected = new EventEmitter<ResourceChange | null>();
+    @Output() viewChanged = new EventEmitter<'resources' | 'outputs' | 'variables' | 'terraform' | 'construct'>();
     @Output() cdktfStatusChanged = new EventEmitter<boolean>();
     @Output() viewSwitchRequested = new EventEmitter<string>();
     @Output() targetResourceRequested = new EventEmitter<string>();
@@ -123,7 +129,8 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     floatingPanelHeight: number = 0;
     // Height reserved by a placeholder while floating, so the page's scroll height never changes when toggling
     dockedPanelHeight: number = 0;
-    private floatingUpdateScheduled: boolean = false;
+    private animationFrame: number | null = null;
+    private resizeObserver?: ResizeObserver;
 
     displayedColumnsVariables: string[] = ['key', 'type', 'value', 'copy'];
     displayedColumnsOutputs: string[] = ['key', 'type', 'sensitive', 'value'];
@@ -132,7 +139,9 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     constructor(
         private terraformService: TerraformPlanService,
         private sensitivityService: TerraformSensitivityService,
-        private http: HttpClient,
+        @Inject(PLATFORM_ID) private platformId: object,
+        private host: ElementRef<HTMLElement>,
+        private viewerIcons: ViewerIconsService,
         private cdr: ChangeDetectorRef,
         private clipboard: Clipboard,
         private snackBar: MatSnackBar
@@ -142,17 +151,29 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     }
 
     ngAfterViewInit(): void {
-        this.updateRightPanelFloating();
+        if (!isPlatformBrowser(this.platformId)) return;
+        if (typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(() => this.scheduleLayoutUpdate());
+            this.resizeObserver.observe(this.host.nativeElement);
+        }
+        this.scheduleLayoutUpdate();
+    }
+
+    ngOnDestroy(): void {
+        this.resizeObserver?.disconnect();
+        if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
     }
 
     @HostListener('window:scroll')
     @HostListener('window:resize')
-    onWindowScrollOrResize(): void {
-        if (this.floatingUpdateScheduled) return;
-        this.floatingUpdateScheduled = true;
-        requestAnimationFrame(() => {
-            this.floatingUpdateScheduled = false;
+    onWindowScrollOrResize(): void { this.scheduleLayoutUpdate(); }
+
+    private scheduleLayoutUpdate(): void {
+        if (!isPlatformBrowser(this.platformId) || this.animationFrame !== null) return;
+        this.animationFrame = requestAnimationFrame(() => {
+            this.animationFrame = null;
             this.updateRightPanelFloating();
+            this.cdr.markForCheck();
         });
     }
 
@@ -166,6 +187,10 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
      * producing an infinite dock/float flicker.
      */
     private updateRightPanelFloating(): void {
+        if (!isPlatformBrowser(this.platformId) || this.layout !== 'page' || this.host.nativeElement.clientWidth <= 768) {
+            this.isRightPanelFloating = false;
+            return;
+        }
         const splitEl = this.splitContainerRef?.nativeElement;
         const leftEl = this.leftPanelRef?.nativeElement;
         const rightEl = this.rightPanelRef?.nativeElement;
@@ -182,9 +207,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
             this.dockedPanelHeight = rightEl.offsetHeight;
         }
 
-        const topBarEl = document.querySelector('.compact-upload-bar') as HTMLElement | null;
-        // Use the bar's own layout height rather than its live (possibly unstuck) rect
-        const topOffset = topBarEl ? topBarEl.offsetHeight : 0;
+        const topOffset = Math.max(0, this.viewportTopOffset);
 
         const containerRect = splitEl.getBoundingClientRect();
         const leftRect = leftEl.getBoundingClientRect();
@@ -210,6 +233,9 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     }
 
     ngOnChanges(changes: SimpleChanges): void {
+        if (changes['defaultFilter']) this.applyDefaultFilter();
+        if (changes['allowSensitiveReveal'] && !this.allowSensitiveReveal) this.sensitiveValuesVisible.clear();
+        if (changes['layout'] || changes['viewportTopOffset']) this.scheduleLayoutUpdate();
         if (changes['plan']) {
             if (changes['plan'].currentValue) {
                 this.loadPlanData();
@@ -320,7 +346,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
             // Default to Terraform if no OpenTofu indicators found
             this.iacToolName = 'Terraform';
         } catch (error) {
-            console.warn('Error detecting IaC tool from plan:', error);
+
             this.iacToolName = 'Terraform'; // Fallback to Terraform on error
         }
     }
@@ -375,27 +401,18 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
 
     private extractResourcePaths(): ResourceChange[] {
         if (!this.plan?.resource_changes || !this.cdkTfJson) {
-            console.log('DEBUG: extractResourcePaths - missing plan or cdkTfJson', {
-                hasPlan: !!this.plan?.resource_changes,
-                hasCdkTfJson: !!this.cdkTfJson
-            });
+
             return [];
         }
 
-        console.log('DEBUG: extractResourcePaths - processing resources', {
-            resourceCount: this.plan.resource_changes.length,
-            cdkTfKeys: Object.keys(this.cdkTfJson)
-        });
+
 
         const resourcesWithPaths: ResourceChange[] = [];
 
         for (const resource of this.plan.resource_changes) {
             // Extract path from CDKTF metadata
             const path = this.getResourcePathFromMetadata(resource.address);
-            console.log('DEBUG: resource path extraction', {
-                address: resource.address,
-                extractedPath: path
-            });
+
 
             if (path) {
                 const pathSegments = path.split('/').filter(segment => segment.length > 0);
@@ -403,13 +420,10 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
                     ...resource,
                     path_segments: pathSegments
                 };
-                console.log('DEBUG: resource with path', {
-                    address: resource.address,
-                    pathSegments: pathSegments
-                });
+
                 resourcesWithPaths.push(resourceWithPath);
             } else {
-                console.log('DEBUG: resource without path', { address: resource.address });
+
                 // No path found, put in root
                 resourcesWithPaths.push(resource);
             }
@@ -454,30 +468,27 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
 
     private extractPathFromComment(comment: any): string | null {
         // CDKTF includes construct paths in the // comment field
-        // The path format is typically like "stack_name/construct1/construct2" 
+        // The path format is typically like "stack_name/construct1/construct2"
         // We need to return the full path INCLUDING the stack name
 
         if (typeof comment === 'object' && comment.path) {
             const fullPath = comment.path;
-            console.log('DEBUG: extractPathFromComment - object path', { fullPath });
+
             return fullPath; // Return the full path
         }
 
         if (typeof comment === 'string' && comment.includes('/')) {
             // Sometimes the path might be a string directly
-            console.log('DEBUG: extractPathFromComment - string path', { comment });
+
             return comment; // Return the full path
         }
 
-        console.log('DEBUG: extractPathFromComment - no path found', { comment });
+
         return null;
     }
 
     private createConstructTree(resourcesWithPaths: ResourceChange[]): ConstructNode | null {
-        console.log('DEBUG: createConstructTree - starting', {
-            resourceCount: resourcesWithPaths.length,
-            resources: resourcesWithPaths.map(r => ({ address: r.address, path_segments: (r as any).path_segments }))
-        });
+
 
         const pathMap = new Map<string, ConstructNode>();
         const rootChildren: ConstructNode[] = [];
@@ -572,12 +583,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
         this.calculateTotalResourceCounts(rootChildren);
 
         // If we have multiple root children, create a virtual root
-        console.log('DEBUG: createConstructTree - final result', {
-            rootChildrenCount: rootChildren.length,
-            rootDirectResourcesCount: resourcesByConstructPath.get('')?.length || 0,
-            pathMapSize: pathMap.size,
-            rootChildren: rootChildren.map(c => ({ name: c.name, path: c.path, directResourceCount: c.directResources.length }))
-        });
+
 
         const rootDirectResources = resourcesByConstructPath.get('') || [];
 
@@ -594,14 +600,10 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
                 isExpanded: true
             };
             this.calculateTotalResourceCounts([virtualRoot]);
-            console.log('DEBUG: returning virtual root', {
-                totalResources: virtualRoot.totalResourceCount,
-                childrenCount: rootChildren.length,
-                directResourcesCount: rootDirectResources.length
-            });
+
             return virtualRoot;
         } else if (rootChildren.length === 1) {
-            console.log('DEBUG: returning single root', { name: rootChildren[0].name });
+
             return rootChildren[0];
         } else if (rootDirectResources.length > 0) {
             // Only root direct resources, create a minimal root
@@ -615,11 +617,11 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
                 isExpanded: true
             };
             this.calculateTotalResourceCounts([rootOnlyNode]);
-            console.log('DEBUG: returning root-only node', { directResourceCount: rootOnlyNode.directResources.length });
+
             return rootOnlyNode;
         }
 
-        console.log('DEBUG: returning null - no tree to build');
+
         return null;
     }
 
@@ -654,16 +656,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
 
     hasConstructTree(): boolean {
         const result = this.isCdktfStack() && !!this.constructTree;
-        console.debug('DEBUG: hasConstructTree', {
-            isCdktfStack: this.isCdktfStack(),
-            hasConstructTree: !!this.constructTree,
-            result: result,
-            constructTreeInfo: this.constructTree ? {
-                name: this.constructTree.name,
-                childrenCount: this.constructTree.children.length,
-                directResourceCount: this.constructTree.directResources.length
-            } : null
-        });
+
         return result;
     }
 
@@ -887,7 +880,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
         // Search in resource address, type, and provider name
         return resource.address.toLowerCase().includes(lowerSearchTerm) ||
             resource.type.toLowerCase().includes(lowerSearchTerm) ||
-            resource.provider_name.toLowerCase().includes(lowerSearchTerm);
+            (resource.provider_name || '').toLowerCase().includes(lowerSearchTerm);
     }
 
     private resourceMatchesAction(resource: ResourceChange, action: string): boolean {
@@ -1032,7 +1025,8 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
 
     selectResource(resource: ResourceChange): void {
         this.selectedResource = resource;
-        requestAnimationFrame(() => this.updateRightPanelFloating());
+        this.resourceSelected.emit(resource);
+        this.scheduleLayoutUpdate();
     }
 
     isResourceSelected(resource: ResourceChange): boolean {
@@ -1104,7 +1098,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
             this.snackBar.open('No resource selected', 'Close', { duration: 3000 });
             return;
         }
-        console.log('Target resource:', this.selectedResource.address);
+
         this.targetResourceRequested.emit(this.selectedResource.address);
     }
 
@@ -1117,7 +1111,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
             this.snackBar.open('No bucket selected', 'Close', { duration: 3000 });
             return;
         }
-        console.log('Target bucket:', bucketName);
+
         this.targetResourceRequested.emit(bucketName);
     }
 
@@ -1129,7 +1123,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
             this.snackBar.open('No resource selected', 'Close', { duration: 3000 });
             return;
         }
-        console.log('Import state for:', this.selectedResource.address);
+
         this.importStateRequested.emit(this.selectedResource);
     }
 
@@ -1141,7 +1135,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
             this.snackBar.open('No resource selected', 'Close', { duration: 3000 });
             return;
         }
-        console.log('Remove from state:', this.selectedResource.address);
+
         this.removeFromStateRequested.emit(this.selectedResource);
     }
 
@@ -1151,6 +1145,9 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
         this.changeFieldsWithDriftCache.clear();
         this.selectedResource = null;
         this.sensitiveValuesVisible.clear(); // Clear sensitive value visibility state
+        this.expandedVariables.clear();
+        this.expandedOutputs.clear();
+        this.isRightPanelFloating = false;
         for (const [type, resources] of this.resourcesByType.entries()) {
             resources.forEach(resource => {
                 (resource as any).expanded = false;
@@ -2027,13 +2024,14 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
 
         // Check if this sensitive value is currently visible
         const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
-        return !this.sensitiveValuesVisible.has(visibilityKey);
+        return !this.allowSensitiveReveal || !this.sensitiveValuesVisible.has(visibilityKey);
     }
 
     /**
      * Toggle visibility of a sensitive value
      */
     toggleSensitiveValueVisibility(resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): void {
+        if (!this.allowSensitiveReveal) return;
         const visibilityKey = `${resource.address}.${propertyPath}.${valueType}`;
         if (this.sensitiveValuesVisible.has(visibilityKey)) {
             this.sensitiveValuesVisible.delete(visibilityKey);
@@ -2052,12 +2050,12 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
 
     /**
      * Format a value for display, masking it if sensitive or showing "(known after apply)" if unknown
-     * 
+     *
      * Precedence order:
      * 1. If valueType is 'after' and property is unknown -> show "(known after apply)"
      * 2. If property is sensitive and masked -> show masked value (asterisks)
      * 3. Otherwise -> show actual value
-     * 
+     *
      * Note: Unknown values take precedence over sensitive masking. If a property is both unknown
      * and sensitive, it will display "(known after apply)" rather than asterisks, since the actual
      * value doesn't exist yet and will only be known after the apply operation completes.
@@ -2100,14 +2098,14 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
     /**
      * Format a property value with proper handling of unknown and sensitive properties.
      * This is the recommended method to use when displaying resource property values in the template.
-     * 
+     *
      * Priority order:
      * 1. If value is null/undefined AND property is unknown -> show "(known after apply)"
-     * 2. If value is null/undefined -> show "null" 
+     * 2. If value is null/undefined -> show "null"
      * 3. If property is unknown (after values only) -> show "(known after apply)"
      * 4. If property is sensitive and masked -> show masked value (asterisks)
      * 5. Otherwise -> show actual value
-     * 
+     *
      * Note: A property cannot be both sensitive and unknown. Unknown takes precedence.
      */
     formatPropertyValue(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): string {
@@ -2156,6 +2154,7 @@ export class TerraformPlanDisplayComponent implements OnInit, OnChanges, AfterVi
      * Copy sensitive value to clipboard
      */
     copySensitiveValueToClipboard(value: any, resource: ResourceChange, propertyPath: string, valueType: 'before' | 'after' | 'current'): void {
+        if (!isPlatformBrowser(this.platformId) || this.isSensitiveValueMasked(resource, propertyPath, valueType)) return;
         // Get the actual value (unmasked)
         const actualValue = this.formatChangeValue(value);
 

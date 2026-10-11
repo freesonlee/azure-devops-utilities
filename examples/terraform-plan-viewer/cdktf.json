@@ -1,0 +1,52 @@
+{
+  "resource": {
+    "azurerm_resource_group": {
+      "platform": {
+        "//": {
+          "metadata": {
+            "path": "demo/Azure/platform"
+          }
+        }
+      }
+    },
+    "azurerm_storage_account": {
+      "assets": {
+        "//": {
+          "metadata": {
+            "path": "demo/Azure/assets"
+          }
+        }
+      }
+    },
+    "null_resource": {
+      "legacy": {
+        "//": {
+          "metadata": {
+            "path": "demo/Application/legacy"
+          }
+        }
+      },
+      "application": {
+        "//": {
+          "metadata": {
+            "path": "demo/Application/application"
+          }
+        }
+      },
+      "network": {
+        "//": {
+          "metadata": {
+            "path": "demo/Application/network"
+          }
+        }
+      },
+      "unchanged": {
+        "//": {
+          "metadata": {
+            "path": "demo/Application/unchanged"
+          }
+        }
+      }
+    }
+  }
+}
