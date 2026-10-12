@@ -1,0 +1,661 @@
+import { HttpClient } from '@angular/common/http';
+import { Component, ViewChild } from '@angular/core';
+import { concatAll, firstValueFrom, from, map, of } from 'rxjs';
+import {
+  Variable,
+  VariableData,
+  VariableGroup,
+  HistoryLocationSettings,
+} from './Models';
+import { MatDialog } from '@angular/material/dialog';
+import { MatTable } from '@angular/material/table';
+import { CommentComponent, DialogData } from './comment.component';
+import * as SDK from 'azure-devops-extension-sdk';
+import {
+  CommonServiceIds,
+  IExtensionDataManager,
+  IExtensionDataService,
+  ILocationService,
+  IProjectInfo,
+  IProjectPageService,
+  IVssRestClientOptions,
+  getClient,
+} from 'azure-devops-extension-api';
+import { TaskAgentRestClient } from 'azure-devops-extension-api/TaskAgent';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import { generateQuery } from './workItemQuery';
+
+type Mode = 'variables' | 'pipelines';
+
+@Component({
+  selector: 'variable-group-history',
+  templateUrl: './variable-group-history.component.html',
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed', style({ height: '0px', minHeight: '0' })),
+      state('expanded', style({ height: '*' })),
+    ]),
+  ],
+  styleUrls: ['./variable-group-history.component.css'],
+})
+export class VariableGroupHistoryComponent {
+  title = 'azure-devops-variable-group-editor';
+
+  variableGroups: VariableGroup[] = [];
+  variableGroup?: VariableGroup;
+  variables: Variable[] = [];
+  hasChange = false;
+  mode: Mode = 'variables';
+  @ViewChild('pipelineComp')
+  dataManager!: IExtensionDataManager;
+
+  @ViewChild(MatTable) table!: MatTable<Variable>;
+  project: IProjectInfo | undefined;
+  taskAgentClient!: TaskAgentRestClient;
+  settings?: HistoryLocationSettings;
+  collectionPath!: string;
+  projectPath!: string;
+  accessToken!: string;
+  loading = true;
+  expandedVariable?: Variable;
+  descColHiding = false;
+  groupSearch = '';
+  variableSearch = '';
+  isLoading = false;
+  hasLoadedGroups = false;
+  loadError = '';
+  private loadedHistoryGroups = new WeakSet<VariableGroup>();
+  private originalGroupNames = new WeakMap<VariableGroup, string>();
+  private readonly columnsWithDescription = ['name', 'value', 'desc', 'expand', 'action'];
+  private readonly columnsWithoutDescription = ['name', 'value', 'expand', 'action'];
+
+  get variableColumns() {
+    return this.descColHiding ? this.columnsWithoutDescription : this.columnsWithDescription;
+  }
+
+  get visibleVariableGroups() {
+    const search = this.groupSearch.trim().toLowerCase();
+    return search ? this.variableGroups.filter(group => group.name.toLowerCase().includes(search)) : this.variableGroups;
+  }
+
+  get visibleVariables() {
+    const search = this.variableSearch.trim().toLowerCase();
+    // Search names and descriptions; do not expose secret values through search results.
+    return search ? this.variables.filter(variable =>
+      [variable.name, variable.desc, variable.description].some(text => text?.toLowerCase().includes(search))) : this.variables;
+  }
+
+  get secretCount() {
+    return this.variables.filter(variable => variable.isSecret && !variable.markForDeletion).length;
+  }
+
+  get pendingChangeCount() {
+    return this.variableGroups.reduce((total, group) => {
+      const changes = group.variablesForView?.filter(variable => variable.hasChanged || variable.markForDeletion).length ?? 0;
+      const renamed = this.originalGroupNames.has(group) && this.originalGroupNames.get(group) !== group.name;
+      return total + changes + (renamed ? 1 : 0) + (!changes && !renamed && group.hasChange ? 1 : 0);
+    }, 0);
+  }
+
+  constructor(private httpClient: HttpClient, private dialog: MatDialog) {
+    this.loadContribution();
+  }
+
+  async loadContribution() {
+    await SDK.notifyLoadSucceeded();
+    await SDK.ready();
+    const projectService = await SDK.getService<IProjectPageService>(
+      CommonServiceIds.ProjectPageService
+    );
+    this.project = await projectService.getProject();
+    this.taskAgentClient = await getClient(TaskAgentRestClient);
+    const locSvc = await SDK.getService<ILocationService>(
+      CommonServiceIds.LocationService
+    );
+    this.collectionPath = await locSvc.getServiceLocation();
+    this.projectPath = this.collectionPath + this.project?.name;
+
+    this.accessToken = await SDK.getAccessToken();
+    await this.reload();
+  }
+
+  async reload() {
+    if (this.isLoading || !this.project) return;
+    this.isLoading = true;
+    this.loadError = '';
+    try {
+      const variableGroups = await this.taskAgentClient.getVariableGroups(
+        this.project!.id
+      );
+
+      this.hasLoadedGroups = true;
+      this.settings = undefined;
+      const variableGroupSettings = variableGroups.find(
+        (g) => g.name === 'VariableGroupHistorySettings'
+      );
+      if (variableGroupSettings) {
+        this.settings = {
+          branch: variableGroupSettings.variables['Branch'].value,
+          path: variableGroupSettings.variables['Path'].value,
+          repository: variableGroupSettings.variables['Repository'].value,
+        };
+      }
+
+      this.variableGroups = variableGroups.sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({
+        description: g.description,
+        id: g.id,
+        name: g.name,
+        hasBad: false,
+        hasChange: false,
+        variablesForView: Object.keys(g.variables).map((name) => ({
+          name: name,
+          value: g.variables[name].value,
+          isSecret: g.variables[name].isSecret,
+          hasChanged: false,
+          markForDeletion: false,
+          isBad: false,
+          desc: '',
+          description: '',
+          mlType: '|',
+          mlSource: '',
+          original: {
+            name: name,
+            value: g.variables[name].value,
+            isSecret: g.variables[name].isSecret,
+            desc: '',
+            description: '',
+            mlType: '|',
+            mlValue: '',
+          },
+        })),
+      }));
+
+      this.hasChange = false;
+      if (this.variableGroup?.id) {
+        const selectedGroup = this.variableGroups.find(
+          (g) => g.id == this.variableGroup?.id
+        );
+        if (selectedGroup) {
+          await this.loadVariable(selectedGroup);
+        } else {
+          this.variableGroup = undefined;
+          this.variables = [];
+        }
+      } else {
+        this.variableGroup = undefined;
+        this.variables = [];
+      }
+    } catch {
+      this.loadError = 'Could not load variable groups. Check your Azure DevOps project permissions, then try again.';
+      this.hasLoadedGroups = false;
+    } finally {
+      this.isLoading = false;
+      this.loading = false;
+    }
+  }
+
+  async newGroup() {
+    if (!this.projectPath || this.isLoading) return;
+    if (!this.hasLoadedGroups) {
+      await this.reload();
+      if (this.loadError) return;
+    }
+    this.variableGroups.push(
+      (this.variableGroup = {
+        id: undefined,
+        name: 'New variable group',
+        description: '',
+        variablesForView: [],
+        hasBad: false,
+        hasChange: true,
+      })
+    );
+    this.variables = this.variableGroup.variablesForView = [
+      {
+        name: '',
+        value: '',
+        mlType: '|',
+        description: '',
+        desc: '',
+        isSecret: false,
+        hasChanged: true,
+        isBad: true,
+        markForDeletion: false,
+        mlSource: '',
+      },
+    ];
+    this.groupSearch = '';
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.checkChangeGroup(this.variableGroup);
+  }
+
+  async cloneGroup() {
+    this.variableGroups.push(
+      (this.variableGroup = {
+        id: 0,
+        name: this.variableGroup?.name + ' Clone',
+        description: '',
+        variablesForView: this.variableGroup!.variablesForView.map(variable => ({
+          ...variable,
+          original: variable.original ? { ...variable.original } : undefined,
+        })),
+        hasBad: false,
+        hasChange: true,
+      })
+    );
+    this.variables = this.variableGroup.variablesForView;
+    this.groupSearch = '';
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.checkChangeGroup(this.variableGroup);
+    this.hasChange = true;
+  }
+
+  getVariableGroupHistoryUrl(grp: VariableGroup) {
+    if (!this.settings) return '';
+    return `${this.projectPath}/_git/${this.settings!.repository
+      }?path=${encodeURIComponent(this.settings.path)}${encodeURIComponent(
+        grp.name
+      )}.json&version=GB${this.settings?.branch}&_a=history`;
+  }
+
+  async loadVariable(grp: VariableGroup) {
+    if (!this.originalGroupNames.has(grp) && grp.id) {
+      this.originalGroupNames.set(grp, grp.name);
+    }
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.variableGroup = grp;
+    this.variables = grp.variablesForView;
+
+    if (grp.id && !this.loadedHistoryGroups.has(grp)) {
+      await this.loadMore(grp);
+      this.loadedHistoryGroups.add(grp);
+    }
+  }
+
+  private async loadMore(variableGroup: VariableGroup) {
+    if (!this.settings) return;
+    let path = this.settings.path;
+    if (path[path.length - 1] != '/') {
+      path += '/';
+    }
+
+    try {
+      const h = this.getRequestOptions();
+      (h.headers as any).Accept = '*/*';
+
+      const snapshot: any = await firstValueFrom(
+        this.httpClient.get(
+          `${this.projectPath}/_apis/git/repositories/${this.settings.repository}/items?path=${path}${variableGroup.name}.json&versionDescriptor.version=${this.settings.branch}`,
+          h
+        )
+      );
+
+      variableGroup.variablesForView.forEach((v) => {
+        v.mlType = snapshot.variables[v.name]?.mlType ?? '|';
+        v.original!.mlValue = v.mlSource =
+          snapshot.variables[v.name]?.mlSource ?? '';
+        v.description = v.original!.description =
+          snapshot.variables[v.name]?.description ?? '';
+        v.desc = v.original!.desc = snapshot.variables[v.name]?.desc ?? '';
+      });
+    } catch (e) { }
+  }
+
+  isEqual(
+    valueA: string | undefined,
+    valueB: string | undefined,
+    defaultValue: string = ''
+  ) {
+    return (valueA ?? defaultValue) == (valueB ?? defaultValue);
+  }
+
+  checkChange(variable: Variable) {
+    variable.hasChanged =
+      variable.isSecret != variable.original?.isSecret ||
+      !this.isEqual(variable.name, variable.original?.name) ||
+      !this.isEqual(variable.value, variable.original?.value) ||
+      !this.isEqual(variable.description, variable.original?.description) ||
+      !this.isEqual(variable.desc, variable.original?.desc) ||
+      !this.isEqual(variable.mlType, variable.original?.mlType, '|') ||
+      !this.isEqual(variable.mlSource, variable.original?.mlValue);
+
+    this.checkChangeGroup(this.variableGroup!);
+  }
+
+  checkChangeGroup(group: VariableGroup) {
+    const variables = group.variablesForView;
+    group.hasChange = !group.id || this.originalGroupNames.get(group) !== group.name || variables.some(v => v.hasChanged || v.markForDeletion);
+    this.hasChange = this.variableGroups.findIndex(g => g.hasChange) >= 0;
+    group.hasBad = false;
+    const uniqueNames = new Map<string, Variable>();
+    variables.forEach(v => {
+      if (v.markForDeletion) {
+        v.isBad = false;
+        return;
+      }
+
+      if (!v.name) {
+        v.isBad = true;
+      } else {
+        v.isBad = false;
+      }
+
+      if (uniqueNames.has(v.name)) {
+        v.isBad = true;
+        group.hasBad = true;
+        uniqueNames.get(v.name)!.isBad = true;
+      } else {
+        uniqueNames.set(v.name, v);
+      }
+
+      if (v.isBad) {
+        group.hasBad = true;
+      }
+    });
+  }
+
+  async openSaveDialog() {
+    this.dialog
+      .open(CommentComponent, {
+        data: {
+          comment: '',
+          requestWorkItemList: (input: string) => {
+            return firstValueFrom(
+              this.httpClient
+                .post(
+                  `${this.projectPath}/_apis/wit/wiql?api-version=6.0`,
+                  {
+                    query: generateQuery(input),
+                  },
+                  this.getRequestOptions()
+                )
+                .pipe(
+                  map((resp: any) =>
+                    resp.workItems.map((wi: any) => ({
+                      id: wi.id,
+                    }))
+                  ),
+                  map((wi: any) => {
+                    if (wi.length == 0) {
+                      return of({ value: [] });
+                    }
+                    return this.httpClient.get(
+                      `${this.projectPath}/_apis/wit/workitems?ids=${wi
+                        .map((_: any) => _.id)
+                        .join(',')}`,
+                      this.getRequestOptions()
+                    );
+                  }),
+                  concatAll(),
+                  map((final: any) => {
+                    return final.value.map((r: any) => {
+                      return {
+                        id: r.id,
+                        desc: r.fields['System.Title'],
+                        rev: r.rev,
+                      };
+                    });
+                  })
+                )
+            );
+          },
+        },
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (result === undefined) return;
+
+        this.save(result);
+      });
+  }
+
+  private getRequestOptions() {
+    return {
+      headers: {
+        Authorization: 'Bearer ' + this.accessToken,
+      },
+    };
+  }
+
+  async save(data: DialogData) {
+    if (!this.settings) return;
+    const payloads = this.generateUpdatePayload();
+
+    const currentLastCommit: any = await firstValueFrom(
+      this.httpClient.get(
+        `${this.projectPath}/_apis/git/repositories/${this.settings!.repository
+        }/items?versionDescriptor.version=${this.settings!.branch}`,
+        this.getRequestOptions()
+      )
+    );
+
+    let path = this.settings!.path;
+    if (path[path.length - 1] != '/') {
+      path += '/';
+    }
+
+    const fileItems: any = await firstValueFrom(
+      this.httpClient.get(
+        `${this.projectPath}/_apis/git/repositories/${this.settings!.repository
+        }/trees/${currentLastCommit.value[0].objectId}?recursive=true`,
+        this.getRequestOptions()
+      )
+    );
+
+    const commitPayload = {
+      commits: [
+        {
+          comment: data.comment ?? 'No comment provided',
+          changes: payloads.map((p) => ({
+            changeType:
+              fileItems.treeEntries.findIndex(
+                (f: any) => `/${f.relativePath}` == `${path}${p.name}.json`
+              ) >= 0
+                ? 2
+                : 1,
+            item: {
+              path: path + p.name + '.json',
+            },
+            newContent: {
+              content: JSON.stringify(p, undefined, 2),
+              contentType: 0,
+            },
+          })),
+        },
+      ],
+      refUpdates: [
+        {
+          name: `refs/heads/${this.settings!.branch}`,
+          oldObjectId: currentLastCommit.value[0].commitId,
+        },
+      ],
+    };
+
+    const commitResp: any = await firstValueFrom(
+      this.httpClient.post(
+        `${this.projectPath}/_apis/git/repositories/${this.settings!.repository
+        }/pushes?api-version=5.0`,
+        commitPayload,
+        this.getRequestOptions()
+      )
+    );
+
+    if (data.selectedWorkItemId) {
+      const commitUrl = new URL(commitResp.commits[0].url);
+      const [, projectid, , , , repoid, , commitid] =
+        commitUrl.pathname.split('/');
+      const gitUrl = `vstfs:///Git/Commit/${projectid}%2F${repoid}%2F${commitid}`;
+
+      const wiUpdateResp = await firstValueFrom(
+        this.httpClient.patch(
+          `${this.projectPath}/_apis/wit/workItems/${data.selectedWorkItemId}?api-version=5.0`,
+          [
+            {
+              op: 'test',
+              path: '/rev',
+              value: data.rev,
+            },
+
+            {
+              op: 'add',
+              path: '/relations/-',
+              value: {
+                rel: 'ArtifactLink',
+                url: gitUrl,
+                attributes: {
+                  name: 'Fixed in Commit',
+                },
+              },
+            },
+          ],
+          {
+            headers: {
+              ...this.getRequestOptions().headers,
+              'Content-Type': 'application/json-patch+json',
+            },
+          }
+        )
+      );
+    }
+
+    const requests = payloads.map((payload) => {
+      if (payload.id === 0) {
+        return firstValueFrom(
+          this.httpClient.post(
+            `${this.projectPath}/_apis/distributedtask/variablegroups/?api-version=5.0-preview.1`,
+            payload,
+            this.getRequestOptions()
+          )
+        );
+      } else {
+        return firstValueFrom(
+          this.httpClient.put(
+            `${this.projectPath}/_apis/distributedtask/variablegroups/${payload.id}?api-version=5.0-preview.1`,
+            payload,
+            this.getRequestOptions()
+          )
+        );
+      }
+    });
+
+    await Promise.all(requests);
+    await this.reload();
+  }
+
+  generateUpdatePayload() {
+    return this.variableGroups
+      .filter((group) => group.hasChange)
+      .map((group) => {
+        return {
+          name: group.name,
+          id: group.id,
+          variables: this.prepareVariables(group),
+        };
+      });
+  }
+
+  prepareVariables(group: VariableGroup): {
+    [name: string]: VariableData;
+  } {
+    const vars: {
+      [name: string]: VariableData;
+    } = {};
+
+    group.variablesForView
+      .filter((v) => !v.markForDeletion)
+      .forEach((v) => {
+        vars[v.name] = new VariableData(v);
+      });
+
+    return vars;
+  }
+
+  newVariable() {
+    const newVar = {
+      hasChanged: true,
+      isSecret: false,
+      markForDeletion: false,
+      name: '',
+      value: '',
+      isBad: true,
+      mlSource: '',
+      mlType: '|',
+      description: '',
+      desc: ''
+    };
+    this.variables.push(newVar);
+    this.variableSearch = '';
+    this.checkChangeGroup(this.variableGroup!);
+    this.table.renderRows();
+  }
+
+  async deleteGroup() { }
+
+  deleteVariable(variable: Variable) {
+    if (variable.original) {
+      variable.markForDeletion = true;
+      this.checkChangeGroup(this.variableGroup!);
+      return;
+    }
+
+    this.variableGroup!.variablesForView = this.variables =
+      this.variables.filter((v) => v != variable);
+    this.checkChangeGroup(this.variableGroup!);
+    this.table.renderRows();
+  }
+
+  undoVariable(variable: Variable) {
+    variable.markForDeletion = false;
+    if (variable.original) {
+      variable.value = variable.original.value;
+      variable.isSecret = variable.original.isSecret;
+      variable.name = variable.original.name;
+      variable.desc = variable.original.desc;
+      variable.description = variable.original.description;
+      variable.mlSource = variable.original.mlValue;
+      variable.mlType = variable.original.mlType;
+    } else {
+      this.variableGroup!.variablesForView = this.variables = this.variables.filter(v => v != variable);
+    }
+
+    this.checkChange(variable);
+    this.table.renderRows();
+  }
+
+  onMultiLineValueChange(variable: Variable, $event: Event) {
+    let newValue = ($event.target as HTMLTextAreaElement).value;
+    variable.mlSource = newValue;
+    newValue = this.evaluateVariable(variable.mlType, newValue);
+
+    variable.value = newValue;
+
+    this.checkChange(variable);
+  }
+  evaluateVariable(multilineType: string, mlSource: string): any {
+    if (multilineType == '>') {
+      return mlSource.replace(/\n/g, ' ');
+    }
+
+    return mlSource;
+  }
+
+  updateDescription(variable: Variable, $event: Event) {
+    variable.description = ($event.target as HTMLTextAreaElement).value;
+    this.checkChange(variable);
+  }
+
+  generateDescription(variable: Variable) {
+    return `${variable.desc}
+
+    ${variable.description}`;
+  }
+}

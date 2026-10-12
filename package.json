@@ -17,7 +17,28 @@
     "test": "ng test",
     "ui:check": "node scripts/check-variable-editor.cjs",
     "ui:check:profiles": "node scripts/check-pipeline-profiles.cjs",
-    "deploy": "scp -r ./dist/azure-devops-variable-group-editor freeson@192.168.1.187:~/azure-devops-utilities"
+    "deploy": "scp -r ./dist/azure-devops-variable-group-editor freeson@192.168.1.187:~/azure-devops-utilities",
+    "build-h": "ng build azure-devops-variable-group-history-extension",
+    "build-p": "ng build azure-devops-pipeline-profiles",
+    "pack-history": "npx tfx-cli extension create --manifests ./variable-group-history.vss.json",
+    "pack-pipeline": "npx tfx-cli extension create --manifests ./pipeline-profiles.vss.json",
+    "publish-history": "npx tfx-cli extension create --manifests ./variable-group-history.vss.json && npx tfx-cli extension publish --manifests ./variable-group-history.vss.json --rev-version --token $ADS_MKT_PAT && rm *.vsix",
+    "publish-pipeline": "npx tfx-cli extension create --manifests ./pipeline-profiles.vss.json && npx tfx-cli extension publish --manifests ./pipeline-profiles.vss.json --rev-version --token $ADS_MKT_PAT && rm *.vsix",
+    "dev:cert": "node scripts/create-dev-certificate.cjs",
+    "start-history-dev": "npm run dev:cert && ng serve azure-devops-variable-group-history-extension --configuration development --host localhost --port 4300 --ssl --ssl-cert .certs/localhost.pem --ssl-key .certs/localhost-key.pem",
+    "start-pipeline-dev": "npm run dev:cert && ng serve azure-devops-pipeline-profiles --configuration development --host localhost --port 4301 --ssl --ssl-cert .certs/localhost.pem --ssl-key .certs/localhost-key.pem",
+    "pack-history-dev": "node scripts/dev-extension.cjs pack history",
+    "pack-pipeline-dev": "node scripts/dev-extension.cjs pack pipeline",
+    "pack-dev": "npm run pack-history-dev && npm run pack-pipeline-dev",
+    "publish-history-dev": "node scripts/dev-extension.cjs publish history",
+    "publish-pipeline-dev": "node scripts/dev-extension.cjs publish pipeline",
+    "install-history-dev": "node scripts/dev-extension.cjs install history",
+    "install-pipeline-dev": "node scripts/dev-extension.cjs install pipeline",
+    "build:extensions": "npm run build-h && npm run build-p",
+    "build:all": "npm run build && npm run build:extensions",
+    "ui:check:extensions": "node scripts/check-extensions.cjs",
+    "ui:check:website": "node scripts/check-website-build.cjs",
+    "test:website": "ng test azure-devops-variable-group-editor --watch=false --karma-config projects/terraform-plan-viewer/karma.conf.cjs --browsers ChromiumHeadless"
   },
   "private": true,
   "dependencies": {
@@ -36,7 +57,9 @@
     "js-yaml": "^4.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.14.3"
+    "zone.js": "~0.14.3",
+    "azure-devops-extension-api": "^2.225.0",
+    "azure-devops-extension-sdk": "^3.1.2"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^17.1.1",
@@ -53,6 +76,8 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "ng-packagr": "^17.1.2",
     "playwright": "^1.64.0",
-    "typescript": "~5.3.3"
+    "typescript": "~5.3.3",
+    "@angular-builders/custom-webpack": "^17.0.0",
+    "tfx-cli": "0.24.2"
   }
 }

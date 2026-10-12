@@ -10,5 +10,9 @@
   "include": [
     "src/**/*.spec.ts",
     "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "src/app/pipeline-profiles/**/*.spec.ts",
+    "src/app/variable-group-history/**/*.spec.ts"
   ]
 }

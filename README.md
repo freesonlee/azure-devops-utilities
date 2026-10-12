@@ -1,6 +1,25 @@
 # A tool to manage Azure DevOps Variable Groups and Pipeline
 Please visit [Online](https://go.azuredevopshelpers.dev/)
 
+For private Marketplace extensions served from HTTPS localhost, see [Extension development](docs/development.md).
+
+## Applications and builds
+
+The website, two Azure DevOps Marketplace extensions, and reusable Terraform viewer library are maintained on `main`. Each application has its own Angular entry point and output directory.
+
+| Application | Angular project | Build command | Output |
+| --- | --- | --- | --- |
+| Website | `azure-devops-variable-group-editor` | `npm run build` | `dist/azure-devops-variable-group-editor` |
+| Variable Group History extension | `azure-devops-variable-group-history-extension` | `npm run build-h` | `dist/azure-devops-variable-group-history-extension` |
+| Pipeline Profiles extension | `azure-devops-pipeline-profiles` | `npm run build-p` | `dist/azure-devops-pipeline-profiles` |
+| Terraform viewer library | `terraform-plan-viewer` | `npm run build:viewer` | `dist/terraform-plan-viewer` |
+
+`npm start` serves the website. `npm run build:all` builds all applications and the library. GitHub Pages deploys the website output; Marketplace manifests package only their corresponding extension output. Run `npm run build:extensions` before `npm run pack-history` and `npm run pack-pipeline`. The main CI builds all applications, checks the viewer, website, and SDK host behavior, and packages both production and private dev extensions for review; Marketplace publication remains an explicit command.
+
+Extensions get authentication and project context from the Azure DevOps SDK and keep profiles in extension storage. The website uses its own connection settings and browser storage. Publishing authentication is configured separately from application authentication.
+
+For the installed private localhost extensions, run `npm run start-history-dev` (HTTPS port 4300) and `npm run start-pipeline-dev` (HTTPS port 4301). Ordinary code and styling changes require a browser refresh; manifest changes require republishing. See [extension development and Entra publishing](docs/development.md).
+
 ## Setup
 Add your ADS host in settings. You need your PAT pre-created in ADS. All ADS host settings is saved in browser local storage. PAT is not sent to server. BTW, there is no server for this tool. It's pure TS/JS hosted on Azure CDN.
 
@@ -20,7 +39,7 @@ cover editing and responsive layouts, and save screenshots in
 `/tmp/azure-devops-variable-editor-ui` (or the system temporary directory on other platforms).
 Set `UI_BASE_URL` to inspect another local port or `UI_SCREENSHOT_DIR` to choose the screenshot directory.
 
-Run `npm run ui:check:profiles` for Pipeline Profiles checks and screenshots.
+Run `npm run ui:check:profiles` for Pipeline Profiles checks and screenshots. After `npm run build:all`, run `npm run ui:check:website` to serve and verify the production website build automatically, and `npm run ui:check:extensions` to verify both extension builds inside an isolated SDK host fixture.
 These checks mock Azure DevOps, including pipeline previews and queued runs;
 they never run real pipelines. Screenshots default to `/tmp/azure-devops-pipeline-profiles-ui`.
 
@@ -66,11 +85,11 @@ In this example:
 
 ## Reusable Angular viewer package
 
-The Terraform renderer lives in [`projects/terraform-plan-viewer`](projects/terraform-plan-viewer/README.md). The application consumes its compiled public API. The unpublished MIT preview targets Angular/Material/CDK 17.1.x.
+The Terraform renderer lives in [`projects/terraform-plan-viewer`](projects/terraform-plan-viewer/README.md). The application consumes its compiled public API. The MIT preview targets Angular/Material/CDK 17.1.x.
 
 Run `npm run pack:viewer` to build and create an installable tarball under `dist/packages`. Run `npm run verify:viewer-package` to install that tarball in a temporary standalone/NgModule consumer and check browser and server rendering. The verifier needs the Playwright Chromium browser installed.
 
-Library tests: `npm run test:viewer` (set `CHROME_BIN` to a Chromium executable). During development, run `npm run watch:viewer` alongside `npm start`; startup builds the library once. Run `npm run capture:viewer` against the local app to capture synthetic Terraform/CDKTF examples.
+Website unit tests: `npm run test:website`. Library tests: `npm run test:viewer` (set `CHROME_BIN` to a Chromium executable). During development, run `npm run watch:viewer` alongside `npm start`; startup builds the library once. Run `npm run capture:viewer` against the local app to capture synthetic Terraform/CDKTF examples.
 
 The resumable implementation and release checklist is in [`docs/terraform-plan-viewer-library-plan.md`](docs/terraform-plan-viewer-library-plan.md). The manual **Viewer package validation and publishing** workflow tests, builds, verifies, and publishes the preview package to GitHub Packages with the `next` tag. Select the branch to publish in the Actions tab. Increment the library version before publishing another release.
 

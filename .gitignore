@@ -40,3 +40,13 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+*.vsix
+.vscode/settings.json
+*.crt
+*.key
+*.pem
+
+# Local extension development
+/.certs/
+/artifacts/

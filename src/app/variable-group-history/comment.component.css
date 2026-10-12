@@ -1,0 +1,11 @@
+.container {
+    width: 500px
+}
+
+  .commentsEditor {
+    width: 500px;
+    height: 200px;
+  }
+  .workItemSelector {
+    width: 480px;
+  }

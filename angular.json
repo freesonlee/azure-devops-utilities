@@ -91,7 +91,11 @@
               "@angular/material/prebuilt-themes/indigo-pink.css",
               "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "exclude": [
+              "src/app/pipeline-profiles/**/*.spec.ts",
+              "src/app/variable-group-history/**/*.spec.ts"
+            ]
           }
         }
       }
@@ -130,6 +134,154 @@
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css"
             ]
+          }
+        }
+      }
+    },
+    "azure-devops-variable-group-history-extension": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "",
+      "sourceRoot": "src/app/variable-group-history",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-builders/custom-webpack:browser",
+          "options": {
+            "outputPath": "dist/azure-devops-variable-group-history-extension",
+            "index": "src/app/variable-group-history/index.html",
+            "main": "src/app/variable-group-history/main.ts",
+            "customWebpackConfig": {
+              "path": "./webpack.config.js"
+            },
+            "polyfills": [
+              "zone.js"
+            ],
+            "tsConfig": "tsconfig.varhistory.json",
+            "assets": [],
+            "styles": [
+              "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/app/variable-group-history/styles.css"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1mb",
+                  "maximumError": "2mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "18kb",
+                  "maximumError": "20kb"
+                }
+              ],
+              "outputHashing": "none"
+            },
+            "development": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-builders/custom-webpack:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "azure-devops-variable-group-history-extension:build:production"
+            },
+            "development": {
+              "buildTarget": "azure-devops-variable-group-history-extension:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "buildTarget": "azure-devops-variable-group-history-extension:build"
+          }
+        }
+      }
+    },
+    "azure-devops-pipeline-profiles": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "",
+      "sourceRoot": "src/app/pipeline-profiles",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-builders/custom-webpack:browser",
+          "options": {
+            "outputPath": "dist/azure-devops-pipeline-profiles",
+            "index": "src/app/pipeline-profiles/index.html",
+            "main": "src/app/pipeline-profiles/main.ts",
+            "customWebpackConfig": {
+              "path": "./webpack.config.js"
+            },
+            "polyfills": [
+              "zone.js"
+            ],
+            "tsConfig": "tsconfig.pp.json",
+            "assets": [],
+            "styles": [
+              "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/app/pipeline-profiles/styles.css"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1mb",
+                  "maximumError": "2mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "14kb",
+                  "maximumError": "16kb"
+                }
+              ],
+              "outputHashing": "none"
+            },
+            "development": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-builders/custom-webpack:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "azure-devops-pipeline-profiles:build:production"
+            },
+            "development": {
+              "buildTarget": "azure-devops-pipeline-profiles:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "buildTarget": "azure-devops-pipeline-profiles:build"
           }
         }
       }
