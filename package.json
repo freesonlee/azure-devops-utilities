@@ -11,7 +11,17 @@
     "pack-history": "npx tfx-cli extension create --manifests ./variable-group-history.vss.json",
     "pack-pipeline": "npx tfx-cli extension create --manifests ./pipeline-profiles.vss.json",
     "publish-history": "npx tfx-cli extension create --manifests ./variable-group-history.vss.json && npx tfx-cli extension publish --manifests ./variable-group-history.vss.json --rev-version --token $ADS_MKT_PAT && rm *.vsix",
-    "publish-pipeline": "npx tfx-cli extension create --manifests ./pipeline-profiles.vss.json && npx tfx-cli extension publish --manifests ./pipeline-profiles.vss.json --rev-version --token $ADS_MKT_PAT && rm *.vsix"
+    "publish-pipeline": "npx tfx-cli extension create --manifests ./pipeline-profiles.vss.json && npx tfx-cli extension publish --manifests ./pipeline-profiles.vss.json --rev-version --token $ADS_MKT_PAT && rm *.vsix",
+    "dev:cert": "node scripts/create-dev-certificate.cjs",
+    "start-history-dev": "npm run dev:cert && ng serve azure-devops-variable-group-editor --configuration development --host localhost --port 4300 --ssl --ssl-cert .certs/localhost.pem --ssl-key .certs/localhost-key.pem",
+    "start-pipeline-dev": "npm run dev:cert && ng serve azure-devops-pipeline-profiles --configuration development --host localhost --port 4301 --ssl --ssl-cert .certs/localhost.pem --ssl-key .certs/localhost-key.pem",
+    "pack-history-dev": "node scripts/dev-extension.cjs pack history",
+    "pack-pipeline-dev": "node scripts/dev-extension.cjs pack pipeline",
+    "pack-dev": "npm run pack-history-dev && npm run pack-pipeline-dev",
+    "publish-history-dev": "node scripts/dev-extension.cjs publish history",
+    "publish-pipeline-dev": "node scripts/dev-extension.cjs publish pipeline",
+    "install-history-dev": "node scripts/dev-extension.cjs install history",
+    "install-pipeline-dev": "node scripts/dev-extension.cjs install pipeline"
   },
   "private": true,
   "dependencies": {
@@ -45,6 +55,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "tfx-cli": "0.24.2",
     "typescript": "~5.3.3"
   }
 }

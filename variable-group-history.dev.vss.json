@@ -1,0 +1,50 @@
+{
+    "manifestVersion": 1,
+    "id": "ads-var-history-dev",
+    "publisher": "FreesonLi",
+    "version": "0.0.1",
+    "name": "Variable Group History (Dev)",
+    "description": "Private localhost development extension for Variable Group History.",
+    "public": false,
+    "scopes": [
+        "vso.variablegroups_manage",
+        "vso.code_write",
+        "vso.work_write"
+    ],
+    "icons": {
+        "default": "images/variablehistory.png"
+    },
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "content": {
+        "details": {
+            "path": "./src/app/variable-group-history/readme.md"
+        }
+    },
+    "contributions": [
+        {
+            "id": "fl.var-history.hub",
+            "type": "ms.vss-web.hub",
+            "targets": [
+                "ms.vss-build-web.build-release-hub-group"
+            ],
+            "properties": {
+                "name": "Variable Groups (Dev)",
+                "iconName": "Variable",
+                "uri": "index.html"
+            }
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/freesonlee/azure-devops-utilities/tree/vs-extension"
+    },
+    "files": [],
+    "baseUri": "https://localhost:4300/"
+}

@@ -58,13 +58,50 @@ export class VariableGroupHistoryComponent {
   @ViewChild(MatTable) table!: MatTable<Variable>;
   project: IProjectInfo | undefined;
   taskAgentClient!: TaskAgentRestClient;
-  settings!: HistoryLocationSettings;
+  settings?: HistoryLocationSettings;
   collectionPath!: string;
   projectPath!: string;
   accessToken!: string;
   loading = true;
   expandedVariable?: Variable;
-  descColHiding = true;
+  descColHiding = false;
+  groupSearch = '';
+  variableSearch = '';
+  isLoading = false;
+  hasLoadedGroups = false;
+  loadError = '';
+  private loadedHistoryGroups = new WeakSet<VariableGroup>();
+  private originalGroupNames = new WeakMap<VariableGroup, string>();
+  private readonly columnsWithDescription = ['name', 'value', 'desc', 'expand', 'action'];
+  private readonly columnsWithoutDescription = ['name', 'value', 'expand', 'action'];
+
+  get variableColumns() {
+    return this.descColHiding ? this.columnsWithoutDescription : this.columnsWithDescription;
+  }
+
+  get visibleVariableGroups() {
+    const search = this.groupSearch.trim().toLowerCase();
+    return search ? this.variableGroups.filter(group => group.name.toLowerCase().includes(search)) : this.variableGroups;
+  }
+
+  get visibleVariables() {
+    const search = this.variableSearch.trim().toLowerCase();
+    // Search names and descriptions; do not expose secret values through search results.
+    return search ? this.variables.filter(variable =>
+      [variable.name, variable.desc, variable.description].some(text => text?.toLowerCase().includes(search))) : this.variables;
+  }
+
+  get secretCount() {
+    return this.variables.filter(variable => variable.isSecret && !variable.markForDeletion).length;
+  }
+
+  get pendingChangeCount() {
+    return this.variableGroups.reduce((total, group) => {
+      const changes = group.variablesForView?.filter(variable => variable.hasChanged || variable.markForDeletion).length ?? 0;
+      const renamed = this.originalGroupNames.has(group) && this.originalGroupNames.get(group) !== group.name;
+      return total + changes + (renamed ? 1 : 0) + (!changes && !renamed && group.hasChange ? 1 : 0);
+    }, 0);
+  }
 
   constructor(private httpClient: HttpClient, private dialog: MatDialog) {
     this.loadContribution();
@@ -89,65 +126,85 @@ export class VariableGroupHistoryComponent {
   }
 
   async reload() {
-    const variableGroups = await this.taskAgentClient.getVariableGroups(
-      this.project!.id
-    );
+    if (this.isLoading || !this.project) return;
+    this.isLoading = true;
+    this.loadError = '';
+    try {
+      const variableGroups = await this.taskAgentClient.getVariableGroups(
+        this.project!.id
+      );
 
-    this.loading = false;
-    const variableGroupSettings = variableGroups.find(
-      (g) => g.name === 'VariableGroupHistorySettings'
-    );
-    if (variableGroupSettings) {
-      this.settings = {
-        branch: variableGroupSettings.variables['Branch'].value,
-        path: variableGroupSettings.variables['Path'].value,
-        repository: variableGroupSettings.variables['Repository'].value,
-      };
-    }
+      this.hasLoadedGroups = true;
+      this.settings = undefined;
+      const variableGroupSettings = variableGroups.find(
+        (g) => g.name === 'VariableGroupHistorySettings'
+      );
+      if (variableGroupSettings) {
+        this.settings = {
+          branch: variableGroupSettings.variables['Branch'].value,
+          path: variableGroupSettings.variables['Path'].value,
+          repository: variableGroupSettings.variables['Repository'].value,
+        };
+      }
 
-    this.variableGroups = variableGroups.map((g) => ({
-      description: g.description,
-      id: g.id,
-      name: g.name,
-      hasBad: false,
-      hasChange: false,
-      variablesForView: Object.keys(g.variables).map((name) => ({
-        name: name,
-        value: g.variables[name].value,
-        isSecret: g.variables[name].isSecret,
-        hasChanged: false,
-        markForDeletion: false,
-        isBad: false,
-        desc: '',
-        description: '',
-        mlType: '|',
-        mlSource: '',
-        original: {
+      this.variableGroups = variableGroups.sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({
+        description: g.description,
+        id: g.id,
+        name: g.name,
+        hasBad: false,
+        hasChange: false,
+        variablesForView: Object.keys(g.variables).map((name) => ({
           name: name,
           value: g.variables[name].value,
           isSecret: g.variables[name].isSecret,
+          hasChanged: false,
+          markForDeletion: false,
+          isBad: false,
           desc: '',
           description: '',
           mlType: '|',
-          mlValue: '',
-        },
-      })),
-    }));
+          mlSource: '',
+          original: {
+            name: name,
+            value: g.variables[name].value,
+            isSecret: g.variables[name].isSecret,
+            desc: '',
+            description: '',
+            mlType: '|',
+            mlValue: '',
+          },
+        })),
+      }));
 
-    this.hasChange = false;
-    if (this.variableGroup?.id) {
-      const selectedGroup = this.variableGroups.find(
-        (g) => g.id == this.variableGroup?.id
-      );
-      if (selectedGroup) {
-        this.loadVariable(selectedGroup);
+      this.hasChange = false;
+      if (this.variableGroup?.id) {
+        const selectedGroup = this.variableGroups.find(
+          (g) => g.id == this.variableGroup?.id
+        );
+        if (selectedGroup) {
+          await this.loadVariable(selectedGroup);
+        } else {
+          this.variableGroup = undefined;
+          this.variables = [];
+        }
+      } else {
+        this.variableGroup = undefined;
+        this.variables = [];
       }
+    } catch {
+      this.loadError = 'Could not load variable groups. Check your Azure DevOps project permissions, then try again.';
+      this.hasLoadedGroups = false;
+    } finally {
+      this.isLoading = false;
+      this.loading = false;
     }
   }
 
   async newGroup() {
-    if (this.variableGroups.length === 0) {
+    if (!this.projectPath || this.isLoading) return;
+    if (!this.hasLoadedGroups) {
       await this.reload();
+      if (this.loadError) return;
     }
     this.variableGroups.push(
       (this.variableGroup = {
@@ -167,12 +224,16 @@ export class VariableGroupHistoryComponent {
         description: '',
         desc: '',
         isSecret: false,
-        hasChanged: false,
+        hasChanged: true,
         isBad: true,
         markForDeletion: false,
         mlSource: '',
       },
     ];
+    this.groupSearch = '';
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.checkChangeGroup(this.variableGroup);
   }
 
   async cloneGroup() {
@@ -181,29 +242,47 @@ export class VariableGroupHistoryComponent {
         id: 0,
         name: this.variableGroup?.name + ' Clone',
         description: '',
-        variablesForView: this.variableGroup!.variablesForView,
+        variablesForView: this.variableGroup!.variablesForView.map(variable => ({
+          ...variable,
+          original: variable.original ? { ...variable.original } : undefined,
+        })),
         hasBad: false,
         hasChange: true,
       })
     );
+    this.variables = this.variableGroup.variablesForView;
+    this.groupSearch = '';
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
+    this.checkChangeGroup(this.variableGroup);
     this.hasChange = true;
   }
 
   getVariableGroupHistoryUrl(grp: VariableGroup) {
-    return `${this.projectPath}/_git/${this.settings.repository
-      }?path=${encodeURIComponent(this.settings!.path)}${encodeURIComponent(
+    if (!this.settings) return '';
+    return `${this.projectPath}/_git/${this.settings!.repository
+      }?path=${encodeURIComponent(this.settings.path)}${encodeURIComponent(
         grp.name
       )}.json&version=GB${this.settings?.branch}&_a=history`;
   }
 
   async loadVariable(grp: VariableGroup) {
+    if (!this.originalGroupNames.has(grp) && grp.id) {
+      this.originalGroupNames.set(grp, grp.name);
+    }
+    this.variableSearch = '';
+    this.expandedVariable = undefined;
     this.variableGroup = grp;
     this.variables = grp.variablesForView;
 
-    await this.loadMore(grp);
+    if (grp.id && !this.loadedHistoryGroups.has(grp)) {
+      await this.loadMore(grp);
+      this.loadedHistoryGroups.add(grp);
+    }
   }
 
   private async loadMore(variableGroup: VariableGroup) {
+    if (!this.settings) return;
     let path = this.settings.path;
     if (path[path.length - 1] != '/') {
       path += '/';
@@ -220,7 +299,7 @@ export class VariableGroupHistoryComponent {
         )
       );
 
-      this.variables.forEach((v) => {
+      variableGroup.variablesForView.forEach((v) => {
         v.mlType = snapshot.variables[v.name]?.mlType ?? '|';
         v.original!.mlValue = v.mlSource =
           snapshot.variables[v.name]?.mlSource ?? '';
@@ -253,12 +332,17 @@ export class VariableGroupHistoryComponent {
   }
 
   checkChangeGroup(group: VariableGroup) {
-    group.hasChange =
-      this.variables.findIndex((v) => v.hasChanged || v.markForDeletion) >= 0;
-    this.hasChange = this.variableGroups.findIndex((g) => g.hasChange) >= 0;
+    const variables = group.variablesForView;
+    group.hasChange = !group.id || this.originalGroupNames.get(group) !== group.name || variables.some(v => v.hasChanged || v.markForDeletion);
+    this.hasChange = this.variableGroups.findIndex(g => g.hasChange) >= 0;
     group.hasBad = false;
     const uniqueNames = new Map<string, Variable>();
-    this.variables.forEach((v) => {
+    variables.forEach(v => {
+      if (v.markForDeletion) {
+        v.isBad = false;
+        return;
+      }
+
       if (!v.name) {
         v.isBad = true;
       } else {
@@ -343,6 +427,7 @@ export class VariableGroupHistoryComponent {
   }
 
   async save(data: DialogData) {
+    if (!this.settings) return;
     const payloads = this.generateUpdatePayload();
 
     const currentLastCommit: any = await firstValueFrom(
@@ -505,11 +590,11 @@ export class VariableGroupHistoryComponent {
       mlSource: '',
       mlType: '|',
       description: '',
-      desc: '',
+      desc: ''
     };
     this.variables.push(newVar);
-    this.variableGroup!.hasBad = true;
-
+    this.variableSearch = '';
+    this.checkChangeGroup(this.variableGroup!);
     this.table.renderRows();
   }
 
@@ -539,11 +624,11 @@ export class VariableGroupHistoryComponent {
       variable.mlSource = variable.original.mlValue;
       variable.mlType = variable.original.mlType;
     } else {
-      this.variableGroup!.variablesForView = this.variables =
-        this.variables.filter((v) => v != variable);
+      this.variableGroup!.variablesForView = this.variables = this.variables.filter(v => v != variable);
     }
 
     this.checkChange(variable);
+    this.table.renderRows();
   }
 
   onMultiLineValueChange(variable: Variable, $event: Event) {

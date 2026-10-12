@@ -1,6 +1,8 @@
 # A tool to manage Azure DevOps Variable Groups and Pipeline
 Please visit [Online](https://go.azuredevopshelpers.dev/)
 
+For private Marketplace extensions served from HTTPS localhost, see [Extension development](docs/development.md).
+
 ## Setup
 Add your ADS host in settings. You need your PAT pre-created in ADS. All ADS host settings is saved in browser local storage. PAT is not sent to server. BTW, there is no server for this tool. It's pure TS/JS hosted on Azure CDN.
 

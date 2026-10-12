@@ -1,278 +1,222 @@
-<mat-drawer-container autosize>
-  <mat-drawer mode="side" opened>
-    <button mat-raised-button (click)="newProfile()">Add new profile</button>
-    <mat-action-list>
-      <mat-list-item *ngFor="let profile of profiles">
-        <button mat-list-item (click)="loadProfile(profile)">{{profile.name}}</button>
-        
-      </mat-list-item>
-      
-    </mat-action-list>
+<main class="profiles-section">
+  <div class="page-heading">
+    <div><h1>Pipeline Profiles</h1><p>Save reusable configurations and queue pipeline runs.</p></div>
+    <div class="heading-actions">
+      <button class="ui-button" (click)="newProfile()" [disabled]="!projectPath || isLoading"><mat-icon>add</mat-icon>New profile</button>
+      <button class="ui-button primary" (click)="save()" [disabled]="!profile || isLoadingConfig || (selectedPipeline && !canSave())"><mat-icon>save</mat-icon>Save profile</button>
+    </div>
+  </div>
 
-  </mat-drawer>
-  <mat-drawer-content>
+  <section class="connection-bar" aria-label="Azure DevOps project">
+    <span class="server-icon"><mat-icon>dns</mat-icon></span>
+    <span class="project-name">{{project?.name}}</span>
+    <span class="storage-note"><mat-icon>bookmark_border</mat-icon>Profiles saved to your Azure DevOps account</span>
+    <button class="ui-button reload-button" (click)="reload()" [disabled]="!projectPath || isLoading || isLoadingConfig || isRunning" aria-label="Reload pipelines"><mat-icon [class.spinning]="isLoading">refresh</mat-icon><span>{{isLoading ? 'Loading…' : 'Reload'}}</span></button>
+  </section>
+  <div class="error-banner" *ngIf="loadError" role="alert"><mat-icon>error_outline</mat-icon>{{loadError}}</div>
 
-    <mat-drawer-container autosize>
-      <mat-drawer mode="side" opened>
-        <button mat-raised-button (click)="newProfilePipeline()">Add new build to {{profile?.name}}</button>
-        <!-- <button mat-raised-button (click)="runProfile()">Run all</button> -->
-        <button mat-raised-button (click)="deleteProfile()" color="warn">Delete profile</button>
-        <mat-action-list>
-          <mat-list-item *ngFor="let pipeline of profile?.pipelines">
-            <button mat-list-item (click)="pipelineDefSelected(pipeline);">{{pipeline.name}}</button>
-          </mat-list-item>
-          
-        </mat-action-list>
-      </mat-drawer>   
-      <mat-drawer-content *ngIf="selectedPipeline!=null">
-        <br/>
-        <div *ngIf="!selectedPipeline.isNew">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="{{this.projectPath}}/_build?definitionId={{selectedPipeline.pipelineId}}" target="_blank">{{ selectedPipeline.name }}</a></div>
+  <div class="mobile-pickers" [class.has-profile]="!!profile" *ngIf="projectPath && profiles.length">
+    <label>Profile
+      <select [ngModel]="profile" (ngModelChange)="loadProfile($event)" [disabled]="isLoadingConfig || isRunning" aria-label="Choose profile">
+        <option [ngValue]="undefined" disabled>Choose a profile</option>
+        <option *ngFor="let item of profiles" [ngValue]="item">{{item.name}}</option>
+      </select>
+    </label>
+    <label *ngIf="profile">Pipeline
+      <select [ngModel]="selectedPipeline" (ngModelChange)="pipelineDefSelected($event)" [disabled]="!profile.pipelines.length || isLoadingConfig || isRunning" aria-label="Choose profile pipeline">
+        <option [ngValue]="undefined" disabled>Choose a pipeline</option>
+        <option *ngFor="let item of profile.pipelines" [ngValue]="item">{{item.name || 'New pipeline'}}</option>
+      </select>
+    </label>
+    <button class="icon-button" *ngIf="profile" (click)="newProfilePipeline()" [disabled]="isLoadingConfig || isRunning" aria-label="Add pipeline" title="Add pipeline"><mat-icon>add</mat-icon></button>
+    <button class="icon-button danger" *ngIf="profile" (click)="deleteProfile()" [disabled]="isLoadingConfig || isRunning" aria-label="Delete profile" title="Delete profile"><mat-icon>delete_outline</mat-icon></button>
+  </div>
 
-        <mat-form-field class="pipelineList" *ngIf="selectedPipeline.isNew">
-          <input type="text"
-                 matInput
-                 [formControl]="pipelineControl"
-                 [matAutocomplete]="auto">
-          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value);resourcesPanel.close();">
-            <mat-option *ngFor="let pipeline of filteredPipelines | async" [value]="pipeline.fullName">
-              {{pipeline.fullName}}
-            </mat-option>
-          </mat-autocomplete>
-          <button *ngIf="selectedPipeline" matSuffix mat-icon-button aria-label="Clear" (click)="pipelineControl.setValue('')">
-            <mat-icon>close</mat-icon>
-          </button>
-        </mat-form-field>
+  <div class="workspace" [class.no-profile]="!profile" *ngIf="projectPath; else noServer">
+    <aside class="selection-panel profiles-panel" aria-label="Profiles">
+      <div class="panel-heading"><h2>Profiles <span class="count">{{profiles.length}}</span></h2></div>
+      <label class="search-field"><mat-icon>search</mat-icon><input type="search" [(ngModel)]="profileSearch" placeholder="Find a profile…" aria-label="Find a profile"></label>
+      <div class="selection-list">
+        <button *ngFor="let item of visibleProfiles" class="list-button profile-button" [class.selected]="profile === item" [attr.aria-pressed]="profile === item" (click)="loadProfile(item)" [disabled]="isLoadingConfig || isRunning" [attr.title]="item.name">
+          <mat-icon>folder_open</mat-icon><span class="list-copy"><strong>{{item.name}}</strong><small>{{item.pipelines.length}} {{item.pipelines.length === 1 ? 'pipeline' : 'pipelines'}}</small></span>
+        </button>
+        <div class="list-empty" *ngIf="!visibleProfiles.length"><mat-icon>folder_open</mat-icon><p>{{profileSearch ? 'No matching profiles' : 'No profiles yet'}}</p></div>
+      </div>
+      <div class="panel-footer"><button class="ui-button" (click)="newProfile()" [disabled]="isLoading"><mat-icon>add</mat-icon>New profile</button></div>
+    </aside>
 
-        <mat-expansion-panel #branchSelect *ngIf="selectedPipeline!.pipelineId" (afterExpand)="branchControl.setValue('');">
-          <mat-expansion-panel-header>
-          <mat-panel-title>
-          Branch
-          </mat-panel-title>
-          <mat-panel-description>
-          {{selectedPipeline!.configurations.branch}}
-          </mat-panel-description>
-          </mat-expansion-panel-header>
-         
-          <mat-form-field>
-            <input type="text"
-                   matInput
-                   [formControl]="branchControl"
-                   (blur)="branchBlur()"
-                   [matAutocomplete]="auto">
-            <mat-autocomplete #auto="matAutocomplete" (optionSelected)="branchSelected($event)">
-              <mat-option *ngFor="let option of filteredBranches | async" [value]="option">
-                {{option}}
-              </mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
+    <aside class="selection-panel pipelines-panel" *ngIf="profile" aria-label="Pipelines in profile">
+      <div class="panel-heading"><h2>Pipelines <span class="count">{{profile.pipelines.length}}</span></h2><button class="icon-button" (click)="newProfilePipeline()" [disabled]="isLoadingConfig || isRunning" aria-label="Add pipeline" title="Add pipeline"><mat-icon>add</mat-icon></button></div>
+      <div class="profile-caption">{{profile.name}}</div>
+      <label class="search-field"><mat-icon>search</mat-icon><input type="search" [(ngModel)]="profilePipelineSearch" placeholder="Find a pipeline…" aria-label="Find a pipeline in profile"></label>
+      <div class="selection-list">
+        <button *ngFor="let item of visibleProfilePipelines" class="list-button pipeline-button" [class.selected]="selectedPipeline === item" [attr.aria-pressed]="selectedPipeline === item" (click)="pipelineDefSelected(item)" [disabled]="isLoadingConfig || isRunning" [attr.title]="item.name || 'New pipeline'">
+          <mat-icon>account_tree</mat-icon><span class="list-copy"><strong>{{item.name || 'New pipeline'}}</strong><small>{{item.configurations.branch || 'Choose a pipeline'}}</small></span>
+        </button>
+        <div class="list-empty" *ngIf="!visibleProfilePipelines.length"><mat-icon>account_tree</mat-icon><p>{{profilePipelineSearch ? 'No matching pipelines' : 'No pipelines added'}}</p></div>
+      </div>
+      <div class="panel-footer">
+        <button class="ui-button" (click)="newProfilePipeline()" [disabled]="isLoadingConfig || isRunning"><mat-icon>add</mat-icon>Add pipeline</button>
+        <button class="ui-button text-button danger" (click)="deleteProfile()" [disabled]="isLoadingConfig || isRunning"><mat-icon>delete_outline</mat-icon>Delete profile</button>
+      </div>
+    </aside>
 
-          </mat-expansion-panel>
-
-          
-          <div *ngFor="let para of parameters">
-
-            <mat-form-field *ngIf="para.type=='string'&&!para.values">
-              <mat-label>{{para.displayName || para.name}}</mat-label>
-              <input type="text" matInput [(ngModel)]="selectedPipeline!.configurations.parameterValues[para.name]">
-              <mat-error *ngIf="stringParaControl[para.name].hasError('required')">This is <strong>required</strong></mat-error>
+    <section class="editor-panel" aria-label="Pipeline configuration">
+      <ng-container *ngIf="selectedPipeline; else noPipeline">
+        <div class="editor-heading">
+          <div class="editor-title"><h2>{{selectedPipeline.name || 'Add a pipeline'}}</h2><div class="pipeline-meta"><span>{{profile?.name}}</span><span *ngIf="selectedPipeline.pipelineId">Pipeline #{{selectedPipeline.pipelineId}}</span></div></div>
+          <a *ngIf="selectedPipeline.pipelineId" class="ui-button text-button open-pipeline" [href]="projectPath + '/_build?definitionId=' + selectedPipeline.pipelineId" target="_blank" rel="noopener noreferrer" aria-label="Open pipeline in Azure DevOps"><span>Open in Azure DevOps</span><mat-icon>open_in_new</mat-icon></a>
+        </div>
+        <mat-progress-bar mode="indeterminate" *ngIf="isLoadingConfig"></mat-progress-bar>
+        <div class="config-scroll" [attr.aria-busy]="isLoadingConfig">
+          <div class="error-banner" *ngIf="configurationError" role="alert"><mat-icon>error_outline</mat-icon>{{configurationError}}<button class="ui-button" (click)="pipelineDefSelected(selectedPipeline)">Retry</button></div>
+          <div class="loading-message" *ngIf="isLoadingConfig">Loading pipeline configuration…</div>
+          <section class="pipeline-picker section-card" *ngIf="selectedPipeline.isNew">
+            <h3>Choose a pipeline</h3>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Available pipeline</mat-label>
+              <input type="text" matInput [formControl]="pipelineControl" [matAutocomplete]="auto" [readonly]="isLoadingConfig">
+              <mat-autocomplete #auto="matAutocomplete" (optionSelected)="pipelineSelected($event.option.value)">
+                <mat-option *ngFor="let item of filteredPipelines | async" [value]="item.fullName">{{item.fullName}}</mat-option>
+              </mat-autocomplete>
+              <button matSuffix mat-icon-button aria-label="Clear pipeline search" (click)="pipelineControl.setValue('')"><mat-icon>close</mat-icon></button>
             </mat-form-field>
+          </section>
 
-            <div *ngIf="para.type=='string'&&para.values&&para.values.length<=5">
-              <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-selection-list [multiple]="false" (selectionChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event.options[0].value;stagePanel.close();stages=[]" >
-                <mat-list-option *ngFor="let option of para.values" checkboxPosition="before" [value]="option" [selected]="
-                  selectedPipeline!.configurations.parameterValues[para.name] ?
-                    (option == selectedPipeline!.configurations.parameterValues[para.name]) : 
-                    (option==para.default || option==para.values[0])">
-                  {{option}}
-                </mat-list-option>                
-              </mat-selection-list>
-            </div>
-
-            <mat-form-field *ngIf="para.type=='string'&&para.values&&para.values.length>5">
-              <mat-label>{{para.displayName || para.name}}</mat-label>
-              <mat-select [value]="selectedPipeline!.configurations.parameterValues[para.name]||para.default||para.values[0]" (valueChange)="selectedPipeline!.configurations.parameterValues[para.name]=$event;stagePanel.close();stages=[]">
-                <mat-option *ngFor="let option of para.values" [value]="option">
-                  {{option}}
-                </mat-option>                
-              </mat-select>
-            </mat-form-field>
-
-            <mat-checkbox *ngIf="para.type=='boolean'" [checked]="selectedPipeline!.configurations.parameterValues[para.name]" (change)="selectedPipeline!.configurations.parameterValues[para.name]=$event.checked;stagePanel.close();stages=[]">{{para.displayName || para.name}}</mat-checkbox>
-
-            @if (para.type == 'object') {
-              <mat-form-field>
-                <mat-label>{{para.displayName || para.name}}</mat-label>
-                <textarea class="ta-ml-input" matInput #objectParameters cdkTextareaAutosize [value]="selectedPipeline!.configurations.parameterValues[para.name]" (input)="updateObjectParaValue(para.name, $event)"></textarea>
+          <ng-container *ngIf="selectedPipeline.pipelineId && !isLoadingConfig">
+            <mat-expansion-panel class="config-panel" #branchSelect (afterExpand)="branchControl.setValue('')">
+              <mat-expansion-panel-header><mat-panel-title><mat-icon>call_split</mat-icon>Branch</mat-panel-title><mat-panel-description>{{selectedPipeline.configurations.branch}}</mat-panel-description></mat-expansion-panel-header>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Source branch</mat-label>
+                <input type="text" matInput [formControl]="branchControl" (blur)="branchBlur()" [matAutocomplete]="branches">
+                <mat-autocomplete #branches="matAutocomplete" (optionSelected)="branchSelected($event)">
+                  <mat-option *ngFor="let option of filteredBranches | async" [value]="option">{{option}}</mat-option>
+                </mat-autocomplete>
               </mat-form-field>
-            }
+            </mat-expansion-panel>
 
-          </div>
+            <section class="section-card parameters-section">
+              <div class="section-heading"><h3><mat-icon>tune</mat-icon>Parameters</h3><span class="count">{{parameters?.length || 0}}</span></div>
+              <p class="section-help">Values used when this pipeline runs.</p>
+              <p class="empty-copy" *ngIf="!parameters?.length">This pipeline has no parameters.</p>
+              <div class="parameter-grid">
+                <ng-container *ngFor="let para of parameters">
+                  <label class="parameter-field" *ngIf="para.type=='string' && !para.values">
+                    <span>{{para.displayName || para.name}} <span class="required">*</span></span>
+                    <input type="text" [(ngModel)]="selectedPipeline.configurations.parameterValues[para.name]" (ngModelChange)="parametersChanged()" [attr.aria-label]="para.displayName || para.name" required>
+                    <small class="field-error" *ngIf="!selectedPipeline.configurations.parameterValues[para.name]">A value is required.</small>
+                  </label>
+                  <label class="parameter-field" *ngIf="para.type=='string' && para.values">
+                    <span>{{para.displayName || para.name}}</span>
+                    <select [(ngModel)]="selectedPipeline.configurations.parameterValues[para.name]" (ngModelChange)="parametersChanged()" [attr.aria-label]="para.displayName || para.name">
+                      <option *ngFor="let option of para.values" [ngValue]="option">{{option}}</option>
+                    </select>
+                  </label>
+                  <label class="parameter-field" *ngIf="para.type=='number'">
+                    <span>{{para.displayName || para.name}}</span>
+                    <input type="number" [(ngModel)]="selectedPipeline.configurations.parameterValues[para.name]" (ngModelChange)="parametersChanged()" [attr.aria-label]="para.displayName || para.name">
+                  </label>
+                  <label class="boolean-field" *ngIf="para.type=='boolean'">
+                    <input type="checkbox" [(ngModel)]="selectedPipeline.configurations.parameterValues[para.name]" (ngModelChange)="parametersChanged()">
+                    <span>{{para.displayName || para.name}}</span>
+                  </label>
+                  <label class="parameter-field object-field" *ngIf="para.type=='object'">
+                    <span>{{para.displayName || para.name}}</span>
+                    <textarea class="code-input" [value]="selectedPipeline.configurations.parameterValues[para.name]" (input)="updateObjectParaValue(para.name, $event);parametersChanged()" rows="4" spellcheck="false" [attr.aria-label]="para.displayName || para.name"></textarea>
+                  </label>
+                </ng-container>
+              </div>
+            </section>
 
-          <mat-expansion-panel [(expanded)]="isVariablePanelOpen">
-            <mat-expansion-panel-header>
-              <mat-panel-title>Variables</mat-panel-title>
-            </mat-expansion-panel-header>
-            
-            <mat-label *ngIf="(selectedPipeline!.configurations.variables).length == 0 ">
-              No variable defined for this pipeline
-            </mat-label>
+            <mat-expansion-panel class="config-panel" [(expanded)]="isVariablePanelOpen">
+              <mat-expansion-panel-header><mat-panel-title><mat-icon>data_object</mat-icon>Variables</mat-panel-title><mat-panel-description>{{selectedPipeline.configurations.variables.length}} variables</mat-panel-description></mat-expansion-panel-header>
+              <div class="variable-toolbar"><span class="section-help">Pipeline defaults and profile overrides.</span><button class="ui-button add-button" (click)="addVariable()"><mat-icon>add</mat-icon>Add variable</button></div>
+              <div class="variable-table-scroll">
+                <table mat-table [dataSource]="selectedPipeline.configurations.variables" #variableTable multiTemplateDataRows class="variable-table">
+                  <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef>Name</th>
+                    <td mat-cell *matCellDef="let variable">
+                      <input class="cell-input" [(ngModel)]="variable.name" spellcheck="false" (change)="variable.nameExists=selectedPipeline.checkVariableName(variable)" [attr.aria-label]="'Name: ' + (variable.name || 'new variable')" placeholder="VARIABLE_NAME">
+                      <span class="field-error" *ngIf="variable.nameExists">Name already defined</span>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="value">
+                    <th mat-header-cell *matHeaderCellDef>Value</th>
+                    <td mat-cell *matCellDef="let variable"><input class="cell-input" [(ngModel)]="variable.value" spellcheck="false" [attr.aria-label]="'Value: ' + (variable.name || 'new variable')" placeholder="Enter a value"></td>
+                  </ng-container>
+                  <ng-container matColumnDef="expand">
+                    <th mat-header-cell *matHeaderCellDef><span class="sr-only">Multiline value</span></th>
+                    <td mat-cell *matCellDef="let variable"><button class="icon-button" [attr.aria-label]="'Multiline: ' + (variable.name || 'new variable')" [attr.aria-expanded]="expandedVariable === variable" (click)="expandedVariable=expandedVariable===variable ? undefined : variable"><mat-icon>{{expandedVariable===variable ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}}</mat-icon></button></td>
+                  </ng-container>
+                  <ng-container matColumnDef="action">
+                    <th mat-header-cell *matHeaderCellDef><span class="sr-only">Actions</span></th>
+                    <td mat-cell *matCellDef="let variable">
+                      <button class="icon-button danger" (click)="selectedPipeline.deleteVariable(variable);variableTable.renderRows()" *ngIf="!variable.allowOverride || variable.factoryValue==undefined" [attr.aria-label]="'Delete: ' + (variable.name || 'new variable')"><mat-icon>delete_outline</mat-icon></button>
+                      <button class="icon-button" (click)="variable.value=variable.factoryValue" *ngIf="variable.allowOverride && variable.factoryValue!=undefined && variable.value!=variable.factoryValue" [attr.aria-label]="'Reset: ' + variable.name" title="Reset to pipeline default"><mat-icon>undo</mat-icon></button>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="multilineValue">
+                    <td mat-cell *matCellDef="let variable" colspan="4">
+                      <div class="multiline-editor" *ngIf="expandedVariable===variable">
+                        <label>Newline handling<select [(ngModel)]="variable.mlType" (ngModelChange)="variable.value=evaluateVariable(variable.mlType, mlinput.value)" [attr.aria-label]="'Newline handling: ' + variable.name"><option value="|">Keep newlines</option><option value=">">Replace newlines with spaces</option></select></label>
+                        <textarea #mlinput class="code-input" [value]="variable.mlSource" (input)="onMultiLineValueChange(variable, $event)" rows="4" spellcheck="false" [attr.aria-label]="'Multiline value: ' + variable.name"></textarea>
+                      </div>
+                    </td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="['name','value','expand','action']"></tr>
+                  <tr mat-row *matRowDef="let row; columns:['name','value','expand','action']" [class.invalid-row]="row.nameExists"></tr>
+                  <tr mat-row *matRowDef="let row; columns:['multilineValue']" class="detail-row"></tr>
+                </table>
+              </div>
+              <p class="empty-copy" *ngIf="!selectedPipeline.configurations.variables.length">No variables defined for this pipeline.</p>
+            </mat-expansion-panel>
 
-            <table mat-table [dataSource]="this.selectedPipeline!.configurations.variables" #variableTable multiTemplateDataRows>
+            <mat-expansion-panel class="config-panel" (afterExpand)="loadStages(false)" #stagePanel [(expanded)]="isStagePanelOpen">
+              <mat-expansion-panel-header><mat-panel-title><mat-icon>list_alt</mat-icon>Stages to run</mat-panel-title><mat-panel-description>{{stages.length ? stages.length + ' stages' : 'Load stages'}}</mat-panel-description></mat-expansion-panel-header>
+              <mat-progress-bar mode="indeterminate" *ngIf="loadingStages"></mat-progress-bar>
+              <div *ngIf="stages.length > 1" class="stages-list">
+                <mat-checkbox [checked]="hasNoSkippedStage()" (change)="toggleAllStages($event)">Run all stages</mat-checkbox>
+                <mat-checkbox *ngFor="let stage of stages" [checked]="!selectedPipeline.configurations.stagesToSkip[stage.stage]" (change)="selectedPipeline.configurations.stagesToSkip[stage.stage]=!$event.checked">{{stage.displayName || stage.stage}}</mat-checkbox>
+              </div>
+              <p class="empty-copy" *ngIf="stages.length <= 1 && !loadingStages">Stage selection is available for multi-stage pipelines.</p>
+            </mat-expansion-panel>
 
-              <ng-container matColumnDef="name">
-                <td mat-cell *matCellDef="let variable" width="30%">
-                  <mat-form-field class="variableNameInput variableNameCell">
-                    <input type="text" matInput  [(ngModel)]="variable.name" spellcheck="false" (change)="variable.nameExists=this.selectedPipeline!.checkVariableName(variable)">
-                  </mat-form-field>
-                  <mat-error *ngIf="variable.nameExists">
-                    Variable '{{variable.name}}' is already defined
-                  </mat-error>
-                  
-                </td>
-              </ng-container>
-        
-              <ng-container matColumnDef="action">
-                <td mat-cell *matCellDef="let variable" width="100px">
-                  <button mat-icon-button color="warn" (click)="selectedPipeline!.deleteVariable(variable);variableTable.renderRows()" *ngIf="!variable.allowOverride||variable.factoryValue==undefined">
-                    <mat-icon>delete forever</mat-icon>
-                  </button>    
-                  <button mat-icon-button (click)="variable.value=variable.factoryValue" *ngIf="variable.allowOverride&&variable.factoryValue!=undefined&&variable.value!=variable.factoryValue">
-                    <mat-icon>undo</mat-icon>
-                  </button>         
-                </td>
-              </ng-container>
-        
-              <ng-container matColumnDef="value">
-                <td mat-cell *matCellDef="let variable" width="60%">
-                  <mat-form-field class="variableValueInput variableValueCell">
-                    <input type="text" matInput  [(ngModel)]="variable.value" spellcheck="false">
-                  </mat-form-field>
-                </td>
-              </ng-container>
-
-              <ng-container matColumnDef="expand">
-                <td mat-cell *matCellDef="let variable" width="10px">
-                  <button mat-icon-button aria-label="multiple line" (click)="(expandedVariable = expandedVariable === variable ? null : variable); $event.stopPropagation()">
-                    <mat-icon *ngIf="expandedVariable !== variable">keyboard_arrow_down</mat-icon>
-                    <mat-icon *ngIf="expandedVariable === variable">keyboard_arrow_up</mat-icon>
-                  </button>
-                </td>
-              </ng-container>
-
-              <ng-container matColumnDef="multilineValue">
-                <td mat-cell *matCellDef="let variable" [attr.colspan]="3">
-                  <div class="example-element-detail"
-                       [@detailExpand]="variable == expandedVariable ? 'expanded' : 'collapsed'">
-        
-                      <mat-select hideSingleSelectionIndicator="true" class="mloption" [(value)]="variable.mlType" (valueChange)="variable.value=evaluateVariable(variable.mlType, mlinput.value);">
-                        <mat-option value="|" class="mloption-item">Keep newlines</mat-option>
-                        <mat-option value=">" class="mloption-item">Replace newlines with spaces</mat-option>
-                      </mat-select>
-        
-                    <mat-form-field class="value-multiline-input">
-                      <textarea class="ta-ml-input" matInput cdkTextareaAutosize #mlinput [value]="variable.mlSource" cdkAutosizeMaxRows="5" (input)="onMultiLineValueChange(variable, $event)"></textarea>
-                    </mat-form-field>
-                  </div>
-                </td>
-              </ng-container>
-        
-              <tr mat-row *matRowDef="let row; columns: ['name','value', 'expand', 'action'];" ></tr>
-              <tr mat-row *matRowDef="let row; columns: ['multilineValue']" class="example-detail-row"></tr>
-            </table>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel (afterExpand)="loadStages(false)" #stagePanel [hidden]="stages.length >= 2" [(expanded)]="isStagePanelOpen">
-            <mat-expansion-panel-header>
-              <mat-panel-title>Stages to run</mat-panel-title>
-            </mat-expansion-panel-header>
-
-            <div *ngIf="stages.length > 1">
-            <mat-checkbox [checked]="hasNoSkippedStage()" (change)="toggleAllStages($event)">Run all stages</mat-checkbox>
-            <mat-selection-list>
-              <mat-list-option *ngFor="let stage of stages" checkboxPosition="before" [selected]="!selectedPipeline!.configurations.stagesToSkip[stage.stage]" 
-                (selectedChange)="selectedPipeline!.configurations.stagesToSkip[stage.stage]=!$event">
-                {{stage.displayName || stage.stage}}
-              </mat-list-option>
-            </mat-selection-list>
-          </div>
-          <div *ngIf="stages.length <= 1">
-              <mat-label>Configuration is only available for multi-stage pipelines.</mat-label>
-          </div>
-            <mat-progress-bar mode="indeterminate" *ngIf="loadingStages"></mat-progress-bar>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel #resourcesPanel>
-            <mat-expansion-panel-header>
-              <mat-panel-title>Resources</mat-panel-title>
-            </mat-expansion-panel-header>
-
-            <mat-label *ngIf="(selectedPipeline!.configurations.resources.repositories | keyvalue).length == 0 &&
-               (selectedPipeline!.configurations.resources.pipelines | keyvalue ).length == 0 ">
-              No resources available for this pipeline
-            </mat-label>
-
-            <div  *ngFor="let repo of selectedPipeline!.configurations.resources.repositories | keyvalue">
-
-              <mat-form-field class="variableValueCell">
-                <mat-label>
-                  <mat-icon>code</mat-icon>
-                  Source of {{repo.value.repository}} [{{repo.value.name.split('/')[1]}}]</mat-label>
-                <input type="text" matInput [placeholder]="'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). Leave empty to use default (' + repo.value.ref.split('/')[2] + ').'" [(ngModel)]="repo.value.selectedRef">
-              </mat-form-field>
-            </div>          
-
-            <div  *ngFor="let pl of selectedPipeline!.configurations.resources.pipelines| keyvalue">
-              <mat-form-field class="variableValueCell">
-                <mat-label>
-                  <mat-icon>redeem</mat-icon>
-                  Build of {{pl.key}} [{{pl.value.source}}] {{ pl.value.tags ? ('on #' + pl.value.tags.join(',')):  '' }}
-                </mat-label>
-                <input type="text" matInput [(ngModel)]="pl.value.selectedBranch" (ngModelChange)="resolveBuildId(pl.key)" [ngModelOptions]="{ updateOn: 'blur' }">
-                <mat-icon matSuffix  [matTooltip]="
-                'Use &quot;&lt;self&gt;&quot; for same branch as pipeline (' + selectedPipeline!.configurations.branch + '). ' + 
-                'Leave empty to use default yaml(' + pl.value.branch + '). ' + 
-                'Add #tag1,tag2 behind to search for a build with tags' + 
-                'Or put quoted build number or build id'">info</mat-icon>
-                <mat-hint *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]">Resolved to 
-                  <a target="_blank" href="{{this.projectPath}}/_build/results?buildId={{selectedPipeline!.resolvedPipelineResources[pl.key].id}}">{{selectedPipeline!.resolvedPipelineResources[pl.key].buildNumber}} {{selectedPipeline!.resolvedPipelineResources[pl.key].triggerMessage}}</a>
-                  &nbsp;&nbsp;
-                  <button mat-icon-button class="refreshbutton" (click)="resolveBuildId(pl.key)">
-                    <mat-icon >refresh</mat-icon>
-                  </button>&nbsp;&nbsp;
-                  <button [matTooltip]="'Copy build id to clipboard'" mat-icon-button class="refreshbutton" *ngIf="selectedPipeline!.resolvedPipelineResources[pl.key]" (click)="copyBuildId(selectedPipeline!.resolvedPipelineResources[pl.key].id)">
-                    <mat-icon >content_copy</mat-icon>
-                  </button>
-                </mat-hint>
-                <mat-hint *ngIf="!selectedPipeline!.resolvedPipelineResources[pl.key]">
-                  <a href="javascript:void()" (click)="resolveBuildId(pl.key)">Resolve Build</a>
-                </mat-hint>
-                <mat-hint *ngIf="resolvedFailure[pl.key]">Can't resolve to a build: {{resolvedFailure[pl.key]}}</mat-hint>
-              </mat-form-field>
-               <!--
-              <mat-form-field class="artifactNameInput">
-                <mat-label>
-                  Artifact name
-                </mat-label>
-                  <input type="text" matInput placeholder="Enter artifact name to allow unsuccessful build" [(ngModel)]="pl.value.artifact">
-              </mat-form-field>
-                  -->
-            </div>
-
-          </mat-expansion-panel>
-
-          <div>
-            <mat-checkbox [(ngModel)]="selectedPipeline!.configurations.enableDiag">Enable system diagnostics</mat-checkbox>
-          </div>
-
-          <button mat-raised-button [disabled]="!canSave()" (click)="save()">Save</button>
-          <button mat-raised-button (click)="this.selectedPipeline!.addNewVariable();variableTable.renderRows()">Add Variable</button>
-          <button mat-raised-button [disabled]="!canSave()" (click)="runPipeline(selectedPipeline, true)">Run</button>
-          <button mat-raised-button (click)="deletePipeline()" color="warn">Delete</button>
-          &nbsp;&nbsp;<a href="https://github.com/freesonlee/azure-devops-utilities/issues/new" target="_blank">Report Issue</a>
-      </mat-drawer-content>
-  
-    </mat-drawer-container>
-   
-  </mat-drawer-content>
-</mat-drawer-container>
+            <mat-expansion-panel class="config-panel" #resourcesPanel>
+              <mat-expansion-panel-header><mat-panel-title><mat-icon>inventory_2</mat-icon>Resources</mat-panel-title><mat-panel-description>Repository &amp; build versions</mat-panel-description></mat-expansion-panel-header>
+              <p class="empty-copy" *ngIf="!(selectedPipeline.configurations.resources.repositories | keyvalue).length && !(selectedPipeline.configurations.resources.pipelines | keyvalue).length">No resource overrides available for this pipeline.</p>
+              <label *ngFor="let repo of selectedPipeline.configurations.resources.repositories | keyvalue" class="parameter-field resource-field">
+                <span><mat-icon>code</mat-icon>Repository: {{repo.key}}</span>
+                <input [(ngModel)]="repo.value.selectedRef" [attr.aria-label]="'Repository branch: ' + repo.key" placeholder="Default branch, or <self>">
+                <small>Use &lt;self&gt; for the pipeline branch. Leave empty to use {{repo.value.ref || 'the repository default'}}.</small>
+              </label>
+              <div *ngFor="let pl of selectedPipeline.configurations.resources.pipelines | keyvalue" class="resource-field">
+                <label class="parameter-field"><span><mat-icon>account_tree</mat-icon>Build: {{pl.value.source}}</span><input [(ngModel)]="pl.value.selectedBranch" (ngModelChange)="resolveBuildId(pl.key)" [ngModelOptions]="{updateOn:'blur'}" [attr.aria-label]="'Build version: ' + pl.key" placeholder="Branch, build ID, or quoted build number"><small>Use &lt;self&gt; for the pipeline branch. Add #tags to filter builds.</small></label>
+                <div class="resolved-build" *ngIf="selectedPipeline.resolvedPipelineResources[pl.key]">
+                  <a [href]="projectPath + '/_build/results?buildId=' + selectedPipeline.resolvedPipelineResources[pl.key].id" target="_blank" rel="noopener noreferrer">{{selectedPipeline.resolvedPipelineResources[pl.key].buildNumber}}</a>
+                  <span>{{selectedPipeline.resolvedPipelineResources[pl.key].triggerMessage}}</span>
+                  <button class="icon-button" (click)="resolveBuildId(pl.key)" aria-label="Refresh build version"><mat-icon>refresh</mat-icon></button>
+                  <button class="icon-button" (click)="copyBuildId(selectedPipeline.resolvedPipelineResources[pl.key].id)" aria-label="Copy build ID"><mat-icon>content_copy</mat-icon></button>
+                </div>
+                <button class="ui-button text-button" *ngIf="!selectedPipeline.resolvedPipelineResources[pl.key]" (click)="resolveBuildId(pl.key)">Resolve build</button>
+                <p class="field-error" *ngIf="resolvedFailure[pl.key]">{{resolvedFailure[pl.key]}}</p>
+              </div>
+            </mat-expansion-panel>
+          </ng-container>
+        </div>
+        <div class="editor-footer">
+          <label class="diagnostics-toggle"><input type="checkbox" [(ngModel)]="selectedPipeline.configurations.enableDiag">Enable diagnostics</label>
+          <div class="run-actions"><button class="ui-button text-button danger" (click)="deletePipeline()" [disabled]="isLoadingConfig || isRunning" aria-label="Delete pipeline"><mat-icon>delete_outline</mat-icon><span>Delete</span></button><button class="ui-button primary" (click)="runSelectedPipeline()" [disabled]="!canSave() || isRunning"><mat-icon>{{isRunning ? 'hourglass_empty' : 'play_arrow'}}</mat-icon>{{isRunning ? 'Queuing…' : 'Run pipeline'}}</button></div>
+        </div>
+      </ng-container>
+      <ng-template #noPipeline>
+        <div class="empty-state"><span class="empty-icon"><mat-icon>{{isLoading ? 'sync' : (profile ? 'account_tree' : 'folder_open')}}</mat-icon></span>
+          <h2>{{isLoading ? 'Loading pipelines' : (!profile ? (profiles.length ? 'Choose a profile' : 'Create your first profile') : (profile.pipelines.length ? 'Choose a pipeline' : 'Add a pipeline'))}}</h2>
+          <p>{{!profile ? 'Organize pipeline configurations in reusable profiles.' : 'Select a pipeline to configure its branch, parameters, variables, and stages.'}}</p>
+          <button class="ui-button primary" *ngIf="!profile && !profiles.length" (click)="newProfile()" [disabled]="isLoading"><mat-icon>add</mat-icon>New profile</button>
+          <button class="ui-button primary" *ngIf="profile && !profile.pipelines.length" (click)="newProfilePipeline()"><mat-icon>add</mat-icon>Add pipeline</button>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+<ng-template #noServer><section class="editor-panel connect-panel"><div class="empty-state"><h2>Loading your Azure DevOps project</h2><p>Pipeline profiles use the current project and your Azure DevOps account.</p></div></section></ng-template>
+</main>

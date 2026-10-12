@@ -25,9 +25,9 @@ export type PipelineVariable = {
 export type Parameter = {
     name: string
     displayName: string
-    type: 'string' | 'boolean' | 'object'
+    type: 'string' | 'boolean' | 'object' | 'number'
     values?: string[]
-    default: boolean | string
+    default: boolean | string | number
 }
 
 export class Profile {
@@ -84,7 +84,7 @@ export class ProfilePipeline {
     configurations: {
         branch: string
         parameterValues: {
-            [key: string]: string | boolean
+            [key: string]: string | boolean | number
         }
         //parameterSelections: {
         //    [parameter: string]: {
@@ -192,6 +192,10 @@ export class ProfilePipeline {
                 if (pipelineVar.allowOverride) {
                     pipelineVar.value = sv.value;
                 } else {
+                    // Re-selecting a pipeline should not turn an unchanged default into an override.
+                    if (sv.factoryValue !== undefined && sv.value === sv.factoryValue) {
+                        return;
+                    }
                     this.configurations.variables.push(sv);
                     sv.nameExists = true;
                 }
