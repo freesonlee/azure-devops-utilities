@@ -55,19 +55,20 @@ jobs:
         with:
           name: marketplace-extensions
           path: |
-            *.vsix
+            artifacts/public/*.vsix
             artifacts/dev/*.vsix
           if-no-files-found: error
-      - name: Copy index.html to 404.html
-        run: cp dist/azure-devops-variable-group-editor/index.html dist/azure-devops-variable-group-editor/404.html
+      - name: Assemble website and public extension applications
+        run: npm run pages:prepare
       - name: Upload a Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/azure-devops-variable-group-editor/
+          path: dist/pages/
           
 
 # Deploy job
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Add a dependency to the build job
     needs: build
 

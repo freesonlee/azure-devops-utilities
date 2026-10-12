@@ -34,7 +34,7 @@ function hostPage(port, config) {
   const channel=xdm.channelManager.addChannel(iframe.contentWindow,new URL(${JSON.stringify(source)}).origin);
   channel.getObjectRegistry().register('DevOps.HostControl',{
     initialHandshake:()=>({context:{pageContext:{webContext:{project,collection:{id:'org-1',name:'TestOrg',uri:config.collectionUrl}}},
-      extension:{id:'FreesonLi.ads-terraform-plan-viewer-dev',publisherId:'FreesonLi'},user:{id:'user-1',displayName:'Fixture User'},
+      extension:{id:'FreesonLi.ads-terraform-plan-viewer' + ${JSON.stringify(process.env.EXTENSION_ENV === 'public' ? '' : '-dev')},publisherId:'FreesonLi'},user:{id:'user-1',displayName:'Fixture User'},
       host:{id:'org-1',name:'TestOrg',type:4,isHosted:true}},initialConfig:{},contributionId:'fl.terraform-plans.run-tab'}),
     notifyLoadSucceeded:()=>null,getAccessToken:()=>({token:config.token}),resize:()=>null
   });

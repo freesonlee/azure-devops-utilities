@@ -11,6 +11,7 @@ const yaml = require('js-yaml');
 const root = path.resolve(__dirname, '..');
 const host = 'https://extension-preview.invalid/contoso/';
 const token = 'isolated-extension-fixture';
+const publicIds = process.env.EXTENSION_ENV === 'public';
 const plan = {
   parameters: [{ name: 'replicas', displayName: 'Instance count', type: 'number', default: 2 }],
   stages: [{ stage: 'Build' }, { stage: 'Deploy' }], resources: { repositories: [], pipelines: [] }
@@ -36,7 +37,7 @@ function fixturePage(kind, port) {
   const channel=xdm.channelManager.addChannel(iframe.contentWindow,new URL(source).origin);
   channel.getObjectRegistry().register('DevOps.HostControl',{
     initialHandshake:()=>({context:{pageContext:{webContext:{project,collection:{id:'collection-1',name:'Contoso',uri:${JSON.stringify(host)}}}},
-      extension:{id:kind==='history'?'FreesonLi.ads-var-history-dev':'FreesonLi.ads-pipeline-profiles-dev',publisherId:'FreesonLi'},
+      extension:{id:(kind==='history'?'FreesonLi.ads-var-history':'FreesonLi.ads-pipeline-profiles')+${JSON.stringify(publicIds ? '' : '-dev')},publisherId:'FreesonLi'},
       user:{id:'user-1',displayName:'Fixture User'},host:{id:'collection-1',name:'Contoso',type:4,isHosted:true}},initialConfig:{},contributionId:kind+'.hub'}),
     notifyLoadSucceeded:()=>null, getAccessToken:()=>({token:${JSON.stringify(token)}}),resize:()=>null
   });
@@ -121,7 +122,7 @@ function fixturePage(kind, port) {
           const saved = await page.evaluate(() => window.saved[0]);
           assert.equal(saved.options.scopeType, 'User');assert.equal(saved.key, 'pipeline-profiles');
           assert.equal(saved.value[0].pipelines[0].configurations.parameterValues.replicas, 4);
-          assert.equal((await page.evaluate(() => window.calls)).find(call => call.method === 'getExtensionDataManager').id, 'FreesonLi.ads-pipeline-profiles-dev');
+          assert.equal((await page.evaluate(() => window.calls)).find(call => call.method === 'getExtensionDataManager').id, 'FreesonLi.ads-pipeline-profiles' + (publicIds ? '' : '-dev'));
           await frame.getByRole('button', { name: 'Run pipeline', exact: true }).click();
           for (let attempt = 0; attempt < 50 && !requests.some(r => r.method === 'POST' && r.payload?.previewRun === false); attempt++) await new Promise(resolve => setTimeout(resolve, 100));
           assert(requests.some(r => r.method === 'POST' && r.payload?.previewRun === false), 'Queue request is distinct from preview');

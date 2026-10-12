@@ -1,6 +1,6 @@
 # Test the extensions inside Azure DevOps
 
-The three private development extensions use the same application code and permission scopes as the production extensions. They load their UI from HTTPS localhost and have separate identities, versions, and navigation labels.
+The three private development extensions use the same application code and permission scopes as the public extensions. Public releases load from the hosted HTTPS site; see [public release steps](public-release.md). They load their UI from HTTPS localhost and have separate identities, versions, and navigation labels.
 
 | Extension | Marketplace identity | Azure DevOps navigation | Local URL |
 | --- | --- | --- | --- |
