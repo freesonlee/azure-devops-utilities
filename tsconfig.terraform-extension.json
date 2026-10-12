@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/terraform-extension",
+    "types": [],
+    "allowSyntheticDefaultImports": true
+  },
+  "files": [
+    "src/app/terraform-plan-viewer-extension/main.ts"
+  ],
+  "include": [
+    "src/**/*.d.ts"
+  ]
+}

@@ -13,6 +13,7 @@
   ],
   "exclude": [
     "src/app/pipeline-profiles/**/*.spec.ts",
-    "src/app/variable-group-history/**/*.spec.ts"
+    "src/app/variable-group-history/**/*.spec.ts",
+    "src/app/terraform-plan-viewer-extension/**/*.spec.ts"
   ]
 }

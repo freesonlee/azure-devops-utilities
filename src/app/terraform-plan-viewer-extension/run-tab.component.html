@@ -1,0 +1,54 @@
+<main class="run-view" aria-label="Terraform plans for this pipeline run">
+  <header class="heading">
+    <div class="heading-copy">
+      <div class="title"><svg class="plan-icon" aria-hidden="true" viewBox="0 0 32 32"><path d="m3 7 8-4 8 4-8 4Zm10 6 8-4 8 4-8 4Zm0 6 8-4 8 4-8 4Zm0 6 8-4 8 4-8 4Z" fill="currentColor"/></svg><h1>Terraform Plans</h1></div>
+      <p *ngIf="context">{{context.projectName}} <span aria-hidden="true">/</span> Run {{context.runName}}</p>
+      <p *ngIf="!context">Plans published by this pipeline run</p>
+    </div>
+    <div class="actions">
+      <span class="plan-count" *ngIf="!isScanning && !error">{{files.length}} {{files.length === 1 ? 'plan' : 'plans'}}</span>
+      <button class="button" *ngIf="isScanning" (click)="cancelScan()">Cancel scan</button>
+      <button class="button primary" (click)="refresh()" [disabled]="isScanning">Refresh</button>
+    </div>
+  </header>
+
+  <section class="status scanning" *ngIf="isScanning" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <div><strong>{{progress.total ? 'Scanning run artifacts' : 'Connecting to the pipeline run'}}</strong><p *ngIf="progress.total">{{progress.completed}} of {{progress.total}} artifacts scanned</p></div>
+    <progress *ngIf="progress.total" [value]="progress.completed" [max]="progress.total" aria-label="Artifact scan progress"></progress>
+  </section>
+  <section class="status error" *ngIf="error" role="alert"><strong>Could not load plans</strong><p>{{error}}</p></section>
+  <section class="status partial" *ngIf="issues.length" role="status">
+    <strong>Some artifacts could not be fully scanned</strong>
+    <ul><li *ngFor="let issue of issues"><span>{{issue.artifactName}}</span> — {{issue.message}}</li></ul>
+    <p>Plans from the other artifacts are available below. Refresh to retry the scan.</p>
+  </section>
+
+  <section class="empty" *ngIf="!isScanning && !error && !files.length">
+    <svg aria-hidden="true" viewBox="0 0 48 48"><path d="M12 5h16l9 9v29H12Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M27 5v10h10M18 25h13m-13 7h9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    <h2>{{issues.length ? 'No plans available from the scanned artifacts' : 'No Terraform plan files found'}}</h2>
+    <p>Publish files ending in <code>.plan.json</code> as pipeline artifacts, then refresh this tab.</p>
+    <p>Plans may become available later while a run is still in progress.</p>
+  </section>
+
+  <ng-container *ngIf="files.length">
+    <div #tabs class="file-tabs" role="tablist" aria-label="Terraform plan files" (keydown)="tabKey($event)">
+      <button *ngFor="let file of files; let i = index; trackBy: trackFile" class="file-tab" role="tab"
+        [id]="'plan-tab-' + i" aria-controls="plan-panel" [attr.aria-selected]="selected === file" [attr.tabindex]="selected === file ? 0 : -1"
+        [attr.aria-label]="file.name + ' in ' + file.artifactName + ', ' + file.path" [title]="file.artifactName + ' / ' + file.path" (click)="select(file)">
+        <span class="tab-name">{{file.name}}<span *ngIf="file.state === 'error'" class="error-dot" aria-label="File error"></span></span>
+        <small>{{file.artifactName}} / {{file.path}}</small>
+      </button>
+    </div>
+    <section id="plan-panel" class="plan-panel" role="tabpanel" [attr.aria-labelledby]="'plan-tab-' + files.indexOf(selected!)" [attr.aria-busy]="selected?.state === 'loading'" tabindex="0">
+      <ng-container *ngFor="let file of files; trackBy: trackFile">
+        <ng-container *ngIf="selected === file">
+          <div class="file-heading"><strong>{{file.name}}</strong><span>{{file.artifactName}} / {{file.path}}</span></div>
+          <div class="file-loading" *ngIf="file.state === 'loading'" role="status"><span class="spinner" aria-hidden="true"></span>Loading plan…</div>
+          <div class="file-error" *ngIf="file.state === 'error'" role="alert"><h2>Could not display this plan</h2><p>{{file.error}}</p><button class="button" (click)="select(file)">Retry file</button></div>
+          <tf-plan-viewer *ngIf="file.state === 'ready'" [plan]="file.plan ?? null" [options]="viewerOptions" (error)="onViewerError(file, $event)" />
+        </ng-container>
+      </ng-container>
+    </section>
+  </ng-container>
+</main>

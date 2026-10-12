@@ -34,16 +34,21 @@ jobs:
         run: node -e 'require("node:fs").appendFileSync(process.env.GITHUB_ENV, "CHROME_BIN=" + require("playwright").chromium.executablePath() + "\n")'
       - name: Check Terraform viewer behavior
         run: npm run test:viewer
+      - name: Check Terraform run artifact discovery
+        run: npm run test:terraform-extension
       - name: Check website unit behavior
         run: npm run test:website
       - name: Check standalone website behavior
         run: npm run ui:check:website
       - name: Check extension host behavior
         run: npm run ui:check:extensions
+      - name: Check Terraform run extension behavior
+        run: npm run ui:check:terraform-extension
       - name: Package production and private development extensions
         run: |
           npm run pack-history
           npm run pack-pipeline
+          npm run pack-terraform
           npm run pack-dev
       - name: Upload Marketplace packages for review
         uses: actions/upload-artifact@v4

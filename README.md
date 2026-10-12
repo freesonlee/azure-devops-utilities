@@ -5,20 +5,21 @@ For private Marketplace extensions served from HTTPS localhost, see [Extension d
 
 ## Applications and builds
 
-The website, two Azure DevOps Marketplace extensions, and reusable Terraform viewer library are maintained on `main`. Each application has its own Angular entry point and output directory.
+The website, three Azure DevOps Marketplace extensions, and reusable Terraform viewer library are maintained on `main`. Each application has its own Angular entry point and output directory.
 
 | Application | Angular project | Build command | Output |
 | --- | --- | --- | --- |
 | Website | `azure-devops-variable-group-editor` | `npm run build` | `dist/azure-devops-variable-group-editor` |
 | Variable Group History extension | `azure-devops-variable-group-history-extension` | `npm run build-h` | `dist/azure-devops-variable-group-history-extension` |
 | Pipeline Profiles extension | `azure-devops-pipeline-profiles` | `npm run build-p` | `dist/azure-devops-pipeline-profiles` |
+| Terraform plan run extension | `azure-devops-terraform-plan-viewer-extension` | `npm run build-t` | `dist/azure-devops-terraform-plan-viewer-extension` |
 | Terraform viewer library | `terraform-plan-viewer` | `npm run build:viewer` | `dist/terraform-plan-viewer` |
 
-`npm start` serves the website. `npm run build:all` builds all applications and the library. GitHub Pages deploys the website output; Marketplace manifests package only their corresponding extension output. Run `npm run build:extensions` before `npm run pack-history` and `npm run pack-pipeline`. The main CI builds all applications, checks the viewer, website, and SDK host behavior, and packages both production and private dev extensions for review; Marketplace publication remains an explicit command.
+`npm start` serves the website. `npm run build:all` builds all applications and the library. GitHub Pages deploys the website output; Marketplace manifests package only their corresponding extension output. Run `npm run build:extensions` before `npm run pack-history`, `npm run pack-pipeline`, and `npm run pack-terraform`. The main CI builds all applications, checks the viewer, website, and SDK host behavior, and packages all production and private dev extensions for review; Marketplace publication remains an explicit command.
 
 Extensions get authentication and project context from the Azure DevOps SDK and keep profiles in extension storage. The website uses its own connection settings and browser storage. Publishing authentication is configured separately from application authentication.
 
-For the installed private localhost extensions, run `npm run start-history-dev` (HTTPS port 4300) and `npm run start-pipeline-dev` (HTTPS port 4301). Ordinary code and styling changes require a browser refresh; manifest changes require republishing. See [extension development and Entra publishing](docs/development.md).
+For the installed private localhost extensions, run `npm run start-history-dev` (HTTPS port 4300) and `npm run start-pipeline-dev` (HTTPS port 4301), and `npm run start-terraform-dev` (HTTPS port 4302, pipeline run tab). Ordinary code and styling changes require a browser refresh; manifest changes require republishing. See [extension development and Entra publishing](docs/development.md).
 
 ## Setup
 Add your ADS host in settings. You need your PAT pre-created in ADS. All ADS host settings is saved in browser local storage. PAT is not sent to server. BTW, there is no server for this tool. It's pure TS/JS hosted on Azure CDN.
@@ -101,3 +102,7 @@ The resumable implementation and release checklist is in [`docs/terraform-plan-v
 
 ## Disclaimer
 This is a tool that being made in a few days, using Angular. I don't have much experience in Angular and neither much time to improve the code and UX. Any PR is welcomed.
+
+## Terraform plans in Azure DevOps runs
+
+The new run extension finds files ending in `.plan.json` inside every hosted pipeline artifact and shows one file tab per plan. It reuses the viewer library and requests only `vso.build`. See [usage and artifact limits](src/app/terraform-plan-viewer-extension/readme.md) and [private development/testing](docs/development.md).

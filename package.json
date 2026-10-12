@@ -29,16 +29,26 @@
     "start-pipeline-dev": "npm run dev:cert && ng serve azure-devops-pipeline-profiles --configuration development --host localhost --port 4301 --ssl --ssl-cert .certs/localhost.pem --ssl-key .certs/localhost-key.pem",
     "pack-history-dev": "node scripts/dev-extension.cjs pack history",
     "pack-pipeline-dev": "node scripts/dev-extension.cjs pack pipeline",
-    "pack-dev": "npm run pack-history-dev && npm run pack-pipeline-dev",
+    "pack-dev": "npm run pack-history-dev && npm run pack-pipeline-dev && npm run pack-terraform-dev",
     "publish-history-dev": "node scripts/dev-extension.cjs publish history",
     "publish-pipeline-dev": "node scripts/dev-extension.cjs publish pipeline",
     "install-history-dev": "node scripts/dev-extension.cjs install history",
     "install-pipeline-dev": "node scripts/dev-extension.cjs install pipeline",
-    "build:extensions": "npm run build-h && npm run build-p",
+    "build:extensions": "npm run build-h && npm run build-p && npm run build-t",
     "build:all": "npm run build && npm run build:extensions",
     "ui:check:extensions": "node scripts/check-extensions.cjs",
     "ui:check:website": "node scripts/check-website-build.cjs",
-    "test:website": "ng test azure-devops-variable-group-editor --watch=false --karma-config projects/terraform-plan-viewer/karma.conf.cjs --browsers ChromiumHeadless"
+    "test:website": "ng test azure-devops-variable-group-editor --watch=false --karma-config projects/terraform-plan-viewer/karma.conf.cjs --browsers ChromiumHeadless",
+    "prebuild-t": "npm run build:viewer",
+    "build-t": "ng build azure-devops-terraform-plan-viewer-extension",
+    "test:terraform-extension": "ng test azure-devops-terraform-plan-viewer-extension --watch=false --browsers ChromiumHeadless",
+    "prestart-terraform-dev": "ng build terraform-plan-viewer --configuration development",
+    "start-terraform-dev": "npm run dev:cert && ng serve azure-devops-terraform-plan-viewer-extension --configuration development --host localhost --port 4302 --ssl --ssl-cert .certs/localhost.pem --ssl-key .certs/localhost-key.pem",
+    "pack-terraform": "npx tfx-cli extension create --manifests ./terraform-plan-viewer.vss.json",
+    "pack-terraform-dev": "node scripts/dev-extension.cjs pack terraform",
+    "publish-terraform-dev": "node scripts/dev-extension.cjs publish terraform",
+    "install-terraform-dev": "node scripts/dev-extension.cjs install terraform",
+    "ui:check:terraform-extension": "node scripts/check-terraform-extension.cjs"
   },
   "private": true,
   "dependencies": {
@@ -53,15 +63,17 @@
     "@angular/platform-browser-dynamic": "^17.1.1",
     "@angular/router": "^17.1.1",
     "@types/diff": "^8.0.0",
+    "azure-devops-extension-api": "^2.225.0",
+    "azure-devops-extension-sdk": "^3.1.2",
     "diff": "^8.0.2",
     "js-yaml": "^4.1.0",
+    "jszip": "3.10.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.14.3",
-    "azure-devops-extension-api": "^2.225.0",
-    "azure-devops-extension-sdk": "^3.1.2"
+    "zone.js": "~0.14.3"
   },
   "devDependencies": {
+    "@angular-builders/custom-webpack": "^17.0.0",
     "@angular-devkit/build-angular": "^17.1.1",
     "@angular/cli": "~17.1.1",
     "@angular/compiler-cli": "^17.1.1",
@@ -76,8 +88,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "ng-packagr": "^17.1.2",
     "playwright": "^1.64.0",
-    "typescript": "~5.3.3",
-    "@angular-builders/custom-webpack": "^17.0.0",
-    "tfx-cli": "0.24.2"
+    "tfx-cli": "0.24.2",
+    "typescript": "~5.3.3"
   }
 }

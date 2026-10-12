@@ -1,15 +1,16 @@
 # Test the extensions inside Azure DevOps
 
-The two private development extensions use the same application code and permission scopes as the production extensions. They load their UI from HTTPS localhost and have separate identities, versions, and navigation labels.
+The three private development extensions use the same application code and permission scopes as the production extensions. They load their UI from HTTPS localhost and have separate identities, versions, and navigation labels.
 
 | Extension | Marketplace identity | Azure DevOps navigation | Local URL |
 | --- | --- | --- | --- |
 | Variable Group History (Dev) | `FreesonLi.ads-var-history-dev` | Variable Groups (Dev) | `https://localhost:4300/` |
 | Pipeline Profiles (Dev) | `FreesonLi.ads-pipeline-profiles-dev` | Pipeline Profiles (Dev) | `https://localhost:4301/` |
+| Terraform Plan Viewer (Dev) | `FreesonLi.ads-terraform-plan-viewer-dev` | Terraform Plans (Dev), on a pipeline run | `https://localhost:4302/` |
 
-The Angular projects are `azure-devops-variable-group-history-extension` and `azure-devops-pipeline-profiles`; the standalone website has its own `azure-devops-variable-group-editor` project.
+The Angular projects are `azure-devops-variable-group-history-extension`, `azure-devops-pipeline-profiles`, and `azure-devops-terraform-plan-viewer-extension`; the standalone website has its own `azure-devops-variable-group-editor` project.
 
-The publishing scripts share both privately with the test organization `https://dev.azure.com/FreesonLee`. The sharing target is set in `scripts/dev-extension.cjs`.
+The publishing scripts share all three privately with the test organization `https://dev.azure.com/FreesonLee`. The sharing target is set in `scripts/dev-extension.cjs`.
 
 ## Start the local apps
 
@@ -18,6 +19,7 @@ Install dependencies with `npm ci`, then run these commands in separate terminal
 ```bash
 npm run start-history-dev
 npm run start-pipeline-dev
+npm run start-terraform-dev
 ```
 
 The start commands generate a self-signed localhost certificate with OpenSSL if `.certs/localhost.pem` and `.certs/localhost-key.pem` do not exist. They leave existing certificates intact. Certificate files and packaged artifacts are excluded from Git.
@@ -39,7 +41,7 @@ The serve targets use the custom Webpack dev-server builder and the shared SDK m
 npm run pack-dev
 ```
 
-This creates the two `.vsix` packages in `artifacts/dev/`. Packaging does not require an application build because the dev manifests serve the UI from localhost. Only extension metadata, icons, and Marketplace details are packaged.
+This creates the three `.vsix` packages in `artifacts/dev/`. Packaging does not require an application build because the dev manifests serve the UI from localhost. Only extension metadata, icons, and Marketplace details are packaged.
 
 You can upload these files manually at the [Marketplace publisher portal](https://marketplace.visualstudio.com/manage) under publisher `FreesonLi`: select **New extension > Azure DevOps**, upload the dev package, then share it with `FreesonLee`. The dev manifests set `public` to `false`.
 
@@ -49,6 +51,7 @@ For command-line publishing with Microsoft Entra, sign in to Azure CLI as the ac
 az login --use-device-code --allow-no-subscriptions
 npm run publish-history-dev
 npm run publish-pipeline-dev
+npm run publish-terraform-dev
 ```
 
 Microsoft Entra is the default authentication method. The scripts obtain a short-lived Azure DevOps access token from Azure CLI for resource `499b84ac-1321-427f-aa17-267ca6975798`. They do not read `ADS_MKT_PAT` or fall back to a PAT. The token stays in memory and is redacted from CLI output. TFX accepts the Entra token through its `--auth-type pat` argument, as described in [Microsoft's publishing documentation](https://learn.microsoft.com/en-us/azure/devops/extend/publish/command-line?view=azure-devops). The signed-in user or service principal still needs permission on the Marketplace publisher. Use `AZURE_CONFIG_DIR` if you want a separate Azure CLI sign-in profile.
@@ -58,6 +61,7 @@ Alternatively, provide `ADS_MKT_PAT` through your shell or secret manager and ru
 ```bash
 npm run publish-history-dev -- --auth pat
 npm run publish-pipeline-dev -- --auth pat
+npm run publish-terraform-dev -- --auth pat
 ```
 
 These commands create the package, publish that exact artifact, and share it with `FreesonLee`. They validate the private dev identity and localhost URL before publishing. The PAT must include **Marketplace > Publish**, and its account must have permission to publish new extensions under `FreesonLi`. A `403 Forbidden` mentioning "Publish new extensions to an existing publisher" means the token scope or publisher permission needs correcting. Do not put the credential in a manifest or commit it to Git. See [Microsoft's command-line publishing prerequisites](https://learn.microsoft.com/en-us/azure/devops/extend/publish/command-line?view=azure-devops).
@@ -69,9 +73,12 @@ Install each shared dev extension into `FreesonLee` using its Marketplace page. 
 ```bash
 npm run install-history-dev
 npm run install-pipeline-dev
+npm run install-terraform-dev
 ```
 
 These installation commands use your Azure CLI sign-in through Microsoft Entra by default. Both methods require extension-management permissions in the test organization. Publishing permission alone may not be enough to install.
+
+For Terraform plans, open a pipeline run and select **Terraform Plans (Dev)**. It scans every hosted run artifact for files ending in `.plan.json`, including nested paths. The app uses only `vso.build`; your account still needs access to the run artifacts. See [the Terraform extension usage guide](../src/app/terraform-plan-viewer-extension/readme.md).
 
 In a project in `FreesonLee`, open **Pipelines**, then **Variable Groups (Dev)** or **Pipeline Profiles (Dev)**. Keep the corresponding local server running. Save source changes and refresh the extension to load them; no Marketplace upload is needed for ordinary UI/code changes.
 
@@ -82,3 +89,17 @@ Variable Group History needs a project variable group named `VariableGroupHistor
 When changing an extension's manifest, scopes, contribution metadata, or localhost port, increment the corresponding dev manifest's `version`, republish, and restart the server as needed. Dev versions start at `0.0.1` and are independent of production versions. Keep the dev scopes aligned with their production manifests.
 
 Microsoft documents this workflow in [Debug your extension](https://learn.microsoft.com/en-us/azure/devops/extend/publish/overview?view=azure-devops#debug-your-extension).
+
+## Check the Terraform run extension
+
+Run `npm run test:terraform-extension` for artifact-reader checks and `npm run ui:check:terraform-extension` after `npm run build-t` for browser fixtures. To use the localhost bundle in the host fixture, set `TERRAFORM_EXTENSION_URL=https://localhost:4302/`. The fixture alone uses only synthetic data.
+
+An optional live browser check can read a run using your Azure CLI Entra sign-in:
+
+```bash
+TERRAFORM_LIVE_RUN_URL="https://dev.azure.com/FreesonLee/OpenErp/_build/results?buildId=6359" npm run ui:check:terraform-extension
+```
+
+This keeps the token in the temporary host fixture, performs only reads, and saves screenshots only of synthetic data. It verifies browser transport and viewer rendering; checking the installed extension in Azure DevOps verifies its actual `vso.build` host token and native run tab.
+
+The Terraform dev startup builds the compiled viewer library first. When editing library sources, run `npm run watch:viewer` alongside the dev server; ordinary extension code changes reload without republishing.

@@ -1,0 +1,52 @@
+{
+  "manifestVersion": 1,
+  "id": "ads-terraform-plan-viewer",
+  "publisher": "FreesonLi",
+  "version": "0.1.0",
+  "name": "Terraform Plan Viewer",
+  "description": "View Terraform plan JSON files from pipeline run artifacts.",
+  "public": false,
+  "scopes": [
+    "vso.build"
+  ],
+  "icons": {
+    "default": "images/terraform-plan-viewer.png"
+  },
+  "categories": [
+    "Azure Pipelines"
+  ],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "content": {
+    "details": {
+      "path": "src/app/terraform-plan-viewer-extension/readme.md"
+    }
+  },
+  "contributions": [
+    {
+      "id": "fl.terraform-plans.run-tab",
+      "type": "ms.vss-build-web.build-results-tab",
+      "targets": [
+        "ms.vss-build-web.build-results-view"
+      ],
+      "properties": {
+        "name": "Terraform Plans",
+        "uri": "index.html"
+      }
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/freesonlee/azure-devops-utilities"
+  },
+  "files": [
+    {
+      "path": "dist/azure-devops-terraform-plan-viewer-extension/",
+      "addressable": true,
+      "packagePath": "/"
+    }
+  ]
+}

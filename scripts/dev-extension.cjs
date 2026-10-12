@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const organization = 'https://dev.azure.com/FreesonLee';
 const extensions = {
+  terraform: { manifest: 'terraform-plan-viewer.dev.vss.json', id: 'ads-terraform-plan-viewer-dev', port: 4302 },
   history: { manifest: 'variable-group-history.dev.vss.json', id: 'ads-var-history-dev', port: 4300 },
   pipeline: { manifest: 'pipeline-profiles.dev.vss.json', id: 'ads-pipeline-profiles-dev', port: 4301 },
 };
@@ -12,7 +13,7 @@ const [action, selection, ...options] = process.argv.slice(2);
 const auth = options.length === 0 ? 'entra' : options.length === 2 && options[0] === '--auth' ? options[1] : undefined;
 const config = extensions[selection];
 if (!config || !['pack', 'publish', 'install'].includes(action) || !['pat', 'entra'].includes(auth)) {
-  console.error('Usage: node scripts/dev-extension.cjs <pack|publish|install> <history|pipeline> [--auth pat|entra]');
+  console.error('Usage: node scripts/dev-extension.cjs <pack|publish|install> <history|pipeline|terraform> [--auth pat|entra]');
   process.exit(1);
 }
 const manifest = JSON.parse(fs.readFileSync(path.join(root, config.manifest), 'utf8'));
@@ -45,7 +46,7 @@ const output = path.join(root, 'artifacts', 'dev');
 const vsix = path.join(output, `${manifest.publisher}.${manifest.id}-${manifest.version}.vsix`);
 function tfx(args) {
   const result = spawnSync(process.execPath, [require.resolve('tfx-cli'), 'extension', ...args], {
-    cwd: root, encoding: 'utf8', timeout: 180000,
+    cwd: root, encoding: 'utf8', timeout: 360000,
   });
   for (const [stream, text] of [[process.stdout, result.stdout], [process.stderr, result.stderr]]) {
     if (text) stream.write(token ? text.replaceAll(token, '[REDACTED]') : text);
