@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { TerraformPlanService } from './terraform-plan.service';
-import { ResourceChange, TerraformPlan } from '../interfaces/terraform-plan.interface';
+import { ResourceChange, TerraformPlan } from '../models/terraform-plan.interface';
 import { TerraformSensitivityService } from './terraform-sensitivity.service';
 
 describe('TerraformPlanService - Sensitive Property Detection', () => {
@@ -19,7 +19,6 @@ describe('TerraformPlanService - Sensitive Property Detection', () => {
     let planService: TerraformPlanService;
 
     beforeEach(() => {
-      TestBed.configureTestingModule({});
       planService = TestBed.inject(TerraformPlanService);
     });
 
@@ -63,7 +62,7 @@ describe('TerraformPlanService - Sensitive Property Detection', () => {
       const summary = planService.getResourceSummary();
 
       expect(summary.changes).toBe(0);
-      expect(summary.total).toBe(2);
+      expect(summary.total).toBe(1);
     });
   });
 

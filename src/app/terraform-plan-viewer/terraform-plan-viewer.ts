@@ -1,7 +1,7 @@
-import { Component, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectorRef, ViewChild, AfterViewInit, HostListener, OnDestroy, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TerraformPlanFileUploadComponent } from './terraform-plan-file-upload.component';
-import { TerraformPlanDisplayComponent } from './terraform-plan-display.component';
+import { TerraformPlanViewerComponent as EmbeddedTerraformPlanViewerComponent } from '@freesonlee/terraform-plan-viewer-angular';
 import { FileIndicatorComponent } from './file-indicator.component';
 
 @Component({
@@ -10,7 +10,7 @@ import { FileIndicatorComponent } from './file-indicator.component';
   imports: [
     CommonModule,
     TerraformPlanFileUploadComponent,
-    TerraformPlanDisplayComponent,
+    EmbeddedTerraformPlanViewerComponent,
     FileIndicatorComponent
   ],
   templateUrl: './terraform-plan-viewer.html',
@@ -31,6 +31,11 @@ export class TerraformPlanViewerComponent implements AfterViewInit, OnDestroy {
   };
 
   @ViewChild('uploadToolbar') uploadToolbar?: TerraformPlanFileUploadComponent;
+  @ViewChild('toolbarContainer') toolbarContainer?: ElementRef<HTMLElement>;
+
+  get toolbarHeight(): number {
+    return this.toolbarContainer?.nativeElement.offsetHeight ?? 0;
+  }
 
   constructor(
     private cdr: ChangeDetectorRef
@@ -116,7 +121,6 @@ export class TerraformPlanViewerComponent implements AfterViewInit, OnDestroy {
     this.currentCdktfJson = cdktfData;
     this.stackType = 'cdktf';
     this.cdr.detectChanges();
-    console.log('CDKTF metadata loaded:', cdktfData);
   }
 
   onCdktfStatusChanged(loaded: boolean): void {
@@ -127,7 +131,6 @@ export class TerraformPlanViewerComponent implements AfterViewInit, OnDestroy {
   onViewSwitchRequested(viewType: string): void {
     // This will be handled by the terraform-plan-display component itself
     // We might add logic here if needed for external handling
-    console.log('View switch requested to:', viewType);
   }
 
   onPlanFileNameChanged(fileName: string): void {

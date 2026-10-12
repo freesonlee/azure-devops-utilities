@@ -64,6 +64,16 @@ In this example:
 - `triggers_replace[0]` and `triggers_replace[1]` will be masked
 - `triggers_replace[2]` will be shown in plain text
 
+## Reusable Angular viewer package
+
+The Terraform renderer lives in [`projects/terraform-plan-viewer`](projects/terraform-plan-viewer/README.md). The application consumes its compiled public API. The unpublished MIT preview targets Angular/Material/CDK 17.1.x.
+
+Run `npm run pack:viewer` to build and create an installable tarball under `dist/packages`. Run `npm run verify:viewer-package` to install that tarball in a temporary standalone/NgModule consumer and check browser and server rendering. The verifier needs the Playwright Chromium browser installed.
+
+Library tests: `npm run test:viewer` (set `CHROME_BIN` to a Chromium executable). During development, run `npm run watch:viewer` alongside `npm start`; startup builds the library once. Run `npm run capture:viewer` against the local app to capture synthetic Terraform/CDKTF examples.
+
+The resumable implementation and release checklist is in [`docs/terraform-plan-viewer-library-plan.md`](docs/terraform-plan-viewer-library-plan.md). The manual **Viewer package validation and publishing** workflow tests, builds, verifies, and publishes the preview package to GitHub Packages with the `next` tag. Select the branch to publish in the Actions tab. Increment the library version before publishing another release.
+
 ## TODO
 * Allow user to run all pipelines defined in a profile.
 

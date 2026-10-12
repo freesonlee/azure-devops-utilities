@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { TerraformSensitivityService } from './terraform-sensitivity.service';
-import { ResourceChange } from '../interfaces/terraform-plan.interface';
+import { ResourceChange } from '../models/terraform-plan.interface';
 
 describe('TerraformSensitivityService', () => {
     let service: TerraformSensitivityService;

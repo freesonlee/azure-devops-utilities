@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { ResourceChange } from "../interfaces/terraform-plan.interface";
+import { ResourceChange } from "../models/terraform-plan.interface";
 
 @Injectable({
     providedIn: 'root'

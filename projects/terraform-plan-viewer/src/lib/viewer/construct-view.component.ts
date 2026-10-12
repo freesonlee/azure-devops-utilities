@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.interface';
+import { ConstructNode, ResourceChange } from '../models/terraform-plan.interface';
 
 @Component({
   selector: 'app-construct-view',
@@ -30,7 +30,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
           
           <mat-expansion-panel-header>
             <mat-panel-title class="construct-title">
-              <mat-icon class="construct-icon">{{ getConstructIcon() }}</mat-icon>
+              <mat-icon class="construct-icon" [svgIcon]="'tf-viewer:' + (getConstructIcon())"></mat-icon>
               <span class="construct-name">{{ constructNode.name }}</span>
               <mat-chip class="construct-path-chip" *ngIf="showFullPath">
                 {{ constructNode.path }}
@@ -40,17 +40,17 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
             <mat-panel-description class="construct-description">
               <div class="construct-stats">
                 <mat-chip class="resource-count-chip" *ngIf="getFilteredTotalResourceCount() > 0">
-                  <mat-icon>layers</mat-icon>
+                  <mat-icon svgIcon="tf-viewer:layers"></mat-icon>
                   {{ getFilteredTotalResourceCount() }} resources
                 </mat-chip>
                 
                 <mat-chip class="children-count-chip" *ngIf="getVisibleChildrenCount() > 0">
-                  <mat-icon>account_tree</mat-icon>
+                  <mat-icon svgIcon="tf-viewer:account_tree"></mat-icon>
                   {{ getVisibleChildrenCount() }} construct(s)
                 </mat-chip>
                 
                 <mat-chip class="direct-resources-chip" *ngIf="getFilteredDirectResources().length > 0">
-                  <mat-icon>description</mat-icon>
+                  <mat-icon svgIcon="tf-viewer:description"></mat-icon>
                   {{ getFilteredDirectResources().length }} direct
                 </mat-chip>
               </div>
@@ -62,7 +62,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
             <!-- Child Constructs (Recursive) -->
             <div *ngIf="getVisibleChildren().length > 0" class="child-constructs">
               <h4 class="section-title">
-                <mat-icon>account_tree</mat-icon>
+                <mat-icon svgIcon="tf-viewer:account_tree"></mat-icon>
                 Child Constructs
               </h4>
               
@@ -88,7 +88,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
                 <div *ngFor="let resource of getFilteredDirectResources(); trackBy: trackByResource"
                      class="resource-item construct-resource-item"
                      [class.selected]="selectedResource?.address === resource.address"
-                     (click)="onResourceSelected(resource)">
+                     (click)="onResourceSelected(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="onResourceSelected(resource)" (keydown.space)="$event.preventDefault(); onResourceSelected(resource)">
                   
                   <div class="resource-header">
                     <div class="resource-address">
@@ -99,7 +99,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
                       <mat-chip *ngFor="let action of resource.change.actions"
                                [style.background-color]="getActionColor([action])"
                                [style.color]="'white'" class="action-chip">
-                        <mat-icon [style.font-size]="'14px'">{{ getActionIcon([action]) }}</mat-icon>
+                        <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                         {{ action }}
                       </mat-chip>
                     </div>
@@ -116,7 +116,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
             <!-- Empty State -->
             <div *ngIf="getVisibleChildren().length === 0 && getFilteredDirectResources().length === 0" 
                  class="empty-construct">
-              <mat-icon>folder_open</mat-icon>
+              <mat-icon svgIcon="tf-viewer:folder_open"></mat-icon>
               <p>This construct contains no matching resources or child constructs</p>
             </div>
           </div>
@@ -131,7 +131,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
             <div *ngFor="let resource of getRootDirectResources(); trackBy: trackByResource"
                  class="resource-item root-resource-item"
                  [class.selected]="selectedResource?.address === resource.address"
-                 (click)="onResourceSelected(resource)">
+                 (click)="onResourceSelected(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="onResourceSelected(resource)" (keydown.space)="$event.preventDefault(); onResourceSelected(resource)">
               
               <div class="resource-header">
                 <div class="resource-address">
@@ -142,7 +142,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
                   <mat-chip *ngFor="let action of resource.change.actions"
                            [style.background-color]="getActionColor([action])"
                            [style.color]="'white'" class="action-chip">
-                    <mat-icon [style.font-size]="'14px'">{{ getActionIcon([action]) }}</mat-icon>
+                    <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                     {{ action }}
                   </mat-chip>
                 </div>
@@ -174,7 +174,7 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
 
       <!-- No matching resources state -->
       <div *ngIf="!constructNode && shouldShowNoMatchingResourcesMessage()" class="no-matching-resources">
-        <mat-icon>info</mat-icon>
+        <mat-icon svgIcon="tf-viewer:info"></mat-icon>
         <p>No resources match the current filter criteria</p>
       </div>
     </div>
@@ -288,6 +288,8 @@ import { ConstructNode, ResourceChange } from '../../interfaces/terraform-plan.i
       transition: all 0.2s ease;
       background-color: white;
     }
+
+    .resource-item:focus-visible { outline: 2px solid #3f51b5; outline-offset: -2px; }
 
     .resource-item:hover {
       background-color: #f5f5f5;

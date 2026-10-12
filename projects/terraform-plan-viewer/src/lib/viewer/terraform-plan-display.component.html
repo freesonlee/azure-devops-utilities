@@ -9,42 +9,42 @@
         <mat-card-content>
             <div class="stats-grid">
                 <div class="stat-item create clickable-stat" (click)="onStatButtonClick('create')">
-                    <mat-icon>add_circle</mat-icon>
+                    <mat-icon svgIcon="tf-viewer:add_circle"></mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.create }}</div>
                         <div class="stat-label">Create<span *ngIf="getImportingCountForAction('create') > 0"> ({{ getImportingCountForAction('create') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item update clickable-stat" (click)="onStatButtonClick('update')">
-                    <mat-icon>edit</mat-icon>
+                    <mat-icon svgIcon="tf-viewer:edit"></mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.update }}</div>
                         <div class="stat-label">Update<span *ngIf="getImportingCountForAction('update') > 0"> ({{ getImportingCountForAction('update') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item delete clickable-stat" (click)="onStatButtonClick('delete')">
-                    <mat-icon>delete</mat-icon>
+                    <mat-icon svgIcon="tf-viewer:delete"></mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.delete }}</div>
                         <div class="stat-label">Delete<span *ngIf="getImportingCountForAction('delete') > 0"> ({{ getImportingCountForAction('delete') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item replace clickable-stat" (click)="onStatButtonClick('replace')">
-                    <mat-icon>swap_horiz</mat-icon>
+                    <mat-icon svgIcon="tf-viewer:swap_horiz"></mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.replace }}</div>
                         <div class="stat-label">Replace<span *ngIf="getImportingCountForAction('replace') > 0"> ({{ getImportingCountForAction('replace') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item changes clickable-stat" (click)="onStatButtonClick('changes')">
-                    <mat-icon>published_with_changes</mat-icon>
+                    <mat-icon svgIcon="tf-viewer:published_with_changes"></mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.changes }}</div>
                         <div class="stat-label">Changes<span *ngIf="getImportingCountForAction('changes') > 0"> ({{ getImportingCountForAction('changes') }} Importing)</span></div>
                     </div>
                 </div>
                 <div class="stat-item total clickable-stat" (click)="onStatButtonClick('total')">
-                    <mat-icon>list</mat-icon>
+                    <mat-icon svgIcon="tf-viewer:list"></mat-icon>
                     <div class="stat-content">
                         <div class="stat-number">{{ resourceSummary.total }}</div>
                         <div class="stat-label">Total<span *ngIf="getImportingCountForAction('total') > 0"> ({{ getImportingCountForAction('total') }} Importing)</span></div>
@@ -56,7 +56,7 @@
 
     <!-- Tabs for different views -->
     <mat-card class="content-card">
-        <mat-tab-group #tabGroup>
+        <mat-tab-group #tabGroup (selectedIndexChange)="viewChanged.emit($event === 0 ? 'resources' : ($event === 1 ? 'outputs' : 'variables'))">
             <!-- Resources Tab -->
             <mat-tab label="Resources ({{ getFilteredResourceCount() }})">
                 <div class="tab-content">
@@ -69,18 +69,16 @@
                                     <mat-chip *ngIf="activeResourceFilter"
                                         [style.background-color]="getActionColor([activeResourceFilter])"
                                         [style.color]="'white'" [removable]="true" (removed)="clearResourceFilter()">
-                                        <mat-icon [style.font-size]="'16px'">{{
-                                            getActionIcon([activeResourceFilter])
-                                            }}</mat-icon>
+                                        <mat-icon [style.font-size]="'16px'" [svgIcon]="'tf-viewer:' + (getActionIcon([activeResourceFilter]))"></mat-icon>
                                         Showing {{ activeResourceFilter }} resources
-                                        <mat-icon matChipRemove>cancel</mat-icon>
+                                        <mat-icon matChipRemove svgIcon="tf-viewer:cancel"></mat-icon>
                                     </mat-chip>
                                     <mat-chip *ngIf="resourceSearchFilter"
                                         style="background-color: #2196f3; color: white;" [removable]="true"
                                         (removed)="clearResourceSearchFilter()">
-                                        <mat-icon [style.font-size]="'16px'">search</mat-icon>
+                                        <mat-icon [style.font-size]="'16px'" svgIcon="tf-viewer:search"></mat-icon>
                                         Search: "{{ resourceSearchFilter }}"
-                                        <mat-icon matChipRemove>cancel</mat-icon>
+                                        <mat-icon matChipRemove svgIcon="tf-viewer:cancel"></mat-icon>
                                     </mat-chip>
                                 </mat-chip-set>
                                 <div class="results-info">
@@ -96,10 +94,10 @@
                             <mat-label>Search resources...</mat-label>
                             <input matInput [(ngModel)]="resourceSearchFilter"
                                 placeholder="Search by address, type, or provider">
-                            <mat-icon matSuffix>search</mat-icon>
+                            <mat-icon matSuffix svgIcon="tf-viewer:search"></mat-icon>
                             <button matSuffix mat-icon-button *ngIf="resourceSearchFilter"
                                 (click)="clearResourceSearchFilter()" aria-label="Clear search">
-                                <mat-icon>close</mat-icon>
+                                <mat-icon svgIcon="tf-viewer:close"></mat-icon>
                             </button>
                         </mat-form-field>
                     </div>
@@ -148,7 +146,7 @@
                                 <mat-card class="info-card">
                                     <mat-card-content>
                                         <div class="info-content">
-                                            <mat-icon class="large-icon">info</mat-icon>
+                                            <mat-icon class="large-icon" svgIcon="tf-viewer:info"></mat-icon>
                                             <h3>Construct Tree Not Available</h3>
                                             <p>CDKTF construct hierarchy could not be built from the provided metadata.
                                             </p>
@@ -166,12 +164,12 @@
                                                 </div>
                                             </div>
                                             <p class="help-text">
-                                                <mat-icon>lightbulb</mat-icon>
+                                                <mat-icon svgIcon="tf-viewer:lightbulb"></mat-icon>
                                                 Switch to Terraform View to see resources grouped by modules and types.
                                                 Check browser console for detailed debugging.
                                             </p>
                                             <button mat-raised-button color="primary" (click)="toggleViewMode()">
-                                                <mat-icon>view_module</mat-icon>
+                                                <mat-icon svgIcon="tf-viewer:view_module"></mat-icon>
                                                 Switch to Terraform View
                                             </button>
                                         </div>
@@ -186,7 +184,7 @@
                                 <mat-expansion-panel class="module-panel">
                                     <mat-expansion-panel-header>
                                         <mat-panel-title class="module-title">
-                                            <mat-icon class="module-icon">folder</mat-icon>
+                                            <mat-icon class="module-icon" svgIcon="tf-viewer:folder"></mat-icon>
                                             {{ moduleGroup.display_name }}
                                         </mat-panel-title>
                                         <mat-panel-description class="module-description">
@@ -219,7 +217,7 @@
                                                     <div *ngFor="let resource of entry.value.resources"
                                                         class="resource-item"
                                                         [class.selected]="isResourceSelected(resource)"
-                                                        (click)="selectResource(resource)">
+                                                        (click)="selectResource(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="selectResource(resource)" (keydown.space)="$event.preventDefault(); selectResource(resource)">
                                                         <div class="resource-header">
                                                             <div class="resource-address">
                                                                 <code>{{ resource.address }}</code>
@@ -228,9 +226,7 @@
                                                                 <mat-chip *ngFor="let action of resource.change.actions"
                                                                     [style.background-color]="getActionColor([action])"
                                                                     [style.color]="'white'" class="action-chip">
-                                                                    <mat-icon [style.font-size]="'14px'">{{
-                                                                        getActionIcon([action])
-                                                                        }}</mat-icon>
+                                                                    <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                                                                     {{ action }}
                                                                 </mat-chip>
                                                             </div>
@@ -254,7 +250,7 @@
                                                             <div *ngFor="let resource of iteratorGroup.resources"
                                                                 class="resource-item"
                                                                 [class.selected]="isResourceSelected(resource)"
-                                                                (click)="selectResource(resource)">
+                                                                (click)="selectResource(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="selectResource(resource)" (keydown.space)="$event.preventDefault(); selectResource(resource)">
                                                                 <div class="resource-header">
                                                                     <div class="resource-address">
                                                                         <code>{{ resource.address }}</code>
@@ -264,9 +260,7 @@
                                                                             *ngFor="let action of resource.change.actions"
                                                                             [style.background-color]="getActionColor([action])"
                                                                             [style.color]="'white'" class="action-chip">
-                                                                            <mat-icon [style.font-size]="'14px'">{{
-                                                                                getActionIcon([action])
-                                                                                }}</mat-icon>
+                                                                            <mat-icon [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                                                                             {{ action }}
                                                                         </mat-chip>
                                                                     </div>
@@ -286,10 +280,8 @@
                                                             <mat-expansion-panel class="iterator-group-panel">
                                                                 <mat-expansion-panel-header>
                                                                     <mat-panel-title class="iterator-group-title">
-                                                                        <mat-icon class="iterator-icon">
-                                                                            {{ iteratorGroup.iterator_type === 'count' ?
-                                                                            'format_list_numbered' : 'view_list' }}
-                                                                        </mat-icon>
+                                                                        <mat-icon class="iterator-icon" [svgIcon]="'tf-viewer:' + (iteratorGroup.iterator_type === 'count' ?
+                                                                            'format_list_numbered' : 'view_list')"></mat-icon>
                                                                         <code>{{ iteratorGroup.base_address }}</code>
                                                                     </mat-panel-title>
                                                                     <mat-panel-description
@@ -303,7 +295,7 @@
                                                                     <div *ngFor="let resource of iteratorGroup.resources"
                                                                         class="resource-item iterator-resource-item"
                                                                         [class.selected]="isResourceSelected(resource)"
-                                                                        (click)="selectResource(resource)">
+                                                                        (click)="selectResource(resource)" role="button" tabindex="0" [attr.aria-pressed]="selectedResource?.address === resource.address" (keydown.enter)="selectResource(resource)" (keydown.space)="$event.preventDefault(); selectResource(resource)">
                                                                         <div class="resource-header">
                                                                             <div class="resource-address">
                                                                                 <code>{{ resource.address }}</code>
@@ -315,9 +307,7 @@
                                                                                     [style.color]="'white'"
                                                                                     class="action-chip">
                                                                                     <mat-icon
-                                                                                        [style.font-size]="'14px'">{{
-                                                                                        getActionIcon([action])
-                                                                                        }}</mat-icon>
+                                                                                        [style.font-size]="'14px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                                                                                     {{ action }}
                                                                                 </mat-chip>
                                                                             </div>
@@ -348,7 +338,7 @@
                             [style.width.px]="isRightPanelFloating ? floatingPanelWidth : null"
                             [style.height.px]="isRightPanelFloating ? floatingPanelHeight : null">
                             <div *ngIf="!selectedResource" class="no-selection">
-                                <mat-icon class="large-icon">info</mat-icon>
+                                <mat-icon class="large-icon" svgIcon="tf-viewer:info"></mat-icon>
                                 <h3>Select a Resource</h3>
                                 <p>Click on a resource from the left panel to view its detailed changes.</p>
                             </div>
@@ -362,7 +352,7 @@
                                     </h3>
                                     <!-- Add this section for moved resources -->
                                     <div *ngIf="selectedResource.previous_address" class="moved-info">
-                                        <mat-icon class="moved-icon">drive_file_move</mat-icon>
+                                        <mat-icon class="moved-icon" svgIcon="tf-viewer:drive_file_move"></mat-icon>
                                         <span class="moved-text">moved from <code>{{ selectedResource.previous_address }}</code></span>
                                     </div>
                                     <div class="resource-info-bar">
@@ -375,28 +365,28 @@
                                 <div class="resource-action-buttons" *ngIf="mode === 'normal'">
                                     <button mat-stroked-button color="primary" (click)="onTargetResource()"
                                         matTooltip="Target this specific resource for refresh">
-                                        <mat-icon>my_location</mat-icon>
+                                        <mat-icon svgIcon="tf-viewer:my_location"></mat-icon>
                                         Target this resource
                                     </button>
 
                                     <button mat-stroked-button color="primary" *ngIf="selectedResourceBelongsToBucket()"
                                         (click)="onTargetBucket()"
                                         [matTooltip]="'Target the entire bucket: ' + getSelectedResourceBucketName() + ' (' + getSelectedResourceBucketCount() + ' resources)'">
-                                        <mat-icon>folder_special</mat-icon>
+                                        <mat-icon svgIcon="tf-viewer:folder_special"></mat-icon>
                                         Target "{{ getSelectedResourceBucketName() }}"
                                     </button>
 
                                     <button mat-stroked-button color="accent" *ngIf="isSelectedResourceToBeCreated()"
                                         (click)="onImportState()"
                                         matTooltip="Import existing resource into Terraform state">
-                                        <mat-icon>file_download</mat-icon>
+                                        <mat-icon svgIcon="tf-viewer:file_download"></mat-icon>
                                         Import
                                     </button>
 
                                     <button mat-stroked-button color="warn" *ngIf="isSelectedResourceToBeDeleted()"
                                         (click)="onRemoveFromState()"
                                         matTooltip="Remove resource from Terraform state without destroying">
-                                        <mat-icon>delete_sweep</mat-icon>
+                                        <mat-icon svgIcon="tf-viewer:delete_sweep"></mat-icon>
                                         Remove from state
                                     </button>
                                 </div>
@@ -404,7 +394,7 @@
                                 <!-- Change Details Section -->
                                 <div class="change-details" *ngIf="hasChanges(selectedResource)">
                                     <h4>
-                                        <mat-icon>compare_arrows</mat-icon>
+                                        <mat-icon svgIcon="tf-viewer:compare_arrows"></mat-icon>
                                         Change Details
                                     </h4>
 
@@ -415,9 +405,7 @@
                                                 <mat-chip *ngFor="let action of selectedResource.change.actions"
                                                     [style.background-color]="getActionColor([action])"
                                                     [style.color]="'white'">
-                                                    <mat-icon [style.font-size]="'16px'">{{
-                                                        getActionIcon([action])
-                                                        }}</mat-icon>
+                                                    <mat-icon [style.font-size]="'16px'" [svgIcon]="'tf-viewer:' + (getActionIcon([action]))"></mat-icon>
                                                     {{ action }}
                                                 </mat-chip>
                                             </mat-chip-set>
@@ -435,10 +423,8 @@
                                                     <mat-panel-title>
                                                         <mat-icon
                                                             [style.color]="change.value.changed ? '#ff9800' : (change.value.hasDrift ? '#2196f3' : '#4caf50')"
-                                                            [style.margin-right.px]="8">
-                                                            {{ change.value.changed ? 'edit' : (change.value.hasDrift ?
-                                                            'compare_arrows' : 'check_circle') }}
-                                                        </mat-icon>
+                                                            [style.margin-right.px]="8" [svgIcon]="'tf-viewer:' + (change.value.changed ? 'edit' : (change.value.hasDrift ?
+                                                            'compare_arrows' : 'check_circle'))"></mat-icon>
                                                         <code class="field-name">{{ change.key }}</code>
                                                     </mat-panel-title>
                                                     <mat-panel-description>
@@ -461,13 +447,13 @@
                             " class="object-diff-container">
                                                         <div class="diff-header">
                                                             <h5>
-                                                                <mat-icon color="accent">data_object</mat-icon>
+                                                                <mat-icon color="accent" svgIcon="tf-viewer:data_object"></mat-icon>
                                                                 Property Changes
                                                                 <span
                                                                     *ngIf="change.value.hasDrift && hasResourceDrift(selectedResource.address)"
                                                                     class="drift-indicator">
                                                                     <mat-icon color="primary"
-                                                                        [matTooltip]="'Current state differs from planned state'">info</mat-icon>
+                                                                        [matTooltip]="'Current state differs from planned state'" svgIcon="tf-viewer:info"></mat-icon>
                                                                     Drift Detected
                                                                 </span>
                                                             </h5>
@@ -478,16 +464,16 @@
                                                                 [class.three-column]="hasResourceDrift(selectedResource.address)">
                                                                 <div class="property-name-header">Property</div>
                                                                 <div class="before-header">
-                                                                    <mat-icon color="warn">remove_circle</mat-icon>
+                                                                    <mat-icon color="warn" svgIcon="tf-viewer:remove_circle"></mat-icon>
                                                                     <span>Before</span>
                                                                 </div>
                                                                 <div class="current-header"
                                                                     *ngIf="hasResourceDrift(selectedResource.address)">
-                                                                    <mat-icon color="primary">present_to_all</mat-icon>
+                                                                    <mat-icon color="primary" svgIcon="tf-viewer:present_to_all"></mat-icon>
                                                                     <span>Current</span>
                                                                 </div>
                                                                 <div class="after-header">
-                                                                    <mat-icon color="primary">add_circle</mat-icon>
+                                                                    <mat-icon color="primary" svgIcon="tf-viewer:add_circle"></mat-icon>
                                                                     <span>After</span>
                                                                 </div>
                                                             </div>
@@ -508,9 +494,7 @@
                                                                             <span class="property-depth-indicator"
                                                                                 *ngIf="propDiff.depth > 0">
                                                                                 <mat-icon [style.font-size.px]="12"
-                                                                                    [style.color]="'#666'">
-                                                                                    subdirectory_arrow_right
-                                                                                </mat-icon>
+                                                                                    [style.color]="'#666'" svgIcon="tf-viewer:subdirectory_arrow_right"></mat-icon>
                                                                             </span>
                                                                             <code
                                                                                 class="property-key">{{ propDiff.key }}</code>
@@ -518,7 +502,7 @@
                                           propDiff.key.startsWith('[') && propDiff.key.endsWith(']')
                                         ">
                                                                                 <mat-icon [style.font-size.px]="10"
-                                                                                    [style.color]="'#9c27b0'">view_list</mat-icon>
+                                                                                    [style.color]="'#9c27b0'" svgIcon="tf-viewer:view_list"></mat-icon>
                                                                             </span>
                                                                         </div>
                                                                         <div class="property-type-info">
@@ -547,19 +531,17 @@
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(propDiff.before, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before')"
                                                                                     matTooltip="Copy value to clipboard">
-                                                                                    <mat-icon>content_copy</mat-icon>
+                                                                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
                                                                                     *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path))"
-                                                                                    class="sensitive-toggle-btn"
+                                                                                    class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                                    <mat-icon>{{
-                                                                                        isSensitiveValueVisible(selectedResource,
+                                                                                    <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                                         buildFullPropertyPath(change.key,
                                                                                         propDiff.path), 'before') ?
-                                                                                        'visibility_off' : 'visibility'
-                                                                                        }}</mat-icon>
+                                                                                        'visibility_off' : 'visibility')"></mat-icon>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -589,19 +571,17 @@
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(propDiff.current, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current')"
                                                                                     matTooltip="Copy value to clipboard">
-                                                                                    <mat-icon>content_copy</mat-icon>
+                                                                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
                                                                                     *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path))"
-                                                                                    class="sensitive-toggle-btn"
+                                                                                    class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'current') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                                    <mat-icon>{{
-                                                                                        isSensitiveValueVisible(selectedResource,
+                                                                                    <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                                         buildFullPropertyPath(change.key,
                                                                                         propDiff.path), 'current') ?
-                                                                                        'visibility_off' : 'visibility'
-                                                                                        }}</mat-icon>
+                                                                                        'visibility_off' : 'visibility')"></mat-icon>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -636,19 +616,17 @@
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(propDiff.after, selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after')"
                                                                                     matTooltip="Copy value to clipboard">
-                                                                                    <mat-icon>content_copy</mat-icon>
+                                                                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
                                                                                     *ngIf="isPropertySensitive(selectedResource, buildFullPropertyPath(change.key, propDiff.path))"
-                                                                                    class="sensitive-toggle-btn"
+                                                                                    class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, buildFullPropertyPath(change.key, propDiff.path), 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                                    <mat-icon>{{
-                                                                                        isSensitiveValueVisible(selectedResource,
+                                                                                    <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                                         buildFullPropertyPath(change.key,
                                                                                         propDiff.path), 'after') ?
-                                                                                        'visibility_off' : 'visibility'
-                                                                                        }}</mat-icon>
+                                                                                        'visibility_off' : 'visibility')"></mat-icon>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -663,13 +641,13 @@
                                                         <div class="simple-diff-container">
                                                             <div class="diff-header">
                                                                 <h5>
-                                                                    <mat-icon color="accent">compare_arrows</mat-icon>
+                                                                    <mat-icon color="accent" svgIcon="tf-viewer:compare_arrows"></mat-icon>
                                                                     Value Change
                                                                     <span
                                                                         *ngIf="change.value.hasDrift && hasResourceDrift(selectedResource.address)"
                                                                         class="drift-indicator">
                                                                         <mat-icon color="primary"
-                                                                            [matTooltip]="'Current state differs from planned state'">info</mat-icon>
+                                                                            [matTooltip]="'Current state differs from planned state'" svgIcon="tf-viewer:info"></mat-icon>
                                                                         Drift Detected
                                                                     </span>
                                                                 </h5>
@@ -681,7 +659,7 @@
                                                                     <div class="before-section">
                                                                         <div class="section-label">
                                                                             <mat-icon
-                                                                                color="warn">remove_circle</mat-icon>
+                                                                                color="warn" svgIcon="tf-viewer:remove_circle"></mat-icon>
                                                                             <span>Before</span>
                                                                         </div>
                                                                         <div class="value-container before-value">
@@ -696,18 +674,16 @@
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(change.value.before, selectedResource, change.key, 'before')"
                                                                                     matTooltip="Copy value to clipboard">
-                                                                                    <mat-icon>content_copy</mat-icon>
+                                                                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
                                                                                     *ngIf="isPropertySensitive(selectedResource, change.key)"
-                                                                                    class="sensitive-toggle-btn"
+                                                                                    class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'before')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'before') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                                    <mat-icon>{{
-                                                                                        isSensitiveValueVisible(selectedResource,
+                                                                                    <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                                         change.key, 'before') ?
-                                                                                        'visibility_off' : 'visibility'
-                                                                                        }}</mat-icon>
+                                                                                        'visibility_off' : 'visibility')"></mat-icon>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -717,7 +693,7 @@
                                                                         *ngIf="hasResourceDrift(selectedResource.address)">
                                                                         <div class="section-label">
                                                                             <mat-icon
-                                                                                color="primary">present_to_all</mat-icon>
+                                                                                color="primary" svgIcon="tf-viewer:present_to_all"></mat-icon>
                                                                             <span>Current</span>
                                                                         </div>
                                                                         <div class="value-container current-value"
@@ -733,18 +709,16 @@
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(change.value.current, selectedResource, change.key, 'current')"
                                                                                     matTooltip="Copy value to clipboard">
-                                                                                    <mat-icon>content_copy</mat-icon>
+                                                                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
                                                                                     *ngIf="isPropertySensitive(selectedResource, change.key)"
-                                                                                    class="sensitive-toggle-btn"
+                                                                                    class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'current')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'current') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                                    <mat-icon>{{
-                                                                                        isSensitiveValueVisible(selectedResource,
+                                                                                    <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                                         change.key, 'current') ?
-                                                                                        'visibility_off' : 'visibility'
-                                                                                        }}</mat-icon>
+                                                                                        'visibility_off' : 'visibility')"></mat-icon>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -753,13 +727,13 @@
                                                                     <div class="arrow-separator"
                                                                         *ngIf="!hasResourceDrift(selectedResource.address)">
                                                                         <mat-icon
-                                                                            color="primary">arrow_forward</mat-icon>
+                                                                            color="primary" svgIcon="tf-viewer:arrow_forward"></mat-icon>
                                                                     </div>
 
                                                                     <div class="after-section">
                                                                         <div class="section-label">
                                                                             <mat-icon
-                                                                                color="primary">add_circle</mat-icon>
+                                                                                color="primary" svgIcon="tf-viewer:add_circle"></mat-icon>
                                                                             <span>After</span>
                                                                         </div>
                                                                         <div class="value-container after-value">
@@ -774,18 +748,16 @@
                                                                                     class="sensitive-copy-btn"
                                                                                     (click)="copySensitiveValueToClipboard(change.value.after, selectedResource, change.key, 'after')"
                                                                                     matTooltip="Copy value to clipboard">
-                                                                                    <mat-icon>content_copy</mat-icon>
+                                                                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                                                 </button>
                                                                                 <button mat-icon-button
                                                                                     *ngIf="isPropertySensitive(selectedResource, change.key)"
-                                                                                    class="sensitive-toggle-btn"
+                                                                                    class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                                     (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
                                                                                     [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                                    <mat-icon>{{
-                                                                                        isSensitiveValueVisible(selectedResource,
+                                                                                    <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                                         change.key, 'after') ?
-                                                                                        'visibility_off' : 'visibility'
-                                                                                        }}</mat-icon>
+                                                                                        'visibility_off' : 'visibility')"></mat-icon>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -815,16 +787,15 @@
                                                                 class="sensitive-copy-btn"
                                                                 (click)="copySensitiveValueToClipboard(change.value.after, selectedResource, change.key, 'after')"
                                                                 matTooltip="Copy value to clipboard">
-                                                                <mat-icon>content_copy</mat-icon>
+                                                                <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                             </button>
                                                             <button mat-icon-button
                                                                 *ngIf="isPropertySensitive(selectedResource, change.key)"
-                                                                class="sensitive-toggle-btn"
+                                                                class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                 (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
                                                                 [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                <mat-icon>{{ isSensitiveValueVisible(selectedResource,
-                                                                    change.key, 'after') ? 'visibility_off' : 'visibility'
-                                                                    }}</mat-icon>
+                                                                <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
+                                                                    change.key, 'after') ? 'visibility_off' : 'visibility')"></mat-icon>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -837,7 +808,7 @@
                                 <!-- No Changes - Show Current Property Values -->
                                 <div *ngIf="!hasChanges(selectedResource)" class="unchanged-resource-details">
                                     <div class="section-header">
-                                        <mat-icon color="primary">check_circle</mat-icon>
+                                        <mat-icon color="primary" svgIcon="tf-viewer:check_circle"></mat-icon>
                                         <h4>Current Resource Properties</h4>
                                     </div>
                                     <p class="info-message">This resource has no planned changes. Showing current state:
@@ -873,17 +844,16 @@
                                                             <button mat-icon-button class="sensitive-copy-btn"
                                                                 (click)="copySensitiveValueToClipboard(change.value.after, selectedResource, change.key, 'after')"
                                                                 matTooltip="Copy value to clipboard">
-                                                                <mat-icon>content_copy</mat-icon>
+                                                                <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                                             </button>
                                                             <button mat-icon-button
                                                                 *ngIf="isPropertySensitive(selectedResource, change.key)"
-                                                                class="sensitive-toggle-btn"
+                                                                class="sensitive-toggle-btn" [disabled]="!allowSensitiveReveal"
                                                                 (click)="toggleSensitiveValueVisibility(selectedResource, change.key, 'after')"
                                                                 [matTooltip]="isSensitiveValueVisible(selectedResource, change.key, 'after') ? 'Hide sensitive value' : 'Show sensitive value'">
-                                                                <mat-icon>{{ isSensitiveValueVisible(selectedResource,
+                                                                <mat-icon [svgIcon]="'tf-viewer:' + (isSensitiveValueVisible(selectedResource,
                                                                     change.key, 'after') ? 'visibility_off' :
-                                                                    'visibility'
-                                                                    }}</mat-icon>
+                                                                    'visibility')"></mat-icon>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -931,7 +901,7 @@
                         <ng-container matColumnDef="sensitive">
                             <th mat-header-cell *matHeaderCellDef>Sensitive</th>
                             <td mat-cell *matCellDef="let output">
-                                <mat-icon *ngIf="output.sensitive" class="sensitive-icon">lock</mat-icon>
+                                <mat-icon *ngIf="output.sensitive" class="sensitive-icon" svgIcon="tf-viewer:lock"></mat-icon>
                                 <span *ngIf="!output.sensitive">-</span>
                             </td>
                         </ng-container>
@@ -996,7 +966,7 @@
                                 <button mat-icon-button class="copy-variable-btn"
                                     (click)="copyVariableValue(variable.value)"
                                     matTooltip="Copy variable value">
-                                    <mat-icon>content_copy</mat-icon>
+                                    <mat-icon svgIcon="tf-viewer:content_copy"></mat-icon>
                                 </button>
                             </td>
                         </ng-container>

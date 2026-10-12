@@ -22,7 +22,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { HttpClientModule } from '@angular/common/http';
 import { PipelineComponent } from './pipeline.component';
 import { TerraformPlanViewerComponent } from './terraform-plan-viewer/terraform-plan-viewer';
-import { TerraformPlanService } from '../services/terraform-plan.service';
 import { TerraformStateService } from '../services/terraform-state.service';
 
 @NgModule({
@@ -51,7 +50,7 @@ import { TerraformStateService } from '../services/terraform-state.service';
     PipelineComponent,
     TerraformPlanViewerComponent
   ],
-  providers: [TerraformPlanService, TerraformStateService],
+  providers: [TerraformStateService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

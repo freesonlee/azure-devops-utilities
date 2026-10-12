@@ -1,8 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TerraformPlanDisplayComponent } from './terraform-plan-display.component';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ResourceChange } from '../../interfaces/terraform-plan.interface';
+import { ResourceChange } from '../models/terraform-plan.interface';
 
 describe('TerraformPlanDisplayComponent - Force Replacement', () => {
     let component: TerraformPlanDisplayComponent;
@@ -12,8 +11,7 @@ describe('TerraformPlanDisplayComponent - Force Replacement', () => {
         await TestBed.configureTestingModule({
             imports: [
                 TerraformPlanDisplayComponent,
-                NoopAnimationsModule,
-                HttpClientTestingModule
+                NoopAnimationsModule
             ]
         }).compileComponents();
 

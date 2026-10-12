@@ -1,5 +1,5 @@
 <!-- File Upload Component - stays mounted so its file watcher keeps the active output binding -->
-<div [class.compact-upload-bar]="currentPlan">
+<div #toolbarContainer [class.compact-upload-bar]="currentPlan">
   <div [class.upload-controls]="currentPlan">
     <app-terraform-plan-file-upload
       #uploadToolbar
@@ -23,12 +23,12 @@
 </div>
 
 <!-- Display Component - shows when plan is loaded -->
-<app-terraform-plan-display
+<tf-plan-viewer
   *ngIf="currentPlan"
   [plan]="currentPlan"
-  [stackType]="stackType"
-  [cdkTfJson]="currentCdktfJson"
+  [cdktfMetadata]="currentCdktfJson"
+  [options]="{layout: 'page', viewportTopOffset: toolbarHeight}"
   (cdktfStatusChanged)="onCdktfStatusChanged($event)"
-  (viewSwitchRequested)="onViewSwitchRequested($event)"
+  (viewChanged)="onViewSwitchRequested($event)"
 >
-</app-terraform-plan-display>
+</tf-plan-viewer>

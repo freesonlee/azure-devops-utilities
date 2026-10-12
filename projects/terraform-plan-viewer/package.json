@@ -1,0 +1,36 @@
+{
+  "name": "@freesonlee/terraform-plan-viewer-angular",
+  "version": "0.1.0-next.0",
+  "description": "Embeddable Angular viewer for Terraform plan JSON and CDKTF metadata",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/freesonlee/azure-devops-utilities.git",
+    "directory": "projects/terraform-plan-viewer"
+  },
+  "peerDependencies": {
+    "@angular/animations": "~17.1.0",
+    "@angular/cdk": "~17.1.0",
+    "@angular/common": "~17.1.0",
+    "@angular/core": "~17.1.0",
+    "@angular/forms": "~17.1.0",
+    "@angular/material": "~17.1.0",
+    "@angular/platform-browser": "~17.1.0",
+    "rxjs": "^7.8.0"
+  },
+  "dependencies": {
+    "diff": "^8.0.2",
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "tag": "next"
+  },
+  "exports": {
+    "./theme.css": {
+      "style": "./theme.css",
+      "default": "./theme.css"
+    }
+  }
+}
