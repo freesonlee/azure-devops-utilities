@@ -902,12 +902,6 @@
                         word-break: break-word;
                         flex: 1;
                     }
-
-                    .sensitive-toggle-btn {
-                        margin: 0;
-                        margin-left: 4px;
-                        align-self: flex-start;
-                    }
                 }
             }
         }
@@ -991,12 +985,6 @@
                         word-break: break-word;
                         flex: 1;
                     }
-
-                    .sensitive-toggle-btn {
-                        margin: 0;
-                        margin-left: 4px;
-                        align-self: flex-start;
-                    }
                 }
             }
 
@@ -1055,12 +1043,6 @@
             word-break: break-word;
             flex: 1;
         }
-
-        .sensitive-toggle-btn {
-            margin: 0;
-            margin-left: 4px;
-            align-self: flex-start;
-        }
     }
 }
 
@@ -1077,9 +1059,15 @@
     align-items: center;
     gap: 4px;
     margin-left: 8px;
+    flex-shrink: 0;
 }
 
-.sensitive-copy-btn {
+.sensitive-copy-btn,
+.sensitive-toggle-btn {
+    --mdc-icon-button-state-layer-size: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     opacity: 0.7;
     transition: opacity 0.2s ease;
     width: 24px !important;
@@ -1091,6 +1079,17 @@
 
     &:hover {
         opacity: 1;
+    }
+
+    mat-icon {
+        margin: 0;
+    }
+}
+
+.sensitive-copy-btn {
+    --mdc-icon-button-icon-size: 14px;
+
+    &:hover {
         background-color: rgba(0, 0, 0, 0.05);
     }
 
@@ -1104,18 +1103,7 @@
 }
 
 .sensitive-toggle-btn {
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-    width: 24px !important;
-    height: 24px !important;
-    padding: 0 !important;
-    min-width: 24px !important;
-    line-height: 24px !important;
-    flex-shrink: 0;
-
-    &:hover {
-        opacity: 1;
-    }
+    --mdc-icon-button-icon-size: 16px;
 
     mat-icon {
         font-size: 16px !important;
@@ -1133,14 +1121,6 @@
 
     .sensitive-value-actions {
         align-self: flex-start;
-        margin-top: 2px; // Fine-tune vertical alignment
-    }
-
-    // Legacy support for old styling
-    .sensitive-toggle-btn {
-        margin-left: 8px;
-        align-self: flex-start;
-        margin-top: 2px; // Fine-tune vertical alignment
     }
 }
 
