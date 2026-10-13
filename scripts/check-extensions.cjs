@@ -5,6 +5,7 @@ const http = require('node:http');
 const os = require('node:os');
 const { chromium } = require('playwright');
 const yaml = require('js-yaml');
+const { loadPackage } = require('./public-extension-package.cjs');
 
 // Exercise the production bundles through the real SDK's cross-frame protocol.
 // All Azure DevOps API calls and extension data storage use isolated fixtures.
@@ -49,25 +50,34 @@ function fixturePage(kind, port) {
 
 (async () => {
   const builds = { history: 'dist/azure-devops-variable-group-history-extension', pipeline: 'dist/azure-devops-pipeline-profiles' };
-  for (const directory of Object.values(builds)) await fs.access(path.join(root, directory, 'index.html'));
+  const packages = {};
+  for (const [kind, directory] of Object.entries(builds)) {
+    if (publicIds) packages[kind] = await loadPackage(kind);
+    else await fs.access(path.join(root, directory, 'index.html'));
+  }
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://fixture.invalid');
       if (url.pathname === '/host') {
         res.setHeader('content-type', 'text/html');res.end(fixturePage(url.searchParams.get('kind'), server.address().port));return;
       }
-      let file;
+      let file, bytes;
       if (url.pathname === '/xdm.js') file = path.join(root, 'node_modules/azure-devops-extension-sdk/XDM.js');
       else {
         const [, kind, ...parts] = url.pathname.split('/');
         if (!builds[kind]) { res.writeHead(404);res.end();return; }
         const directory = path.resolve(root, builds[kind]);
-        file = path.resolve(directory, parts.join('/') || 'index.html');
+        const asset = parts.join('/') || 'index.html';
+        if (publicIds) {
+          bytes = packages[kind].assets.get(asset);
+          if (!bytes) { res.writeHead(404);res.end();return; }
+        }
+        file = path.resolve(directory, asset);
         if (!file.startsWith(directory + path.sep)) { res.writeHead(400);res.end();return; }
       }
-      const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+      const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2' };
       res.setHeader('content-type', types[path.extname(file)] || 'application/octet-stream');
-      res.end(await fs.readFile(file));
+      res.end(bytes || await fs.readFile(file));
     } catch { res.writeHead(404);res.end(); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -79,6 +89,16 @@ function fixturePage(kind, port) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ignoreHTTPSErrors: true });
       try {
         const unexpected = [], errors = [], requests = [];
+        // Only the local application and explicitly mocked Azure DevOps APIs may load.
+        await context.route('**/*', route => {
+          const url = new URL(route.request().url());
+          const override = process.env[(kind === 'history' ? 'HISTORY' : 'PIPELINE') + '_EXTENSION_URL'];
+          if (['localhost', '127.0.0.1'].includes(url.hostname) || (override && url.origin === new URL(override).origin)) return route.continue();
+          unexpected.push(route.request().url());return route.abort();
+        });
+        context.on('response', response => {
+          if (response.status() >= 400) unexpected.push(`${response.status()} ${response.url()}`);
+        });
         await context.route('https://extension-preview.invalid/**', async route => {
           const request = route.request(), url = new URL(request.url());
           if (url.pathname.includes('/_build')) return route.fulfill({ contentType: 'text/html', body: '<html>Fixture build result</html>' });
@@ -133,6 +153,12 @@ function fixturePage(kind, port) {
           const child = page.frames().find(frame => frame.parentFrame() === page.mainFrame());
           assert(await child.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Extension fits the viewport');
         }
+        const child = page.frames().find(frame => frame.parentFrame() === page.mainFrame());
+        assert(await child.evaluate(async () => {
+          const text = await document.fonts.load('400 14px Roboto');
+          const icons = await document.fonts.load('24px "Material Icons"');
+          return text.length > 0 && icons.length > 0;
+        }), 'Text and icon fonts load from packaged assets');
         assert.deepEqual(errors, []);assert.deepEqual(unexpected, []);
         console.log(`${kind}: SDK handshake, authenticated APIs, editing/storage, and responsive layout passed.`);
       } finally { await context.close(); }

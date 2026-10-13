@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ads-pipeline-profiles",
   "publisher": "FreesonLi",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "name": "Pipeline Profiles",
   "description": "Save pipeline resources, parameters and variables",
   "public": true,
@@ -44,8 +44,13 @@
     "type": "git",
     "uri": "https://github.com/freesonlee/azure-devops-utilities/tree/main/src/app/pipeline-profiles"
   },
-  "files": [],
-  "baseUri": "https://go.azuredevopshelpers.dev/extensions/pipeline-profiles/",
+  "files": [
+    {
+      "path": "dist/azure-devops-pipeline-profiles",
+      "packagePath": "/",
+      "addressable": true
+    }
+  ],
   "links": {
     "support": {
       "uri": "https://github.com/freesonlee/azure-devops-utilities/issues"

@@ -159,9 +159,21 @@
               "zone.js"
             ],
             "tsConfig": "tsconfig.varhistory.json",
-            "assets": [],
+            "assets": [
+              {
+                "glob": "LICENSE",
+                "input": "node_modules/@fontsource/roboto",
+                "output": "licenses/roboto"
+              },
+              {
+                "glob": "LICENSE",
+                "input": "node_modules/material-icons",
+                "output": "licenses/material-icons"
+              }
+            ],
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/extension-fonts.css",
               "src/app/variable-group-history/styles.css"
             ],
             "scripts": []
@@ -233,9 +245,21 @@
               "zone.js"
             ],
             "tsConfig": "tsconfig.pp.json",
-            "assets": [],
+            "assets": [
+              {
+                "glob": "LICENSE",
+                "input": "node_modules/@fontsource/roboto",
+                "output": "licenses/roboto"
+              },
+              {
+                "glob": "LICENSE",
+                "input": "node_modules/material-icons",
+                "output": "licenses/material-icons"
+              }
+            ],
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/extension-fonts.css",
               "src/app/pipeline-profiles/styles.css"
             ],
             "scripts": []

@@ -6,6 +6,7 @@ const http = require('node:http');
 const { spawnSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const JSZip = require('jszip');
+const { loadPackage } = require('./public-extension-package.cjs');
 const root = path.resolve(__dirname, '..');
 const directory = path.join(root, 'dist/azure-devops-terraform-plan-viewer-extension');
 const origin = 'https://run-preview.invalid/TestOrg/';
@@ -44,7 +45,8 @@ function hostPage(port, config) {
 }
 
 (async () => {
-  await fs.access(path.join(directory, 'index.html'));
+  const packaged = process.env.EXTENSION_ENV === 'public' ? await loadPackage('terraform') : null;
+  if (!packaged) await fs.access(path.join(directory, 'index.html'));
   const configs = { fixture: { collectionUrl: origin, projectId: 'project-1', projectName: 'Test Project', runId: 42, pipelineId: 7, token: sdkToken } };
   const liveUrl = process.env.TERRAFORM_LIVE_RUN_URL;
   if (liveUrl) {
@@ -68,15 +70,20 @@ function hostPage(port, config) {
         if (!config) { res.writeHead(404);res.end();return; }
         res.setHeader('content-type', 'text/html');res.end(hostPage(server.address().port, config));return;
       }
-      let file;
+      let file, bytes;
       if (url.pathname === '/xdm.js') file = path.join(root, 'node_modules/azure-devops-extension-sdk/XDM.js');
       else {
         if (!url.pathname.startsWith('/extension/')) { res.writeHead(404);res.end();return; }
-        file = path.resolve(directory, url.pathname.slice('/extension/'.length) || 'index.html');
+        const asset = url.pathname.slice('/extension/'.length) || 'index.html';
+        if (packaged) {
+          bytes = packaged.assets.get(asset);
+          if (!bytes) { res.writeHead(404);res.end();return; }
+        }
+        file = path.resolve(directory, asset);
         if (!file.startsWith(directory + path.sep)) { res.writeHead(400);res.end();return; }
       }
       res.setHeader('content-type', { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css' }[path.extname(file)] || 'application/octet-stream');
-      res.end(await fs.readFile(file));
+      res.end(bytes || await fs.readFile(file));
     } catch { res.writeHead(404);res.end(); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -87,6 +94,11 @@ function hostPage(port, config) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ignoreHTTPSErrors: true });
     try {
       const requests = [], errors = [], unexpected = [];
+      await context.route('**/*', route => {
+        const url = new URL(route.request().url()), override = process.env.TERRAFORM_EXTENSION_URL;
+        if (['localhost', '127.0.0.1'].includes(url.hostname) || (override && url.origin === new URL(override).origin)) return route.continue();
+        unexpected.push(route.request().url());return route.abort();
+      });
       const archives = {
         'a-classic': await zip({ 'a-classic/nested/same.plan.json': JSON.stringify(plan('classic')), 'a-classic/readme.txt': 'Ignore this file' }),
         'b-modern': await zip({ 'b-modern/same.plan.json': '\uFEFF' + JSON.stringify(plan('modern')), 'b-modern/broken.plan.json': 'MOCK_JSON_SECRET invalid JSON',

@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ads-var-history",
   "publisher": "FreesonLi",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "name": "Variable Group History",
   "description": "History support for variable groups",
   "public": true,
@@ -45,8 +45,13 @@
     "type": "git",
     "uri": "https://github.com/freesonlee/azure-devops-utilities/tree/main/src/app/variable-group-history"
   },
-  "files": [],
-  "baseUri": "https://go.azuredevopshelpers.dev/extensions/variable-group-history/",
+  "files": [
+    {
+      "path": "dist/azure-devops-variable-group-history-extension",
+      "packagePath": "/",
+      "addressable": true
+    }
+  ],
   "links": {
     "support": {
       "uri": "https://github.com/freesonlee/azure-devops-utilities/issues"
