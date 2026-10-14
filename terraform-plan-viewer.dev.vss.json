@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ads-terraform-plan-viewer-dev",
   "publisher": "FreesonLi",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "name": "Terraform Plan Viewer (Dev)",
   "description": "Private localhost development extension for Terraform pipeline run plans.",
   "public": false,

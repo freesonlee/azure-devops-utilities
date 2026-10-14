@@ -9,12 +9,12 @@
   "category": "Utility",
   "visibility": ["Build"],
   "runsOn": ["Agent"],
-  "version": { "Major": 1, "Minor": 0, "Patch": 0 },
+  "version": { "Major": 1, "Minor": 0, "Patch": 1 },
   "instanceNameFormat": "Publish Terraform plan: $(artifactName)",
   "inputs": [
     {
       "name": "planFile",
-      "type": "filePath",
+      "type": "string",
       "label": "Binary plan file",
       "defaultValue": "terraform.tfplan",
       "required": true,
@@ -46,7 +46,7 @@
     },
     {
       "name": "terraformCliPath",
-      "type": "filePath",
+      "type": "string",
       "label": "Terraform CLI path (optional)",
       "defaultValue": "",
       "required": false,

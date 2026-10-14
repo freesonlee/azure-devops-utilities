@@ -29,6 +29,8 @@ The `terraform-production` artifact contains `production.tfplan` and `production
 | `workingDirectory` | `$(System.DefaultWorkingDirectory)` | Initialized Terraform directory with the appropriate provider plugins. |
 | `terraformCliPath` | Empty | Optional executable path, relative to `workingDirectory` or absolute. Empty uses `terraform` from `PATH`. |
 
+The Terraform installer and publishing task must run in the same job for the installer's PATH changes to apply. The binary-plan and CLI inputs deliberately use string fields: Azure Pipelines roots `filePath` inputs against the checkout directory, including empty optional values. The task resolves these paths itself against `workingDirectory`. Launch errors include the operating-system error code and attempted executable path; providing a directory instead of an executable gives a specific error.
+
 The generated JSON includes unredacted sensitive values, as documented by [Terraform](https://developer.hashicorp.com/terraform/cli/commands/show). The binary can also contain secrets. Artifact access follows pipeline permissions. The task writes Terraform output directly to disk and does not print plan contents or raw Terraform diagnostics in logs. Conversion failures publish nothing.
 
 Supported jobs are Azure Pipelines YAML and classic build jobs on agents with the Node 20 task runner. Classic release jobs cannot publish build artifacts. The task has no runtime npm dependencies. Linux and Windows task tests run in CI; Azure DevOps Server is not validated.

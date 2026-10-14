@@ -65,7 +65,7 @@ for (const [name, value, expected] of [
   ['INPUT_JSONFILENAME', 'plan.json', /end in .plan.json/],
   ['INPUT_JSONFILENAME', 'CON.plan.json', /reserved characters/],
   ['INPUT_ARTIFACTNAME', 'bad\n##vso[task.complete]', /reserved characters/],
-  ['INPUT_TERRAFORMCLIPATH', 'missing-executable', /Could not start Terraform/]
+  ['INPUT_TERRAFORMCLIPATH', 'missing-executable', /executable was not found/]
 ]) test('rejects invalid input ' + name + '=' + JSON.stringify(value), async t => {
   const { env } = await fixture(t);
   const logs = [];
@@ -131,7 +131,7 @@ test('agent entry point marks failures and never prints Terraform output', async
   assert(!result.stdout.includes(secret));assert.equal(result.stderr, '');
 });
 
-test('optional CLI path uses Terraform from PATH', async t => {
+test('agent input translation preserves a blank CLI path and a plan path relative to workingDirectory', async t => {
   const { temp, env } = await fixture(t);
   const bin = path.join(temp, 'bin');await fs.mkdir(bin);
   const executable = path.join(bin, process.platform === 'win32' ? 'terraform.exe' : 'terraform');
@@ -141,6 +141,31 @@ test('optional CLI path uses Terraform from PATH', async t => {
   delete env.PATH;delete env.Path;
   env.PATH = bin + path.delimiter + originalPath;
   env.INPUT_TERRAFORMCLIPATH = '';
+  env.SYSTEM_DEFAULTWORKINGDIRECTORY = temp;
+  // Azure Pipelines translates every filePath input, including empty values,
+  // against the checkout directory before passing INPUT_* to a Node task.
+  // Model that preprocessing: the installer PATH must still work, and the plan
+  // must resolve in workingDirectory rather than the distinct checkout root.
+  const definition = require('./task.json');
+  for (const field of definition.inputs) {
+    const key = 'INPUT_' + field.name.toUpperCase();
+    if (field.type.toLowerCase() === 'filepath') env[key] = path.resolve(temp, env[key] ?? '');
+  }
   const staging = await run(env, () => {});
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(staging, 'production.plan.json'), 'utf8')), plan);
+});
+
+test('an explicit CLI directory produces an actionable error before launching', async t => {
+  const { cwd, temp, env } = await fixture(t);
+  const logs = [];
+  await assert.rejects(run({ ...env, INPUT_TERRAFORMCLIPATH: cwd }, value => logs.push(value)), /terraformCliPath points to a directory/);
+  assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
+});
+
+test('a missing PATH executable reports the OS launch error without exposing Terraform output', async t => {
+  const { temp, env } = await fixture(t);
+  const logs = [];
+  delete env.Path;env.PATH = '';env.INPUT_TERRAFORMCLIPATH = '';
+  await assert.rejects(run(env, value => logs.push(value)), /Could not start Terraform \(ENOENT\)/);
+  assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
 });

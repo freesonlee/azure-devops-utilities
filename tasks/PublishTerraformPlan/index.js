@@ -42,7 +42,7 @@ async function convert(cli, binary, output, cwd, env, signal) {
         stdio: ['ignore', file.fd, 'ignore']
       });
       child.once('error', error => { failure = new Error(error.name === 'AbortError' ? 'Plan publication was cancelled.' :
-        'Could not start Terraform. Install it on PATH or provide terraformCliPath to an executable.'); });
+        `Could not start Terraform (${error.code || 'launch error'}). Executable: ${cli}. Working directory: ${cwd}. Install it on PATH in the same job or provide terraformCliPath to an executable file.`); });
       // Wait for the child and its file handles to close before deleting staging,
       // including cancellation on Windows where open files cannot be removed.
       child.once('close', (code, killed) => {
@@ -73,6 +73,11 @@ async function run(env = process.env, log = console.log, signal) {
   const artifactName = filename(input(env, 'artifactName', 'terraform-plans'), 'artifactName');
   const cliInput = input(env, 'terraformCliPath');
   const cli = cliInput ? path.resolve(workingDirectory, cliInput) : 'terraform';
+  if (cliInput) {
+    const executable = await fs.stat(cli).catch(() => null);
+    if (!executable) throw new Error(`Terraform executable was not found at terraformCliPath: ${cli}`);
+    if (!executable.isFile()) throw new Error(`terraformCliPath points to a directory: ${cli}. Specify the executable file or leave it empty to use PATH.`);
+  }
   const tempRoot = env.AGENT_TEMPDIRECTORY || os.tmpdir();
   const staging = await fs.mkdtemp(path.join(tempRoot, 'publish-terraform-plan-'));
   try {
