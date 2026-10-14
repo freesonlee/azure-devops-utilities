@@ -31,15 +31,26 @@ function filename(value, label) {
 async function convert(cli, binary, output, cwd, env, signal) {
   const file = await fs.open(output, 'wx', 0o600);
   try {
-    // Redirect stdout to disk. Never forward JSON or raw Terraform diagnostics to task logs.
+    // Redirect JSON stdout to disk. Capture stderr for conversion-failure diagnostics.
     // Disable inherited logging and argument injection for this conversion command.
     const childEnv = { ...env, TF_IN_AUTOMATION: '1' };
     for (const key of ['TF_LOG', 'TF_LOG_CORE', 'TF_LOG_PROVIDER', 'TF_LOG_PATH', 'TF_CLI_ARGS', 'TF_CLI_ARGS_show']) delete childEnv[key];
     await new Promise((resolve, reject) => {
       let failure;
+      const diagnostics = [];
+      const diagnosticLimit = 64 * 1024;
+      let diagnosticBytes = 0, diagnosticsTruncated = false;
       const child = spawn(cli, ['show', '-json', '-no-color', binary], {
         cwd, env: childEnv, signal, windowsHide: true, shell: false,
-        stdio: ['ignore', file.fd, 'ignore']
+        stdio: ['ignore', file.fd, 'pipe']
+      });
+      child.stderr.on('data', chunk => {
+        const remaining = diagnosticLimit - diagnosticBytes;
+        if (remaining > 0) {
+          const retained = chunk.subarray(0, remaining);
+          diagnostics.push(retained);diagnosticBytes += retained.length;
+        }
+        if (chunk.length > remaining) diagnosticsTruncated = true;
       });
       child.once('error', error => { failure = new Error(error.name === 'AbortError' ? 'Plan publication was cancelled.' :
         `Could not start Terraform (${error.code || 'launch error'}). Executable: ${cli}. Working directory: ${cwd}. Install it on PATH in the same job or provide terraformCliPath to an executable file.`); });
@@ -48,7 +59,12 @@ async function convert(cli, binary, output, cwd, env, signal) {
       child.once('close', (code, killed) => {
         if (failure) reject(failure);
         else if (code === 0) resolve();
-        else reject(new Error(`Terraform show failed (${killed || 'exit code ' + code}). Check the Terraform version, binary plan, and initialized workingDirectory. Raw Terraform output is withheld from logs.`));
+        else {
+          const stderr = Buffer.concat(diagnostics).toString('utf8').trim();
+          const detail = stderr ? `\nTerraform stderr:\n${stderr}` : '\nTerraform produced no stderr. Check the Terraform version, binary plan, and initialized workingDirectory.';
+          const truncated = diagnosticsTruncated ? '\n[Terraform stderr truncated after 64 KiB.]' : '';
+          reject(new Error(`Terraform show failed (${killed || 'exit code ' + code}).${detail}${truncated}`));
+        }
       });
     });
   } finally {
@@ -61,19 +77,21 @@ async function run(env = process.env, log = console.log, signal) {
     throw new Error('Publish Terraform plan requires an Azure Pipelines build job. Classic release jobs cannot publish build artifacts.');
   }
   const workingDirectory = path.resolve(input(env, 'workingDirectory', env.SYSTEM_DEFAULTWORKINGDIRECTORY || process.cwd()));
-  if (!(await fs.stat(workingDirectory)).isDirectory()) throw new Error('workingDirectory must be a directory.');
   const binaryInput = input(env, 'planFile');
-  if (!binaryInput) throw new Error('planFile is required. Create a saved binary plan with terraform plan -out first.');
-  const binaryPath = path.resolve(workingDirectory, binaryInput);
-  if (!(await fs.stat(binaryPath)).isFile()) throw new Error('planFile must point to an existing binary plan file.');
-  const binaryName = filename(path.basename(binaryPath), 'Binary plan filename');
+  const jsonInput = input(env, 'jsonFile');
+  if (!binaryInput && !jsonInput) throw new Error('Provide planFile or jsonFile. Use a saved binary plan or an existing Terraform plan JSON file.');
+  if (binaryInput && jsonInput) throw new Error('Provide only one of planFile and jsonFile.');
+  const sourcePath = path.resolve(workingDirectory, binaryInput || jsonInput);
+  if (!(await fs.stat(sourcePath)).isFile()) throw new Error(`${binaryInput ? 'planFile' : 'jsonFile'} must point to an existing file.`);
+  const binaryName = binaryInput ? filename(path.basename(sourcePath), 'Binary plan filename') : null;
   const jsonName = filename(input(env, 'jsonFileName', 'terraform.plan.json'), 'jsonFileName');
   if (!jsonName.endsWith('.plan.json')) throw new Error('jsonFileName must end in .plan.json for the Terraform Plans viewer.');
-  if (jsonName.toLowerCase() === binaryName.toLowerCase()) throw new Error('The binary and JSON plan filenames must be different.');
+  if (binaryName && jsonName.toLowerCase() === binaryName.toLowerCase()) throw new Error('The binary and JSON plan filenames must be different.');
   const artifactName = filename(input(env, 'artifactName', 'terraform-plans'), 'artifactName');
   const cliInput = input(env, 'terraformCliPath');
   const cli = cliInput ? path.resolve(workingDirectory, cliInput) : 'terraform';
-  if (cliInput) {
+  if (binaryInput && !(await fs.stat(workingDirectory)).isDirectory()) throw new Error('workingDirectory must be a directory.');
+  if (binaryInput && cliInput) {
     const executable = await fs.stat(cli).catch(() => null);
     if (!executable) throw new Error(`Terraform executable was not found at terraformCliPath: ${cli}`);
     if (!executable.isFile()) throw new Error(`terraformCliPath points to a directory: ${cli}. Specify the executable file or leave it empty to use PATH.`);
@@ -81,21 +99,26 @@ async function run(env = process.env, log = console.log, signal) {
   const tempRoot = env.AGENT_TEMPDIRECTORY || os.tmpdir();
   const staging = await fs.mkdtemp(path.join(tempRoot, 'publish-terraform-plan-'));
   try {
-    const binary = path.join(staging, binaryName);
     const json = path.join(staging, jsonName);
-    // Convert the same snapshot that is published, without changing the source plan.
-    await fs.copyFile(binaryPath, binary);
-    await fs.chmod(binary, 0o600);
-    await convert(cli, binary, json, workingDirectory, env, signal);
+    if (binaryInput) {
+      const binary = path.join(staging, binaryName);
+      // Convert the same snapshot that is published, without changing the source plan.
+      await fs.copyFile(sourcePath, binary);
+      await fs.chmod(binary, 0o600);
+      await convert(cli, binary, json, workingDirectory, env, signal);
+    } else {
+      await fs.copyFile(sourcePath, json);
+      await fs.chmod(json, 0o600);
+    }
     let plan;
     try { plan = JSON.parse((await fs.readFile(json, 'utf8')).replace(/^\uFEFF/, '')); }
-    catch { throw new Error('Terraform did not produce valid plan JSON. No artifact was published.'); }
+    catch { throw new Error('The file does not contain valid plan JSON. No artifact was published.'); }
     if (!plan || typeof plan !== 'object' || typeof plan.format_version !== 'string' ||
         typeof plan.terraform_version !== 'string' || !plan.planned_values || typeof plan.planned_values !== 'object' || Array.isArray(plan.planned_values)) {
-      throw new Error('Terraform output is not a plan. Supply a saved binary plan, not a state file. No artifact was published.');
+      throw new Error('JSON is not a Terraform plan. Supply a saved plan or plan JSON. No artifact was published.');
     }
     if (signal?.aborted) throw new Error('Plan publication was cancelled.');
-    log(`Publishing binary and JSON plan as artifact: ${escapeData(artifactName)}`);
+    log(`Publishing ${binaryInput ? 'binary and JSON plan' : 'JSON plan'} as artifact: ${escapeData(artifactName)}`);
     log(command('artifact.upload', { containerfolder: artifactName, artifactname: artifactName }, staging));
     // The agent uploads asynchronously after processing stdout. Leave staging intact
     // until agent job cleanup; deleting it here can race the artifact upload.

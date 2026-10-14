@@ -17,7 +17,19 @@ Create a binary plan using your installed Terraform CLI, then use the included p
     # terraformCliPath: '/opt/terraform/terraform' # Optional; defaults to PATH.
 ```
 
-The task publishes a hosted build artifact containing the original binary filename and the requested JSON filename. Run it using the same Terraform version and initialized directory that created the binary plan. It does not create or apply a new plan. No separate publish step or PAT is needed. JSON filenames must end in `.plan.json` for discovery. Generated JSON and binary plans can contain secrets; the task does not log their contents, and artifact access follows pipeline permissions.
+The task publishes a hosted build artifact containing the original binary filename and the requested JSON filename. Run it using the same Terraform version and initialized directory that created the binary plan. It does not create or apply a new plan. No separate publish step or PAT is needed. JSON filenames must end in `.plan.json` for discovery. Generated JSON and binary plans can contain secrets; the task does not log their contents, and artifact access follows pipeline permissions. If conversion fails, Terraform's stderr is included in the task error to diagnose version and provider issues.
+
+If you already have plan JSON, leave `planFile` empty and provide `jsonFile`. Terraform is not needed in this mode, and only the JSON file is published:
+
+```yaml
+- task: PublishTerraformPlan@1
+  inputs:
+    jsonFile: '$(Build.ArtifactStagingDirectory)/production.json'
+    jsonFileName: 'production.plan.json'
+    artifactName: 'terraform-production'
+```
+
+Supply exactly one of `planFile` or `jsonFile`. Both accept absolute paths or paths relative to `workingDirectory`. The task validates existing JSON as a Terraform plan before publishing it under the requested filename, leaving the source untouched.
 
 The run tab targets this task through `supportsTasks`. Runs using other publishing steps need to adopt `PublishTerraformPlan@1`; historical runs without it will not have the tab. A failed or skipped task may still show the tab's empty state. Refresh after artifacts become available. Once the tab is visible, it scans all hosted artifacts in the run.
 

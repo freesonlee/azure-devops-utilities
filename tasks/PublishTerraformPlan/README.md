@@ -1,8 +1,8 @@
 # Publish Terraform plan
 
-`PublishTerraformPlan@1` takes a saved Terraform binary plan, runs `terraform show -json`, and publishes the binary and JSON together as a hosted build artifact. It is included in the Terraform Plan Viewer extension. The task uses the Azure Pipelines agent's [artifact upload logging command](https://learn.microsoft.com/en-us/azure/devops/pipelines/scripts/logging-commands?view=azure-devops#upload-upload-an-artifact), so it needs no PAT or separate publish step.
+`PublishTerraformPlan@1` publishes a saved Terraform plan as a hosted build artifact. Provide `planFile` to generate JSON with `terraform show -json` and publish both files, or leave `planFile` empty and provide `jsonFile` to publish existing plan JSON. It is included in the Terraform Plan Viewer extension. The task uses the Azure Pipelines agent's [artifact upload logging command](https://learn.microsoft.com/en-us/azure/devops/pipelines/scripts/logging-commands?view=azure-devops#upload-upload-an-artifact), so it needs no PAT or separate publish step.
 
-Terraform must already be installed, and the working directory must be initialized with the providers used to create the plan. Use the same Terraform version that created the binary. The task converts an existing plan; it does not run `terraform plan` or `terraform apply`.
+For binary conversion, Terraform must already be installed, and the working directory must be initialized with the providers used to create the plan. Use the same Terraform version that created the binary. Publishing existing JSON requires no Terraform installation or initialized directory. The task does not run `terraform plan` or `terraform apply`.
 
 ```yaml
 # Run after installing Terraform and initializing the infra directory.
@@ -21,17 +21,30 @@ Terraform must already be installed, and the working directory must be initializ
 
 The `terraform-production` artifact contains `production.tfplan` and `production.plan.json`. The source binary is preserved. The task stages a copy and generates its matching JSON in an isolated directory, publishing only those two files after conversion and validation succeed.
 
+To publish existing JSON, omit `planFile` and supply `jsonFile` instead:
+
+```yaml
+- task: PublishTerraformPlan@1
+  inputs:
+    jsonFile: '$(Build.ArtifactStagingDirectory)/production.json'
+    jsonFileName: 'production.plan.json'
+    artifactName: 'terraform-production'
+```
+
+This publishes only `production.plan.json`, preserving the source file and its contents. Supply exactly one of `planFile` or `jsonFile`. Existing JSON is validated as a Terraform plan before publication; invalid JSON and Terraform state JSON are rejected.
+
 | Input | Default | Behavior |
 | --- | --- | --- |
-| `planFile` | `terraform.tfplan` | Binary plan path, relative to `workingDirectory` or absolute. Its filename is preserved in the artifact. |
-| `jsonFileName` | `terraform.plan.json` | JSON output filename inside the artifact. Must end in `.plan.json`; directory paths are not accepted. |
+| `planFile` | Empty | Optional binary plan path, relative to `workingDirectory` or absolute. Its filename is preserved in the artifact. Leave empty when supplying `jsonFile`. |
+| `jsonFile` | Empty | Optional existing plan JSON path, relative to `workingDirectory` or absolute. Leave empty when supplying `planFile`. |
+| `jsonFileName` | `terraform.plan.json` | Generated or existing JSON filename inside the artifact. Must end in `.plan.json`; directory paths are not accepted. |
 | `artifactName` | `terraform-plans` | Hosted build artifact name. Use a unique name for each task invocation in a run. |
-| `workingDirectory` | `$(System.DefaultWorkingDirectory)` | Initialized Terraform directory with the appropriate provider plugins. |
-| `terraformCliPath` | Empty | Optional executable path, relative to `workingDirectory` or absolute. Empty uses `terraform` from `PATH`. |
+| `workingDirectory` | `$(System.DefaultWorkingDirectory)` | Base for relative paths. Binary conversion requires an initialized Terraform directory with the appropriate provider plugins. |
+| `terraformCliPath` | Empty | Optional executable path, relative to `workingDirectory` or absolute. Empty uses `terraform` from `PATH`. Ignored when publishing existing JSON. |
 
-The Terraform installer and publishing task must run in the same job for the installer's PATH changes to apply. The binary-plan and CLI inputs deliberately use string fields: Azure Pipelines roots `filePath` inputs against the checkout directory, including empty optional values. The task resolves these paths itself against `workingDirectory`. Launch errors include the operating-system error code and attempted executable path; providing a directory instead of an executable gives a specific error.
+For binary conversion, the Terraform installer and publishing task must run in the same job for the installer's PATH changes to apply. The plan and CLI inputs deliberately use string fields: Azure Pipelines roots `filePath` inputs against the checkout directory, including empty optional values. The task resolves these paths itself against `workingDirectory`. Launch errors include the operating-system error code and attempted executable path; providing a directory instead of an executable gives a specific error.
 
-The generated JSON includes unredacted sensitive values, as documented by [Terraform](https://developer.hashicorp.com/terraform/cli/commands/show). The binary can also contain secrets. Artifact access follows pipeline permissions. The task writes Terraform output directly to disk and does not print plan contents or raw Terraform diagnostics in logs. Conversion failures publish nothing.
+The generated JSON includes unredacted sensitive values, as documented by [Terraform](https://developer.hashicorp.com/terraform/cli/commands/show). The binary can also contain secrets. Artifact access follows pipeline permissions. The task writes JSON stdout directly to disk and does not print its contents. Conversion failures publish nothing and include Terraform's stderr in the task error, so version mismatches and missing-provider diagnostics are visible. Failure stderr is limited to 64 KiB and marked when truncated.
 
 Supported jobs are Azure Pipelines YAML and classic build jobs on agents with the Node 20 task runner. Classic release jobs cannot publish build artifacts. The task has no runtime npm dependencies. Linux and Windows task tests run in CI; Azure DevOps Server is not validated.
 

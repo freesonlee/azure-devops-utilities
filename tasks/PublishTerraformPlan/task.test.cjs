@@ -10,7 +10,7 @@ const secret = 'SYNTHETIC_PLAN_SECRET';
 const plan = { format_version: '1.2', terraform_version: '1.9.8', planned_values: {},
   resource_changes: [], variables: { token: { value: secret } } };
 
-async function fixture(t, output = JSON.stringify(plan), exitCode = 0) {
+async function fixture(t, output = JSON.stringify(plan), exitCode = 0, stderr = 'Terraform fixture diagnostic.') {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'terraform-task-test-'));
   t.after(() => fs.rm(temp, { recursive: true, force: true }));
   const cwd = path.join(temp, 'working directory');await fs.mkdir(cwd);
@@ -19,7 +19,7 @@ async function fixture(t, output = JSON.stringify(plan), exitCode = 0) {
   // This executes a real child process on Windows, Linux, and macOS without Terraform.
   await fs.writeFile(path.join(cwd, 'show'), `const fs=require('node:fs');
     fs.writeFileSync('arguments.json',JSON.stringify({args:process.argv.slice(2),cwd:process.cwd(),automation:process.env.TF_IN_AUTOMATION,log:process.env.TF_LOG,extra:process.env.TF_CLI_ARGS_show}));
-    process.stderr.write('${secret}');process.stdout.write(${JSON.stringify(output)});process.exitCode=${exitCode};`);
+    process.stderr.write(${JSON.stringify(stderr)});process.stdout.write(${JSON.stringify(output)});process.exitCode=${exitCode};`);
   const env = { ...process.env, BUILD_BUILDID: '123', AGENT_TEMPDIRECTORY: temp,
     INPUT_WORKINGDIRECTORY: cwd, INPUT_PLANFILE: 'binary plan.tfplan', INPUT_JSONFILENAME: 'production.plan.json',
     INPUT_ARTIFACTNAME: 'production-plans', INPUT_TERRAFORMCLIPATH: process.execPath,
@@ -48,7 +48,7 @@ test('converts a binary snapshot and publishes exactly both requested files with
 for (const [label, output, exitCode, expected] of [
   ['Terraform failure', JSON.stringify(plan), 1, /Terraform show failed/],
   ['malformed JSON', secret + ' invalid', 0, /valid plan JSON/],
-  ['state instead of a plan', JSON.stringify({ format_version: '1.0', terraform_version: '1.9.8', values: {} }), 0, /not a plan/]
+  ['state instead of a plan', JSON.stringify({ format_version: '1.0', terraform_version: '1.9.8', values: {} }), 0, /not a Terraform plan/]
 ]) test(label + ' publishes nothing and removes incomplete staging', async t => {
   const { temp, env } = await fixture(t, output, exitCode);
   const logs = [];
@@ -58,9 +58,9 @@ for (const [label, output, exitCode, expected] of [
 });
 
 for (const [name, value, expected] of [
-  ['INPUT_PLANFILE', '', /planFile is required/],
+  ['INPUT_PLANFILE', '', /Provide planFile or jsonFile/],
   ['INPUT_PLANFILE', 'missing.tfplan', /ENOENT/],
-  ['INPUT_PLANFILE', '.', /existing binary plan file/],
+  ['INPUT_PLANFILE', '.', /existing file/],
   ['INPUT_JSONFILENAME', '../escape.plan.json', /without directories/],
   ['INPUT_JSONFILENAME', 'plan.json', /end in .plan.json/],
   ['INPUT_JSONFILENAME', 'CON.plan.json', /reserved characters/],
@@ -122,13 +122,38 @@ test('cancelling a running conversion waits for child exit and removes incomplet
   assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
 });
 
-test('agent entry point marks failures and never prints Terraform output', async t => {
+test('agent entry point marks failures and reports stderr without printing JSON stdout', async t => {
   const { env } = await fixture(t, secret, 1);
   const result = spawnSync(process.execPath, [path.join(__dirname, 'index.js')], { env, encoding: 'utf8' });
   assert.equal(result.status, 1);
   assert(result.stdout.includes('##vso[task.logissue type=error;]'));
   assert(result.stdout.includes('##vso[task.complete result=Failed;]'));
+  assert(result.stdout.includes('Terraform fixture diagnostic.'));
   assert(!result.stdout.includes(secret));assert.equal(result.stderr, '');
+});
+
+test('version-mismatch diagnostics are preserved and agent logging commands in stderr are escaped', async t => {
+  const diagnostic = 'Error: Failed to read plan\nPlan created by Terraform 1.15.0 cannot be read by Terraform 1.16.5.\n##vso[task.setvariable variable=unexpected;]value';
+  const { temp, env } = await fixture(t, JSON.stringify(plan), 1, diagnostic);
+  await assert.rejects(run(env, () => {}), error => {
+    assert(error.message.includes(diagnostic));assert(!error.message.includes(secret));return true;
+  });
+  assert.deepEqual(await fs.readdir(temp), ['working directory']);
+  const result = spawnSync(process.execPath, [path.join(__dirname, 'index.js')], { env, encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert(result.stdout.includes('1.15.0'));assert(result.stdout.includes('1.16.5'));
+  assert(!result.stdout.split('\n').some(line => line.startsWith('##vso[task.setvariable')));
+  assert(result.stdout.includes('%0A'));assert(!result.stdout.includes(secret));
+});
+
+test('large failure diagnostics are bounded without publishing a partial plan', async t => {
+  const { temp, env } = await fixture(t, JSON.stringify(plan), 1, 'x'.repeat(70 * 1024));
+  const logs = [];
+  await assert.rejects(run(env, value => logs.push(value)), error => {
+    assert(error.message.includes('stderr truncated after 64 KiB'));
+    assert(error.message.length < 66 * 1024);return true;
+  });
+  assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
 });
 
 test('agent input translation preserves a blank CLI path and a plan path relative to workingDirectory', async t => {
@@ -168,4 +193,48 @@ test('a missing PATH executable reports the OS launch error without exposing Ter
   delete env.Path;env.PATH = '';env.INPUT_TERRAFORMCLIPATH = '';
   await assert.rejects(run(env, value => logs.push(value)), /Could not start Terraform \(ENOENT\)/);
   assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
+});
+
+test('existing JSON publishes one file with the chosen name without Terraform or a binary plan', async t => {
+  const { cwd, env } = await fixture(t);
+  const original = '\uFEFF' + JSON.stringify(plan);
+  const source = path.join(cwd, 'existing.json');await fs.writeFile(source, original);
+  await fs.unlink(path.join(cwd, 'binary plan.tfplan'));
+  env.INPUT_PLANFILE = '';env.INPUT_JSONFILE = 'existing.json';
+  env.INPUT_TERRAFORMCLIPATH = 'no-terraform-needed';env.PATH = '';
+  const logs = [];
+  const staging = await run(env, value => logs.push(value));
+  assert.deepEqual(await fs.readdir(staging), ['production.plan.json']);
+  assert.equal(await fs.readFile(path.join(staging, 'production.plan.json'), 'utf8'), original);
+  assert.equal(await fs.readFile(source, 'utf8'), original);
+  assert.equal(await fs.stat(path.join(cwd, 'arguments.json')).catch(() => null), null);
+  assert(logs[0].includes('Publishing JSON plan'));
+  assert.equal(logs.filter(line => line.startsWith('##vso[artifact.upload ')).length, 1);
+  assert(!logs.join('\n').includes(secret));
+});
+
+test('absolute JSON paths work without an initialized Terraform working directory', async t => {
+  const { cwd, temp, env } = await fixture(t);
+  const source = path.join(cwd, 'existing.plan.json');await fs.writeFile(source, JSON.stringify(plan));
+  const staging = await run({ ...env, INPUT_PLANFILE: '', INPUT_JSONFILE: source,
+    INPUT_WORKINGDIRECTORY: path.join(temp, 'no-terraform-directory') }, () => {});
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(staging, 'production.plan.json'), 'utf8')), plan);
+});
+
+for (const [label, json, expected] of [
+  ['malformed JSON', secret + ' invalid JSON', /valid plan JSON/],
+  ['state JSON', JSON.stringify({ format_version: '1.0', terraform_version: '1.9.8', values: {} }), /not a Terraform plan/]
+]) test('existing ' + label + ' publishes nothing', async t => {
+  const { temp, cwd, env } = await fixture(t);
+  await fs.writeFile(path.join(cwd, 'existing.json'), json);
+  const logs = [];
+  await assert.rejects(run({ ...env, INPUT_PLANFILE: '', INPUT_JSONFILE: 'existing.json' }, value => logs.push(value)), expected);
+  assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
+});
+
+test('ambiguous binary and JSON inputs fail before conversion or publication', async t => {
+  const { env } = await fixture(t);
+  const logs = [];
+  await assert.rejects(run({ ...env, INPUT_JSONFILE: 'existing.json' }, value => logs.push(value)), /Provide only one/);
+  assert.deepEqual(logs, []);
 });
