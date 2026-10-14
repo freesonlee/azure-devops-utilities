@@ -41,7 +41,7 @@ The serve targets use the custom Webpack dev-server builder and the shared SDK m
 npm run pack-dev
 ```
 
-This creates the three `.vsix` packages in `artifacts/dev/`. Packaging does not require an application build because the dev manifests serve the UI from localhost. Only extension metadata, icons, and Marketplace details are packaged.
+This creates the three `.vsix` packages in `artifacts/dev/`. Packaging does not require an application build because the dev manifests serve the UI from localhost. The Terraform dev package also includes `PublishTerraformPlanDev@1`; its task is built automatically during packaging and has its own GUID to avoid replacing the production task.
 
 You can upload these files manually at the [Marketplace publisher portal](https://marketplace.visualstudio.com/manage) under publisher `FreesonLi`: select **New extension > Azure DevOps**, upload the dev package, then share it with `FreesonLee`. The dev manifests set `public` to `false`.
 
@@ -78,7 +78,7 @@ npm run install-terraform-dev
 
 These installation commands use your Azure CLI sign-in through Microsoft Entra by default. Both methods require extension-management permissions in the test organization. Publishing permission alone may not be enough to install.
 
-For Terraform plans, open a pipeline run and select **Terraform Plans (Dev)**. It scans every hosted run artifact for files ending in `.plan.json`, including nested paths. The app uses only `vso.build`; your account still needs access to the run artifacts. See [the Terraform extension usage guide](../src/app/terraform-plan-viewer-extension/readme.md).
+For Terraform plans, use `PublishTerraformPlanDev@1` in a pipeline, then open its run and select **Terraform Plans (Dev)**. The tab targets the dev publishing task. It scans every hosted run artifact for files ending in `.plan.json`, including nested paths. The app uses only `vso.build`; your account still needs access to the run artifacts. The task uses agent artifact upload commands and needs no extension API token. See [task inputs and examples](../tasks/PublishTerraformPlan/README.md) and [the Terraform extension usage guide](../src/app/terraform-plan-viewer-extension/readme.md).
 
 In a project in `FreesonLee`, open **Pipelines**, then **Variable Groups (Dev)** or **Pipeline Profiles (Dev)**. Keep the corresponding local server running. Save source changes and refresh the extension to load them; no Marketplace upload is needed for ordinary UI/code changes.
 

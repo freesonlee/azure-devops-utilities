@@ -24,6 +24,7 @@ function tfx(args) {
   const manifest = await readManifest(selection);
   const vsix = packagePath(manifest);
   if (action === 'pack' || action === 'publish') {
+    if (selection === 'terraform') await require('./build-terraform-task.cjs').build();
     if (!fs.existsSync(path.join(root, 'dist', config.build, 'index.html'))) {
       throw new Error('Build the extension applications with npm run build:extensions before packaging.');
     }

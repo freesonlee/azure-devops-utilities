@@ -12,10 +12,19 @@ async function readManifest(selection) {
   assert(manifest.public === true && manifest.publisher === 'FreesonLi' && manifest.id === config.id &&
     !Object.hasOwn(manifest, 'baseUri') && /^\d+\.\d+\.\d+$/.test(manifest.version),
     'The release manifest must use its public identity and packaged assets without baseUri.');
-  assert.deepEqual(manifest.files, [{ path: `dist/${config.build}`, packagePath: '/', addressable: true }],
+  const files = [{ path: `dist/${config.build}`, packagePath: '/', addressable: true }];
+  if (selection === 'terraform') files.push({ path: 'dist/tasks/PublishTerraformPlan' });
+  assert.deepEqual(manifest.files, files,
     'The release manifest must package the complete build as addressable files at the package root.');
-  assert(manifest.contributions.every(item => item.properties.uri === 'index.html'),
+  const tabs = manifest.contributions.filter(item => item.type !== 'ms.vss-distributed-task.task');
+  assert(tabs.every(item => item.properties.uri === 'index.html'),
     'Contributions must load the packaged index.html.');
+  if (selection === 'terraform') {
+    const task = JSON.parse(await fs.readFile(path.join(root, 'tasks/PublishTerraformPlan/task.json'), 'utf8'));
+    assert.deepEqual(tabs[0].properties.supportsTasks, [task.id], 'The run tab must depend on the publishing task.');
+    assert.equal(manifest.contributions.find(item => item.type === 'ms.vss-distributed-task.task')?.properties.name,
+      'dist/tasks/PublishTerraformPlan', 'The extension must register the publishing task.');
+  }
   return manifest;
 }
 
@@ -55,6 +64,18 @@ async function loadPackage(selection) {
     }
   }
   await verifyDirectory();
+  if (selection === 'terraform') {
+    const taskPath = 'dist/tasks/PublishTerraformPlan';
+    for (const name of ['task.json', 'index.js', 'icon.png']) {
+      const asset = `${taskPath}/${name}`;
+      assert(archive.file(asset), `Missing packaged pipeline task file: ${asset}`);
+      const bytes = await archive.file(asset).async('nodebuffer');
+      assert(bytes.equals(await fs.readFile(path.join(root, asset))), `Packaged task file differs from the build: ${asset}`);
+    }
+    const task = JSON.parse(await archive.file(`${taskPath}/task.json`).async('string'));
+    assert.equal(task.id, manifest.contributions[0].properties.supportsTasks[0], 'Packaged task ID must match tab visibility.');
+    assert.equal(task.execution.Node20_1.target, 'index.js', 'The task must run its packaged entry point on Node 20.');
+  }
   for (const name of ['index.html', 'main.js', 'polyfills.js', 'runtime.js', 'styles.css']) {
     assert(assets.has(name), `Missing required application asset: ${name}`);
   }

@@ -10,6 +10,21 @@ on:
     branches: ["main"]
 
 jobs:
+  terraform-task:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+      - name: Check Terraform publishing task
+        run: node --test tasks/PublishTerraformPlan/task.test.cjs
+      - name: Build production and development tasks
+        run: node scripts/build-terraform-task.cjs
+
   build:
     runs-on: ubuntu-latest
 

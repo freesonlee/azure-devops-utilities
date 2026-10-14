@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ads-terraform-plan-viewer-dev",
   "publisher": "FreesonLi",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "name": "Terraform Plan Viewer (Dev)",
   "description": "Private localhost development extension for Terraform pipeline run plans.",
   "public": false,
@@ -34,7 +34,20 @@
       ],
       "properties": {
         "name": "Terraform Plans (Dev)",
-        "uri": "index.html"
+        "uri": "index.html",
+        "supportsTasks": [
+          "84d7f344-97f7-4696-8708-125d20e556ba"
+        ]
+      }
+    },
+    {
+      "id": "publish-terraform-plan-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": [
+        "ms.vss-distributed-task.tasks"
+      ],
+      "properties": {
+        "name": "dist/tasks/PublishTerraformPlanDev"
       }
     }
   ],
@@ -42,6 +55,10 @@
     "type": "git",
     "uri": "https://github.com/freesonlee/azure-devops-utilities"
   },
-  "files": [],
+  "files": [
+    {
+      "path": "dist/tasks/PublishTerraformPlanDev"
+    }
+  ],
   "baseUri": "https://localhost:4302/"
 }

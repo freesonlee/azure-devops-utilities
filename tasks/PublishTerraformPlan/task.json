@@ -1,0 +1,57 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "98e926ad-675f-42d3-8b3b-3b04127102f5",
+  "name": "PublishTerraformPlan",
+  "friendlyName": "Publish Terraform plan",
+  "description": "Convert a saved Terraform binary plan to JSON and publish both files as a build artifact.",
+  "author": "Freeson Li",
+  "helpMarkDown": "Run after terraform plan -out=<file>, using the same Terraform version and initialized working directory. The generated JSON contains unredacted sensitive values; artifact access follows the pipeline's permissions.",
+  "category": "Utility",
+  "visibility": ["Build"],
+  "runsOn": ["Agent"],
+  "version": { "Major": 1, "Minor": 0, "Patch": 0 },
+  "instanceNameFormat": "Publish Terraform plan: $(artifactName)",
+  "inputs": [
+    {
+      "name": "planFile",
+      "type": "filePath",
+      "label": "Binary plan file",
+      "defaultValue": "terraform.tfplan",
+      "required": true,
+      "helpMarkDown": "Existing binary plan created by terraform plan -out. Relative paths resolve against Working directory. The artifact preserves the binary file's name."
+    },
+    {
+      "name": "jsonFileName",
+      "type": "string",
+      "label": "JSON plan filename",
+      "defaultValue": "terraform.plan.json",
+      "required": true,
+      "helpMarkDown": "Filename inside the artifact, ending in .plan.json so the Terraform Plans tab can discover it."
+    },
+    {
+      "name": "artifactName",
+      "type": "string",
+      "label": "Artifact name",
+      "defaultValue": "terraform-plans",
+      "required": true,
+      "helpMarkDown": "Build artifact containing only the binary plan and generated JSON. Use a distinct name for each invocation in a run."
+    },
+    {
+      "name": "workingDirectory",
+      "type": "filePath",
+      "label": "Working directory",
+      "defaultValue": "$(System.DefaultWorkingDirectory)",
+      "required": true,
+      "helpMarkDown": "Initialized Terraform directory used to create the binary plan, including its provider plugins."
+    },
+    {
+      "name": "terraformCliPath",
+      "type": "filePath",
+      "label": "Terraform CLI path (optional)",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Path to the Terraform executable. Leave empty to use terraform from PATH. Use the Terraform version that created the binary plan."
+    }
+  ],
+  "execution": { "Node20_1": { "target": "index.js" } }
+}

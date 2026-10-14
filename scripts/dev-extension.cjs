@@ -57,6 +57,10 @@ function tfx(args) {
   }
 }
 if (action === 'pack' || action === 'publish') {
+  if (selection === 'terraform') {
+    const build = spawnSync(process.execPath, [path.join(root, 'scripts/build-terraform-task.cjs')], { cwd: root, stdio: 'inherit' });
+    if (build.error || build.status !== 0) process.exit(build.status || 1);
+  }
   fs.mkdirSync(output, { recursive: true });
   tfx(['create', '--manifests', config.manifest, '--output-path', vsix]);
 }
