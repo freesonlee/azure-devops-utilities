@@ -79,13 +79,13 @@ async function run(env = process.env, log = console.log, signal) {
   const workingDirectory = path.resolve(input(env, 'workingDirectory', env.SYSTEM_DEFAULTWORKINGDIRECTORY || process.cwd()));
   const binaryInput = input(env, 'planFile');
   const jsonInput = input(env, 'jsonFile');
-  if (!binaryInput && !jsonInput) throw new Error('Provide planFile or jsonFile. Use a saved binary plan or an existing Terraform plan JSON file.');
-  if (binaryInput && jsonInput) throw new Error('Provide only one of planFile and jsonFile.');
+  if (!jsonInput) throw new Error('jsonFile is required. Specify the generated JSON path or an existing Terraform plan JSON file.');
+  const jsonPath = path.resolve(workingDirectory, jsonInput);
   const sourcePath = path.resolve(workingDirectory, binaryInput || jsonInput);
   if (!(await fs.stat(sourcePath)).isFile()) throw new Error(`${binaryInput ? 'planFile' : 'jsonFile'} must point to an existing file.`);
   const binaryName = binaryInput ? filename(path.basename(sourcePath), 'Binary plan filename') : null;
-  const jsonName = filename(input(env, 'jsonFileName', 'terraform.plan.json'), 'jsonFileName');
-  if (!jsonName.endsWith('.plan.json')) throw new Error('jsonFileName must end in .plan.json for the Terraform Plans viewer.');
+  const jsonName = filename(path.basename(jsonPath), 'jsonFile filename');
+  if (!jsonName.endsWith('.plan.json')) throw new Error('jsonFile must end in .plan.json for the Terraform Plans viewer.');
   if (binaryName && jsonName.toLowerCase() === binaryName.toLowerCase()) throw new Error('The binary and JSON plan filenames must be different.');
   const artifactName = filename(input(env, 'artifactName', 'terraform-plans'), 'artifactName');
   const cliInput = input(env, 'terraformCliPath');
@@ -118,6 +118,11 @@ async function run(env = process.env, log = console.log, signal) {
       throw new Error('JSON is not a Terraform plan. Supply a saved plan or plan JSON. No artifact was published.');
     }
     if (signal?.aborted) throw new Error('Plan publication was cancelled.');
+    if (binaryInput) {
+      await fs.mkdir(path.dirname(jsonPath), { recursive: true });
+      await fs.copyFile(json, jsonPath);
+      await fs.chmod(jsonPath, 0o600);
+    }
     log(`Publishing ${binaryInput ? 'binary and JSON plan' : 'JSON plan'} as artifact: ${escapeData(artifactName)}`);
     log(command('artifact.upload', { containerfolder: artifactName, artifactname: artifactName }, staging));
     // The agent uploads asynchronously after processing stdout. Leave staging intact

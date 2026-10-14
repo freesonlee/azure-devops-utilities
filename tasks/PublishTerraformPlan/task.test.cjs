@@ -21,7 +21,7 @@ async function fixture(t, output = JSON.stringify(plan), exitCode = 0, stderr = 
     fs.writeFileSync('arguments.json',JSON.stringify({args:process.argv.slice(2),cwd:process.cwd(),automation:process.env.TF_IN_AUTOMATION,log:process.env.TF_LOG,extra:process.env.TF_CLI_ARGS_show}));
     process.stderr.write(${JSON.stringify(stderr)});process.stdout.write(${JSON.stringify(output)});process.exitCode=${exitCode};`);
   const env = { ...process.env, BUILD_BUILDID: '123', AGENT_TEMPDIRECTORY: temp,
-    INPUT_WORKINGDIRECTORY: cwd, INPUT_PLANFILE: 'binary plan.tfplan', INPUT_JSONFILENAME: 'production.plan.json',
+    INPUT_WORKINGDIRECTORY: cwd, INPUT_PLANFILE: 'binary plan.tfplan', INPUT_JSONFILE: 'production.plan.json',
     INPUT_ARTIFACTNAME: 'production-plans', INPUT_TERRAFORMCLIPATH: process.execPath,
     TF_LOG: 'TRACE', TF_CLI_ARGS_show: '-help' };
   delete env.RELEASE_RELEASEID;
@@ -35,6 +35,7 @@ test('converts a binary snapshot and publishes exactly both requested files with
   assert.deepEqual((await fs.readdir(staging)).sort(), ['binary plan.tfplan', 'production.plan.json']);
   assert.equal(await fs.readFile(path.join(staging, 'binary plan.tfplan'), 'utf8'), 'synthetic-binary-plan');
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(staging, 'production.plan.json'), 'utf8')), plan);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(cwd, 'production.plan.json'), 'utf8')), plan);
   assert.equal(await fs.readFile(path.join(cwd, 'binary plan.tfplan'), 'utf8'), 'synthetic-binary-plan');
   const conversion = JSON.parse(await fs.readFile(path.join(cwd, 'arguments.json'), 'utf8'));
   assert.deepEqual(conversion.args, ['-json', '-no-color', path.join(staging, 'binary plan.tfplan')]);
@@ -58,12 +59,12 @@ for (const [label, output, exitCode, expected] of [
 });
 
 for (const [name, value, expected] of [
-  ['INPUT_PLANFILE', '', /Provide planFile or jsonFile/],
+  ['INPUT_JSONFILE', '', /jsonFile is required/],
+  ['INPUT_PLANFILE', '', /ENOENT/],
   ['INPUT_PLANFILE', 'missing.tfplan', /ENOENT/],
   ['INPUT_PLANFILE', '.', /existing file/],
-  ['INPUT_JSONFILENAME', '../escape.plan.json', /without directories/],
-  ['INPUT_JSONFILENAME', 'plan.json', /end in .plan.json/],
-  ['INPUT_JSONFILENAME', 'CON.plan.json', /reserved characters/],
+  ['INPUT_JSONFILE', 'plan.json', /end in .plan.json/],
+  ['INPUT_JSONFILE', 'CON.plan.json', /reserved characters/],
   ['INPUT_ARTIFACTNAME', 'bad\n##vso[task.complete]', /reserved characters/],
   ['INPUT_TERRAFORMCLIPATH', 'missing-executable', /executable was not found/]
 ]) test('rejects invalid input ' + name + '=' + JSON.stringify(value), async t => {
@@ -76,7 +77,7 @@ for (const [name, value, expected] of [
 test('does not overwrite a binary when the JSON filename collides', async t => {
   const { cwd, env } = await fixture(t);
   await fs.rename(path.join(cwd, 'binary plan.tfplan'), path.join(cwd, 'same.plan.json'));
-  await assert.rejects(run({ ...env, INPUT_PLANFILE: 'same.plan.json', INPUT_JSONFILENAME: 'same.plan.json' }), /must be different/);
+  await assert.rejects(run({ ...env, INPUT_PLANFILE: 'same.plan.json', INPUT_JSONFILE: 'same.plan.json' }), /must be different/);
   assert.equal(await fs.readFile(path.join(cwd, 'same.plan.json'), 'utf8'), 'synthetic-binary-plan');
 });
 
@@ -195,17 +196,17 @@ test('a missing PATH executable reports the OS launch error without exposing Ter
   assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
 });
 
-test('existing JSON publishes one file with the chosen name without Terraform or a binary plan', async t => {
+test('existing JSON publishes one file with its original name without Terraform or a binary plan', async t => {
   const { cwd, env } = await fixture(t);
   const original = '\uFEFF' + JSON.stringify(plan);
-  const source = path.join(cwd, 'existing.json');await fs.writeFile(source, original);
+  const source = path.join(cwd, 'existing.plan.json');await fs.writeFile(source, original);
   await fs.unlink(path.join(cwd, 'binary plan.tfplan'));
-  env.INPUT_PLANFILE = '';env.INPUT_JSONFILE = 'existing.json';
+  env.INPUT_PLANFILE = '';env.INPUT_JSONFILE = 'existing.plan.json';
   env.INPUT_TERRAFORMCLIPATH = 'no-terraform-needed';env.PATH = '';
   const logs = [];
   const staging = await run(env, value => logs.push(value));
-  assert.deepEqual(await fs.readdir(staging), ['production.plan.json']);
-  assert.equal(await fs.readFile(path.join(staging, 'production.plan.json'), 'utf8'), original);
+  assert.deepEqual(await fs.readdir(staging), ['existing.plan.json']);
+  assert.equal(await fs.readFile(path.join(staging, 'existing.plan.json'), 'utf8'), original);
   assert.equal(await fs.readFile(source, 'utf8'), original);
   assert.equal(await fs.stat(path.join(cwd, 'arguments.json')).catch(() => null), null);
   assert(logs[0].includes('Publishing JSON plan'));
@@ -218,7 +219,7 @@ test('absolute JSON paths work without an initialized Terraform working director
   const source = path.join(cwd, 'existing.plan.json');await fs.writeFile(source, JSON.stringify(plan));
   const staging = await run({ ...env, INPUT_PLANFILE: '', INPUT_JSONFILE: source,
     INPUT_WORKINGDIRECTORY: path.join(temp, 'no-terraform-directory') }, () => {});
-  assert.deepEqual(JSON.parse(await fs.readFile(path.join(staging, 'production.plan.json'), 'utf8')), plan);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(staging, 'existing.plan.json'), 'utf8')), plan);
 });
 
 for (const [label, json, expected] of [
@@ -226,15 +227,34 @@ for (const [label, json, expected] of [
   ['state JSON', JSON.stringify({ format_version: '1.0', terraform_version: '1.9.8', values: {} }), /not a Terraform plan/]
 ]) test('existing ' + label + ' publishes nothing', async t => {
   const { temp, cwd, env } = await fixture(t);
-  await fs.writeFile(path.join(cwd, 'existing.json'), json);
+  await fs.writeFile(path.join(cwd, 'existing.plan.json'), json);
   const logs = [];
-  await assert.rejects(run({ ...env, INPUT_PLANFILE: '', INPUT_JSONFILE: 'existing.json' }, value => logs.push(value)), expected);
+  await assert.rejects(run({ ...env, INPUT_PLANFILE: '', INPUT_JSONFILE: 'existing.plan.json' }, value => logs.push(value)), expected);
   assert.deepEqual(logs, []);assert.deepEqual(await fs.readdir(temp), ['working directory']);
 });
 
-test('ambiguous binary and JSON inputs fail before conversion or publication', async t => {
-  const { env } = await fixture(t);
+test('binary conversion creates JSON at a nested path and publishes its filename', async t => {
+  const { cwd, env } = await fixture(t);
+  const output = path.join(cwd, 'generated', 'nested', 'new.plan.json');
+  const staging = await run({ ...env, INPUT_JSONFILE: 'generated/nested/new.plan.json' }, () => {});
+  assert.deepEqual(JSON.parse(await fs.readFile(output, 'utf8')), plan);
+  assert.deepEqual((await fs.readdir(staging)).sort(), ['binary plan.tfplan', 'new.plan.json']);
+});
+
+test('binary conversion replaces existing JSON only after successful conversion and validation', async t => {
+  const { cwd, env } = await fixture(t);
+  const output = path.join(cwd, 'production.plan.json');
+  await fs.writeFile(output, 'previous JSON');
+  await run({ ...env, INPUT_JSONFILE: output }, () => {});
+  assert.deepEqual(JSON.parse(await fs.readFile(output, 'utf8')), plan);
+});
+
+test('failed binary conversion preserves existing destination JSON', async t => {
+  const { cwd, env } = await fixture(t, JSON.stringify(plan), 1);
+  const output = path.join(cwd, 'production.plan.json');
+  await fs.writeFile(output, 'previous JSON');
   const logs = [];
-  await assert.rejects(run({ ...env, INPUT_JSONFILE: 'existing.json' }, value => logs.push(value)), /Provide only one/);
+  await assert.rejects(run(env, value => logs.push(value)), /Terraform show failed/);
+  assert.equal(await fs.readFile(output, 'utf8'), 'previous JSON');
   assert.deepEqual(logs, []);
 });

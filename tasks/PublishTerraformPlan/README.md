@@ -1,6 +1,6 @@
 # Publish Terraform plan
 
-`PublishTerraformPlan@1` publishes a saved Terraform plan as a hosted build artifact. Provide `planFile` to generate JSON with `terraform show -json` and publish both files, or leave `planFile` empty and provide `jsonFile` to publish existing plan JSON. It is included in the Terraform Plan Viewer extension. The task uses the Azure Pipelines agent's [artifact upload logging command](https://learn.microsoft.com/en-us/azure/devops/pipelines/scripts/logging-commands?view=azure-devops#upload-upload-an-artifact), so it needs no PAT or separate publish step.
+`PublishTerraformPlan@1` publishes a saved Terraform plan as a hosted build artifact. Always provide `jsonFile`. With `planFile`, the task generates JSON at `jsonFile` using `terraform show -json` and publishes both files. Without `planFile`, `jsonFile` must already exist and the task publishes only that JSON. It is included in the Terraform Plan Viewer extension. The task uses the Azure Pipelines agent's [artifact upload logging command](https://learn.microsoft.com/en-us/azure/devops/pipelines/scripts/logging-commands?view=azure-devops#upload-upload-an-artifact), so it needs no PAT or separate publish step.
 
 For binary conversion, Terraform must already be installed, and the working directory must be initialized with the providers used to create the plan. Use the same Terraform version that created the binary. Publishing existing JSON requires no Terraform installation or initialized directory. The task does not run `terraform plan` or `terraform apply`.
 
@@ -14,30 +14,28 @@ For binary conversion, Terraform must already be installed, and the working dire
   inputs:
     workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
     planFile: 'production.tfplan'
-    jsonFileName: 'production.plan.json'
+    jsonFile: 'production.plan.json'
     artifactName: 'terraform-production'
     # terraformCliPath: '/opt/terraform/terraform' # Optional; otherwise use PATH.
 ```
 
-The `terraform-production` artifact contains `production.tfplan` and `production.plan.json`. The source binary is preserved. The task stages a copy and generates its matching JSON in an isolated directory, publishing only those two files after conversion and validation succeed.
+The `terraform-production` artifact contains `production.tfplan` and `production.plan.json`. The source binary is preserved. After successful conversion and validation, the task writes the generated JSON to the requested `jsonFile` path, creating parent directories and replacing an existing destination file. It publishes only those two files from an isolated staging directory.
 
-To publish existing JSON, omit `planFile` and supply `jsonFile` instead:
+To publish existing JSON, omit `planFile`:
 
 ```yaml
 - task: PublishTerraformPlan@1
   inputs:
-    jsonFile: '$(Build.ArtifactStagingDirectory)/production.json'
-    jsonFileName: 'production.plan.json'
+    jsonFile: '$(Build.ArtifactStagingDirectory)/production.plan.json'
     artifactName: 'terraform-production'
 ```
 
-This publishes only `production.plan.json`, preserving the source file and its contents. Supply exactly one of `planFile` or `jsonFile`. Existing JSON is validated as a Terraform plan before publication; invalid JSON and Terraform state JSON are rejected.
+This publishes only `production.plan.json`, preserving the source file and its contents. Existing JSON is validated as a Terraform plan before publication; invalid JSON and Terraform state JSON are rejected.
 
 | Input | Default | Behavior |
 | --- | --- | --- |
-| `planFile` | Empty | Optional binary plan path, relative to `workingDirectory` or absolute. Its filename is preserved in the artifact. Leave empty when supplying `jsonFile`. |
-| `jsonFile` | Empty | Optional existing plan JSON path, relative to `workingDirectory` or absolute. Leave empty when supplying `planFile`. |
-| `jsonFileName` | `terraform.plan.json` | Generated or existing JSON filename inside the artifact. Must end in `.plan.json`; directory paths are not accepted. |
+| `planFile` | Empty | Optional binary plan path, relative to `workingDirectory` or absolute. Its filename is preserved in the artifact. Leave empty to publish existing JSON. |
+| `jsonFile` | Empty (required) | Generated JSON destination when `planFile` is supplied; existing JSON source otherwise. Relative to `workingDirectory` or absolute, ending in `.plan.json`. Its filename is preserved in the artifact. |
 | `artifactName` | `terraform-plans` | Hosted build artifact name. Use a unique name for each task invocation in a run. |
 | `workingDirectory` | `$(System.DefaultWorkingDirectory)` | Base for relative paths. Binary conversion requires an initialized Terraform directory with the appropriate provider plugins. |
 | `terraformCliPath` | Empty | Optional executable path, relative to `workingDirectory` or absolute. Empty uses `terraform` from `PATH`. Ignored when publishing existing JSON. |
