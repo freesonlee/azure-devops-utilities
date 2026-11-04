@@ -8,7 +8,6 @@ import { MatInputModule } from '@angular/material/input';
 @Component({
     templateUrl: './settings.component.html',
     styleUrls: ['./settings.component.css'],
-    standalone: true,
     imports: [
         MatFormFieldModule,
         MatInputModule,

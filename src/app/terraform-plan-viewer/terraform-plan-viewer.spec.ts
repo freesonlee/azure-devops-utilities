@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TerraformPlanViewerComponent } from './terraform-plan-viewer';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('TerraformPlanViewerComponent', () => {
     let component: TerraformPlanViewerComponent;
@@ -9,7 +10,8 @@ describe('TerraformPlanViewerComponent', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            imports: [TerraformPlanViewerComponent, HttpClientTestingModule, NoopAnimationsModule]
+            imports: [TerraformPlanViewerComponent, NoopAnimationsModule],
+            providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
         }).compileComponents();
 
         fixture = TestBed.createComponent(TerraformPlanViewerComponent);

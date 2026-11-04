@@ -33,7 +33,6 @@ interface PlanFilePickerHost {
 
 @Component({
   selector: 'app-terraform-plan-file-upload',
-  standalone: true,
   imports: [
     CommonModule,
     MatCardModule,

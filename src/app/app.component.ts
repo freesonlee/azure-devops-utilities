@@ -16,6 +16,7 @@ import { generateQuery } from './workItemQuery';
 type Mode = 'variables' | 'pipelines' | 'terraform';
 
 @Component({
+  standalone: false,
   selector: 'app-root',
   templateUrl: './app.component.html',
   animations: [

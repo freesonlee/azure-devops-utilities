@@ -17,7 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 import * as SDK from 'azure-devops-extension-sdk';
 import { VariableGroupHistoryComponent } from './variable-group-history.component';
@@ -36,7 +36,6 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatSidenavModule,
     MatListModule,
     FormsModule,
-    HttpClientModule,
     NgFor,
     MatTableModule,
     MatCheckboxModule,
@@ -48,7 +47,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatAutocompleteModule
 
   ],
-  providers: [],
+  providers: [provideHttpClient(withInterceptorsFromDi())],
   bootstrap: [AppComponent]
 })
 export class AppModule {

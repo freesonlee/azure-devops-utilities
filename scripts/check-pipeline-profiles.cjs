@@ -89,6 +89,9 @@ async function checkGitHubBranches(browser, errors) {
         previews.push(payload);
         return route.fulfill({ json: { finalYaml: JSON.stringify({ ...plan, resources: {} }) } });
       }
+      if (request.method() === 'POST' && url.pathname.includes('/_apis/Contribution/HierarchyQuery/')) {
+        return route.fulfill({ json: { dataProviders: { 'ms.vss-build-web.pipeline-run-parameters-data-provider': { templateParameters: plan.parameters } } } });
+      }
       unexpected.push(request.method() + ' ' + request.url());
       return route.abort();
     });
@@ -196,6 +199,9 @@ async function checkGitHubBranches(browser, errors) {
         // This is a mock queue only; no real Azure DevOps pipelines are run.
         queued.push(payload);
         return route.fulfill({ json: { id: 999, name: '2026.10.10.2' } });
+      }
+      if (request.method() === 'POST' && url.includes('/_apis/Contribution/HierarchyQuery/')) {
+        return route.fulfill({ json: { dataProviders: { 'ms.vss-build-web.pipeline-run-parameters-data-provider': { templateParameters: plan.parameters } } } });
       }
       unexpected.push(request.method() + ' ' + url);
       return route.abort();

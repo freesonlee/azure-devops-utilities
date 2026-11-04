@@ -6,7 +6,7 @@ https://github.com/marella/material-design-icons/tree/main/packages/svg.
 See `MATERIAL_ICONS_LICENSE` for the license text. The icons are embedded
 unchanged as SVG strings and do not require a network request or icon font.
 
-The optional `theme.css` is the Angular Material 17 indigo/pink theme,
+The optional `theme.css` is the Angular Material 19 indigo/pink theme,
 distributed under MIT: https://github.com/angular/components/blob/main/LICENSE.
 Angular Material's license is included below.
 

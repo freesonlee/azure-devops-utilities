@@ -19,7 +19,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { PipelineComponent } from './pipeline.component';
 import { TerraformPlanViewerComponent } from './terraform-plan-viewer/terraform-plan-viewer';
 import { TerraformStateService } from '../services/terraform-state.service';
@@ -38,7 +38,6 @@ import { TerraformStateService } from '../services/terraform-state.service';
     MatSidenavModule,
     MatListModule,
     FormsModule,
-    HttpClientModule,
     NgFor,
     MatTableModule,
     MatCheckboxModule,
@@ -50,7 +49,7 @@ import { TerraformStateService } from '../services/terraform-state.service';
     PipelineComponent,
     TerraformPlanViewerComponent
   ],
-  providers: [TerraformStateService],
+  providers: [TerraformStateService, provideHttpClient(withInterceptorsFromDi())],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

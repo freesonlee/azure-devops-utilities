@@ -9,7 +9,6 @@ import { ConstructNode, ResourceChange } from '../models/terraform-plan.interfac
 
 @Component({
   selector: 'app-construct-view',
-  standalone: true,
   imports: [
     CommonModule,
     MatExpansionModule,

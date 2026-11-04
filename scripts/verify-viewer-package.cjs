@@ -5,6 +5,7 @@ const os = require('node:os');
 const { spawn } = require('node:child_process');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
+const installedVersion = name => require(`${name}/package.json`).version;
 
 function run(cmd, args, cwd) {
   return new Promise((resolve, reject) => {
@@ -23,8 +24,8 @@ function run(cmd, args, cwd) {
   const write = (name, text) => fs.writeFile(path.join(output, name), typeof text === 'string' ? text : JSON.stringify(text, null, 2) + '\n');
   await write('package.json', { name: 'terraform-viewer-external-consumer', private: true, scripts: { build: 'ng build consumer', server: 'ng run consumer:server', dev: 'ng serve consumer --host 127.0.0.1 --port 4202' }, dependencies: {
     '@freesonlee/terraform-plan-viewer-angular': `file:${tarball}`,
-    ...Object.fromEntries(['animations', 'common', 'compiler', 'core', 'forms', 'platform-browser', 'platform-browser-dynamic', 'platform-server', 'router', 'cdk', 'material'].map(name => [`@angular/${name}`, '17.1.1'])), rxjs: '7.8.0', tslib: '^2.3.0', 'zone.js': '0.14.3'
-  }, devDependencies: { '@angular-devkit/build-angular': '17.1.1', '@angular/cli': '17.1.1', '@angular/compiler-cli': '17.1.1', typescript: '5.3.3', '@types/node': '^20.0.0' } });
+    ...Object.fromEntries(['animations', 'common', 'compiler', 'core', 'forms', 'platform-browser', 'platform-browser-dynamic', 'platform-server', 'router', 'cdk', 'material'].map(name => [`@angular/${name}`, installedVersion(name === 'platform-server' ? '@angular/core' : `@angular/${name}`)])), rxjs: installedVersion('rxjs'), tslib: installedVersion('tslib'), 'zone.js': installedVersion('zone.js')
+  }, devDependencies: { ...Object.fromEntries(['@angular-devkit/build-angular', '@angular/cli', '@angular/compiler-cli', 'typescript'].map(name => [name, installedVersion(name)])), '@types/node': '^22.0.0' } });
   await write('angular.json', { version: 1, projects: { consumer: { projectType: 'application', root: '', sourceRoot: 'src', architect: {
     build: { builder: '@angular-devkit/build-angular:browser', options: { outputPath: 'dist/browser', index: 'src/index.html', main: 'src/main.ts', polyfills: ['zone.js'], tsConfig: 'tsconfig.json', styles: ['node_modules/@freesonlee/terraform-plan-viewer-angular/theme.css'], optimization: true }, configurations: { development: { optimization: false, buildOptimizer: false } } },
     serve: { builder: '@angular-devkit/build-angular:dev-server', options: { buildTarget: 'consumer:build:development' } },
@@ -54,12 +55,12 @@ replace(){this.first={...this.original,resource_changes:[{...this.original.resou
 invalid(){this.first={resource_changes:'bad'} as unknown as TerraformPlan;}
 large(){this.cdktf=null;this.first={...this.original,resource_changes:Array.from({length:1000},(_,i)=>({...this.original.resource_changes[0],address:'null_resource.large_'+i,type:'null_resource',name:'large_'+i}))};}
 }`);
-  await write('src/module-demo.ts', `import {Component,NgModule} from '@angular/core';import {BrowserModule} from '@angular/platform-browser';import {NoopAnimationsModule} from '@angular/platform-browser/animations';import {TerraformPlanViewerComponent,TerraformPlan} from '@freesonlee/terraform-plan-viewer-angular';import data from './plan.json';
-@Component({selector:'app-root',template:'<tf-plan-viewer [plan]="plan" />'})export class ModuleDemoComponent{plan=data as TerraformPlan;}
-@NgModule({declarations:[ModuleDemoComponent],imports:[BrowserModule.withServerTransition({appId:'viewer-test'}),NoopAnimationsModule,TerraformPlanViewerComponent],bootstrap:[ModuleDemoComponent]})export class DemoModule{}`);
+  await write('src/module-demo.ts', `import {APP_ID,Component,NgModule} from '@angular/core';import {BrowserModule} from '@angular/platform-browser';import {NoopAnimationsModule} from '@angular/platform-browser/animations';import {TerraformPlanViewerComponent,TerraformPlan} from '@freesonlee/terraform-plan-viewer-angular';import data from './plan.json';
+@Component({selector:'app-root',standalone:false,template:'<tf-plan-viewer [plan]="plan" />'})export class ModuleDemoComponent{plan=data as TerraformPlan;}
+@NgModule({declarations:[ModuleDemoComponent],imports:[BrowserModule,NoopAnimationsModule,TerraformPlanViewerComponent],providers:[{provide:APP_ID,useValue:'viewer-test'}],bootstrap:[ModuleDemoComponent]})export class DemoModule{}`);
   await write('src/main.ts', `import {bootstrapApplication} from '@angular/platform-browser';import {provideNoopAnimations} from '@angular/platform-browser/animations';import {DemoComponent} from './demo';bootstrapApplication(DemoComponent,{providers:[provideNoopAnimations()]}).catch(console.error);`);
   await write('src/main.module.ts', `import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';import {DemoModule} from './module-demo';platformBrowserDynamic().bootstrapModule(DemoModule).catch(console.error);`);
-  await write('src/main.server.ts', `import 'zone.js/node';import {NgModule} from '@angular/core';import {renderModule,ServerModule} from '@angular/platform-server';import {DemoModule,ModuleDemoComponent} from './module-demo';@NgModule({imports:[DemoModule,ServerModule],bootstrap:[ModuleDemoComponent]})export class ServerDemoModule{};export function render(){return renderModule(ServerDemoModule,{document:'<!doctype html><html><body><app-root></app-root></body></html>',url:'http://localhost/'});}`);
+  await write('src/main.server.ts', `import 'zone.js/node';import {NgModule} from '@angular/core';import {renderModule,ServerModule} from '@angular/platform-server';import {DemoModule,ModuleDemoComponent} from './module-demo';@NgModule({imports:[DemoModule,ServerModule],bootstrap:[ModuleDemoComponent]})export class ServerDemoModule{};export function render(){return renderModule(ServerDemoModule,{document:'<!doctype html><html><body><app-root></app-root></body></html>',url:'http://localhost/',allowedHosts:['localhost']});}`);
   console.log('Independent consumer: ' + output);
   await run('npm', ['install', '--no-audit', '--no-fund'], output);
   await run('npm', ['run', 'build'], output);
@@ -81,9 +82,11 @@ large(){this.cdktf=null;this.first={...this.original,resource_changes:Array.from
     const first = page.locator('#first');const second = page.locator('#second');
     await first.getByText('Plan Overview', { exact: true }).waitFor();
     const open = async locator => { if (await locator.getAttribute('aria-expanded') !== 'true') await locator.click(); };
-    await open(first.locator('mat-expansion-panel-header').filter({ hasText: 'Root Module' }).first());
-    await open(first.locator('mat-expansion-panel-header').filter({ hasText: 'Azurerm Resource Group' }).first());
-    const row = first.locator('.resource-item').filter({ hasText: 'azurerm_resource_group.platform' }).first();
+    const tree = first.locator('app-resource-list');
+    await open(tree.locator('.module-panel > mat-expansion-panel-header').filter({ hasText: 'Root Module' }).first());
+    await open(tree.locator('.resource-type-panel > mat-expansion-panel-header').filter({ hasText: 'Azurerm Resource Group' }).first());
+    const row = tree.locator('.resource-item').filter({ hasText: 'azurerm_resource_group.platform' }).first();
+    await row.waitFor({ state: 'visible' });
     await row.focus(); await row.press('Enter');
     await page.waitForFunction(() => document.querySelector('#selected1').textContent === 'azurerm_resource_group.platform');
     assert.equal(await page.locator('#selected2').innerText(), 'none');
@@ -114,7 +117,7 @@ large(){this.cdktf=null;this.first={...this.original,resource_changes:Array.from
     await page.setViewportSize({ width: 1440, height: 1000 });
     const started = Date.now();
     await page.getByRole('button', { name: 'Large plan', exact: true }).click();
-    await first.locator('.resource-item').filter({ hasText: 'null_resource.large_999' }).first().waitFor({ state: 'attached' });
+    await tree.locator('.resource-item').filter({ hasText: 'null_resource.large_999' }).first().waitFor({ state: 'attached' });
     console.log('1,000-resource input rendered in ' + (Date.now() - started) + ' ms (local development build; no virtualization).');
     assert.deepEqual(errors, [], 'No browser errors');assert.deepEqual(network, [], 'No external fonts, icons, APIs, or backend requests');
     console.log('Independent standalone consumer passed: frozen JSON, two viewers, selection/reset, masking, CDKTF, and container layout.');

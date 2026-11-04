@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, concatAll, concatMap, map, startWith } from 'rxjs';
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, NgIf } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { MatOption } from '@angular/material/core';
 
@@ -27,7 +27,6 @@ export type DialogData = {
 @Component({
     templateUrl: './comment.component.html',
     styleUrls: ['./comment.component.css'],
-    standalone: true,
     imports: [
         MatFormFieldModule,
         MatInputModule,
@@ -38,7 +37,6 @@ export type DialogData = {
         MatIconModule,
         AsyncPipe,
         ReactiveFormsModule,
-        NgFor,
         NgIf
     ]
 })

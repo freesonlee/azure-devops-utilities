@@ -6,7 +6,6 @@ import { FileIndicatorComponent } from './file-indicator.component';
 
 @Component({
   selector: 'app-terraform-plan-viewer',
-  standalone: true,
   imports: [
     CommonModule,
     TerraformPlanFileUploadComponent,

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { Location } from '@angular/common';
 
 @Component({
+  standalone: false,
     selector: 'app-root',
     templateUrl: './app.component.html'
 }) export class AppComponent {

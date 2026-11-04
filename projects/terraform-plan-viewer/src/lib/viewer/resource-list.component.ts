@@ -13,7 +13,6 @@ import { ResourceChange, ModuleGroup, ResourceTypeGroup, IteratorGroup } from '.
 
 @Component({
   selector: 'app-resource-list',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,

@@ -14,7 +14,11 @@ The publishing scripts share all three privately with the test organization `htt
 
 ## Start the local apps
 
-Install dependencies with `npm ci`, then run these commands in separate terminals:
+Use Node.js 22.x (the CI runtime) and install dependencies with `npm ci`, then run these commands in separate terminals. The Angular 19.2 workspace also supports Node.js 20.11.1 or newer within 20.x; the Terraform publishing task continues to run on its Node 20 agent handler.
+
+The workspace was migrated sequentially from Angular 17 through 18 to 19 using the official [`ng update` migrations](https://angular.dev/cli/update) and [version compatibility requirements](https://angular.dev/reference/versions). It retains the webpack browser builders and the Azure DevOps SDK alias in `webpack.config.js`; the [application builder migration is optional](https://angular.dev/tools/cli/build-system-migration). The reusable library targets Angular/Material/CDK 19.2.x; its package verifier installs the workspace's resolved versions in an independent consumer and checks standalone, NgModule, SSR, and browser behavior.
+
+Website production builds disable font inlining so they do not fetch Google Fonts during compilation. The website retains its existing font links and loads them at runtime; extension fonts remain bundled locally.
 
 ```bash
 npm run start-history-dev

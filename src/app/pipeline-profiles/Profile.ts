@@ -244,19 +244,20 @@ export class ProfilePipeline {
 
         let requestUrl;
 
-        let buildNumber = match.done ? undefined : match.value.groups!['buildNumber'];
-        let buildId = match.done ? undefined : match.value.groups!['buildId'];
+        const groups = match.done ? undefined : match.value.groups;
+        let buildNumber = groups?.['buildNumber'];
+        let buildId = groups?.['buildId'];
 
         if (buildNumber) {
             requestUrl = `/_apis/build/builds?definitions=${pipelineId}&$top=1&buildNumber=${buildNumber}`;
         } else if (buildId) {
             requestUrl = `/_apis/build/builds?buildIds=${buildId}`;
         } else {
-            let branch = selectedBranch == '' ? pipelineResource.branch : match.value.groups!['branch'];
+            let branch = selectedBranch == '' ? pipelineResource.branch : groups?.['branch'];
             if (branch == '<self>') {
                 branch = this.configurations.branch;
             }
-            let tags = match.value?.groups['tags'];
+            let tags = groups?.['tags'];
 
             requestUrl = `/_apis/build/builds?definitions=${pipelineId}&$top=1&branchName=refs/heads/${branch}`;
 

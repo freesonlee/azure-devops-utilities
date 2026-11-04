@@ -2,7 +2,7 @@
 
 An embeddable, read-only viewer for supplied Terraform plan JSON and optional CDKTF metadata. It renders resource changes, drift, unknown and sensitive values, outputs, and variables. It does not fetch plans, authenticate to Azure DevOps, or execute Terraform.
 
-This is an unpublished preview. The initial compatibility target is Angular/Material/CDK **17.1.x**, tested on 17.1.1 with RxJS 7.8 and TypeScript 5.3. Broader Angular support has not been validated.
+This is an unpublished preview. The compatibility target is Angular/Material/CDK **19.2.x**, tested on Angular 19.2.25 and Material/CDK 19.2.19 with RxJS 7.8 and TypeScript 5.8. Broader Angular support has not been validated.
 
 ## Installation
 
@@ -27,7 +27,7 @@ From the repository, run `npm run pack:viewer`, then install the tarball in your
 npm install /path/to/freesonlee-terraform-plan-viewer-angular-0.1.0-next.0.tgz
 ~~~
 
-Use matching Angular 17 peer dependencies. Configure animations with `provideAnimations()` or `provideNoopAnimations()`, or the corresponding animation module for an NgModule application.
+Use matching Angular 19.2 peer dependencies. Configure animations with `provideAnimations()` or `provideNoopAnimations()`, or the corresponding animation module for an NgModule application.
 
 Use your existing Angular Material theme. If you do not have one, you can opt in to the bundled indigo/pink theme from a global stylesheet:
 

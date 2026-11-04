@@ -36,7 +36,6 @@ class GitHubBranchLoadError extends Error { }
   selector: 'pipeline-list',
   templateUrl: './pipeline.component.html',
   styleUrls: ['./pipeline.component.css'],
-  standalone: true,
   animations: [
     trigger('detailExpand', [
       state('collapsed', style({ height: '0px', minHeight: '0' })),

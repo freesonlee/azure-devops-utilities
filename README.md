@@ -88,7 +88,7 @@ In this example:
 
 ## Reusable Angular viewer package
 
-The Terraform renderer lives in [`projects/terraform-plan-viewer`](projects/terraform-plan-viewer/README.md). The application consumes its compiled public API. The MIT preview targets Angular/Material/CDK 17.1.x.
+The Terraform renderer lives in [`projects/terraform-plan-viewer`](projects/terraform-plan-viewer/README.md). The application consumes its compiled public API. The MIT preview targets Angular/Material/CDK 19.2.x.
 
 Run `npm run pack:viewer` to build and create an installable tarball under `dist/packages`. Run `npm run verify:viewer-package` to install that tarball in a temporary standalone/NgModule consumer and check browser and server rendering. The verifier needs the Playwright Chromium browser installed.
 

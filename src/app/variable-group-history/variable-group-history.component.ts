@@ -34,6 +34,7 @@ import { generateQuery } from './workItemQuery';
 type Mode = 'variables' | 'pipelines';
 
 @Component({
+  standalone: false,
   selector: 'variable-group-history',
   templateUrl: './variable-group-history.component.html',
   animations: [

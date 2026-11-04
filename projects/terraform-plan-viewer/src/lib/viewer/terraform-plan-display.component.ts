@@ -30,7 +30,6 @@ import { ConstructViewComponent } from './construct-view.component';
 
 @Component({
     selector: 'app-terraform-plan-display',
-    standalone: true,
     imports: [
         CommonModule,
         FormsModule,

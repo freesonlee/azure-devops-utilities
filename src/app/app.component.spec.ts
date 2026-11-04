@@ -1,15 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { AppComponent } from './app.component';
 import { AppModule } from './app.module';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('Standalone website startup', () => {
   beforeEach(async () => {
     localStorage.removeItem('servers');
     localStorage.removeItem('lastServer');
     await TestBed.configureTestingModule({
-      imports: [AppModule, HttpClientTestingModule, NoopAnimationsModule]
+      imports: [AppModule, NoopAnimationsModule],
+      providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
     }).compileComponents();
   });
 

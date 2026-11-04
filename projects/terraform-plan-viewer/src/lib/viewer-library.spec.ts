@@ -11,7 +11,7 @@ const resource = (address: string): ResourceChange => ({ address, mode: 'managed
 const plan = (address = 'module.example.null_resource.example'): TerraformPlan => ({ format_version: '1.2', terraform_version: '1.9.0', variables: {}, planned_values: { outputs: {}, root_module: { resources: [] } }, resource_changes: [resource(address)], output_changes: {} });
 const freeze = (value: any): any => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
 
-@Component({ standalone: true, imports: [TerraformPlanViewerComponent], template: '<tf-plan-viewer [plan]="first"/><tf-plan-viewer [plan]="second"/>' })
+@Component({ imports: [TerraformPlanViewerComponent], template: '<tf-plan-viewer [plan]="first"/><tf-plan-viewer [plan]="second"/>' })
 class TwoViewers { first = plan('null_resource.first'); second = plan('null_resource.second'); }
 
 describe('Embeddable viewer contract', () => {

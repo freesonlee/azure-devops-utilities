@@ -8,7 +8,7 @@ type FileState = 'idle' | 'loading' | 'ready' | 'error';
 interface ViewFile extends PlanFile { state: FileState; error?: string; plan?: TerraformPlan; }
 
 @Component({
-  selector: 'app-root', standalone: true, imports: [CommonModule, TerraformPlanViewerComponent],
+  selector: 'app-root', imports: [CommonModule, TerraformPlanViewerComponent],
   templateUrl: './run-tab.component.html', styleUrls: ['./run-tab.component.css']
 })
 export class RunTabComponent implements OnInit, OnDestroy {

@@ -8,4 +8,4 @@
 - Isolate instance state, avoid host input mutation, and reset selection/reveal state on replacement.
 - Validate renderer inputs, mask marked secrets, and require reveal before copying them.
 - Package an optional Material theme, TypeScript types, MIT license, and third-party notices.
-- Target Angular/Material/CDK 17.1.x; validate the preview on 17.1.1.
+- Target Angular/Material/CDK 19.2.x; validate the preview on Angular 19.2.25 and Material/CDK 19.2.19.

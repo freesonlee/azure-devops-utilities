@@ -8,7 +8,6 @@ import { preparePlan } from './models/prepare-plan';
 @Component({
   selector: 'tf-plan-viewer',
   host: { '[style.container-type]': "options?.layout === 'page' ? 'normal' : 'inline-size'" },
-  standalone: true,
   imports: [CommonModule, TerraformPlanDisplayComponent],
   template: `
     <div class="viewer-message" *ngIf="validationError" role="alert">{{validationError}}</div>
