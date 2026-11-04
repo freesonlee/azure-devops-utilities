@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ads-terraform-plan-viewer",
   "publisher": "FreesonLi",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "name": "Terraform Plan Viewer",
   "description": "View Terraform plan JSON files from pipeline run artifacts.",
   "public": true,
@@ -63,6 +63,10 @@
     },
     {
       "path": "dist/tasks/PublishTerraformPlan"
+    },
+    {
+      "path": "images/terraform-plan-viewer",
+      "addressable": true
     }
   ],
   "links": {

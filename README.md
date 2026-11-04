@@ -3,6 +3,8 @@ Please visit [Online](https://go.azuredevopshelpers.dev/)
 
 For private Marketplace extensions served from HTTPS localhost, see [Extension development](docs/development.md).
 
+See the [Terraform Plan Viewer screenshots and usage guide](src/app/terraform-plan-viewer-extension/readme.md) for its pipeline run extension.
+
 ## Applications and builds
 
 The website, three Azure DevOps Marketplace extensions, and reusable Terraform viewer library are maintained on `main`. Each application has its own Angular entry point and output directory.

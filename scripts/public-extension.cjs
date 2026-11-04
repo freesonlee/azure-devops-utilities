@@ -29,7 +29,8 @@ function tfx(args) {
       throw new Error('Build the extension applications with npm run build:extensions before packaging.');
     }
     fs.mkdirSync(path.dirname(vsix), { recursive: true });
-    tfx(['create', '--manifests', config.manifest, '--output-path', vsix]);
+    const manifestArgs = selection === 'terraform' ? require('./prepare-terraform-readme.cjs').prepareReadme(manifest, path.dirname(vsix)) : ['--manifests', config.manifest];
+    tfx(['create', ...manifestArgs, '--output-path', vsix]);
   }
   if (action !== 'install') await loadPackage(selection);
   if (action === 'publish' || action === 'install') {

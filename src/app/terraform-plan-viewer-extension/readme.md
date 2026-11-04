@@ -2,6 +2,42 @@
 
 Open **Terraform Plans** on an Azure DevOps pipeline run that uses **Publish Terraform plan** to view JSON plans published in its artifacts. Each file ending in `.plan.json` gets its own file tab, including files in nested folders and duplicate filenames from different artifacts.
 
+## Explore your plan
+
+### Status and resource counts
+
+See create, update, delete, and replacement counts at a glance. Select a count to filter the resource list.
+
+![Plan overview with counts for each resource action, total changes, and total resources](../../../images/terraform-plan-viewer/status.png)
+
+### Modules and resources
+
+Browse the left pane by module and resource type, then select a resource to inspect its changes.
+
+![Left pane with root and network modules and an expanded resource showing its update status](../../../images/terraform-plan-viewer/modules-resources.png)
+
+### Properties and values
+
+Expand a property in the right pane to compare its before and after values.
+
+![Right pane showing a resource property changing from revision 1 to revision 2](../../../images/terraform-plan-viewer/properties-values.png)
+
+### Variables
+
+Review input names, types, and values. Filter by name or value and copy individual values.
+
+![Variables tab showing boolean and string inputs, filters, and copy buttons](../../../images/terraform-plan-viewer/variables.png)
+
+### Outputs
+
+Inspect output types and values, with sensitive outputs masked.
+
+![Outputs tab showing an endpoint value and a masked sensitive credential](../../../images/terraform-plan-viewer/outputs.png)
+
+These screenshots use a sample plan.
+
+## Publish a plan
+
 Create a binary plan using your installed Terraform CLI, then use the included publishing task to convert it to JSON and publish both files together:
 
 ```yaml

@@ -62,7 +62,8 @@ if (action === 'pack' || action === 'publish') {
     if (build.error || build.status !== 0) process.exit(build.status || 1);
   }
   fs.mkdirSync(output, { recursive: true });
-  tfx(['create', '--manifests', config.manifest, '--output-path', vsix]);
+  const manifestArgs = selection === 'terraform' ? require('./prepare-terraform-readme.cjs').prepareReadme(manifest, output) : ['--manifests', config.manifest];
+  tfx(['create', ...manifestArgs, '--output-path', vsix]);
 }
 if (action === 'publish') {
   tfx(['publish', '--vsix', vsix, '--service-url', 'https://marketplace.visualstudio.com',

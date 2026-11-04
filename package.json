@@ -12,6 +12,7 @@
     "watch:viewer": "ng build terraform-plan-viewer --watch --configuration development",
     "test:viewer": "ng test terraform-plan-viewer --watch=false --browsers=ChromiumHeadless",
     "capture:viewer": "node scripts/capture-terraform-viewer.cjs",
+    "capture:terraform-extension": "node scripts/check-terraform-extension.cjs --screenshots",
     "pack:viewer": "npm run build:viewer && node scripts/pack-viewer.cjs",
     "verify:viewer-package": "node scripts/verify-viewer-package.cjs",
     "test": "ng test",

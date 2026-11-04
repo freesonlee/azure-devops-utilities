@@ -43,6 +43,8 @@ npm run pack-dev
 
 This creates the three `.vsix` packages in `artifacts/dev/`. Packaging does not require an application build because the dev manifests serve the UI from localhost. The Terraform dev package also includes `PublishTerraformPlanDev@1`; its task is built automatically during packaging and has its own GUID to avoid replacing the production task.
 
+The Terraform Marketplace README includes the PNGs from `images/terraform-plan-viewer` as addressable package files. Packaging generates a README with absolute Gallery image URLs for that extension's identity and version; the source README keeps relative links for repository browsing. Regenerate the five focused screenshots with `npm run capture:terraform-extension` after `npm run build-t`.
+
 You can upload these files manually at the [Marketplace publisher portal](https://marketplace.visualstudio.com/manage) under publisher `FreesonLi`: select **New extension > Azure DevOps**, upload the dev package, then share it with `FreesonLee`. The dev manifests set `public` to `false`.
 
 For command-line publishing with Microsoft Entra, sign in to Azure CLI as the account that owns the publisher:

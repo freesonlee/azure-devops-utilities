@@ -90,6 +90,10 @@ function hostPage(port, config) {
   let browser;
   try {
     browser = await chromium.launch();
+    if (process.argv.includes('--screenshots')) {
+      await require('./capture-terraform-extension.cjs')(browser, server.address().port);
+      return;
+    }
     const output = path.join(os.tmpdir(), 'ado-terraform-run-extension');await fs.mkdir(output, { recursive: true });
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ignoreHTTPSErrors: true });
     try {

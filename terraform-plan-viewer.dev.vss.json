@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ads-terraform-plan-viewer-dev",
   "publisher": "FreesonLi",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "name": "Terraform Plan Viewer (Dev)",
   "description": "Private localhost development extension for Terraform pipeline run plans.",
   "public": false,
@@ -56,6 +56,10 @@
     "uri": "https://github.com/freesonlee/azure-devops-utilities"
   },
   "files": [
+    {
+      "path": "images/terraform-plan-viewer",
+      "addressable": true
+    },
     {
       "path": "dist/tasks/PublishTerraformPlanDev"
     }

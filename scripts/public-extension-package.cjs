@@ -13,7 +13,7 @@ async function readManifest(selection) {
     !Object.hasOwn(manifest, 'baseUri') && /^\d+\.\d+\.\d+$/.test(manifest.version),
     'The release manifest must use its public identity and packaged assets without baseUri.');
   const files = [{ path: `dist/${config.build}`, packagePath: '/', addressable: true }];
-  if (selection === 'terraform') files.push({ path: 'dist/tasks/PublishTerraformPlan' });
+  if (selection === 'terraform') files.push({ path: 'dist/tasks/PublishTerraformPlan' }, { path: 'images/terraform-plan-viewer', addressable: true });
   assert.deepEqual(manifest.files, files,
     'The release manifest must package the complete build as addressable files at the package root.');
   const tabs = manifest.contributions.filter(item => item.type !== 'ms.vss-distributed-task.task');
@@ -42,6 +42,7 @@ async function loadPackage(selection) {
   assert.deepEqual(packaged.contributions, manifest.contributions, 'Packaged contributions must match the release manifest.');
   assert.deepEqual(packaged.scopes, manifest.scopes, 'Packaged scopes must match the release manifest.');
   const metadata = await archive.file('extension.vsixmanifest').async('string');
+  if (selection === 'terraform') await require('./prepare-terraform-readme.cjs').verifyReadme(archive, manifest);
   const identity = metadata.match(/<Identity\b[^>]*>/)?.[0];
   for (const [name, value] of Object.entries({ Id: manifest.id, Publisher: manifest.publisher, Version: manifest.version })) {
     assert(identity?.includes(`${name}="${value}"`), `Packaged ${name} must match the release manifest.`);
